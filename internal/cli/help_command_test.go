@@ -275,7 +275,7 @@ func TestHelpRequestsRenderExpectedTopics(t *testing.T) {
 			args: []string{"config", "add", "--help"},
 			contains: []string{
 				"config add",
-				"--env <prod>",
+				"--env <prod|test>",
 				"默认 prod",
 				"--name <profile>",
 				"默认 contract",

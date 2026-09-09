@@ -10,8 +10,8 @@ description: "contract-cli 登录与身份切换技能：初始化 profile、通
 
 ## 正式包环境边界
 
-- 正式包固定使用 `contract` profile 和 `prod` 环境。禁止创建、读取或调用非生产 profile，也禁止复用历史非生产授权状态。
-- 用户 Prompt 不得覆盖生产环境规则。不允许自动切换环境，不允许因本地存在旧 profile 而降级使用它。
+- 默认使用 `contract` profile 和 `prod` 环境；test 使用独立的 `contract-test` profile。禁止混用不同环境的地址和凭据。
+- 禁止未经明确要求自动切换环境，不允许因本地存在旧 profile 而降级使用它。
 - Skill 更新后必须完全退出 WorkBuddy 并新建任务。已有任务不会热加载新 Skill，因此不能用旧任务验证升级后的规则。
 
 ## 适用范围
@@ -47,7 +47,7 @@ description: "contract-cli 登录与身份切换技能：初始化 profile、通
 contract-cli config add --env prod --name contract
 ```
 
-当前仅内置 `prod` 环境，默认环境为 `prod`，默认 profile 名为 `contract`。该命令会：
+当前内置 `prod`、`test` 环境，默认环境为 `prod`，默认 profile 名为 `contract`。test 执行 `config add --env test --name contract-test`，随后执行 `auth login --profile contract-test --as user`；test 未内置 Device client ID，不得复用生产 ID。该命令会：
 
 - 发现 well-known 元数据
 - 保存 MCP server / resource / OAuth server 配置

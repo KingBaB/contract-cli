@@ -1,5 +1,13 @@
 # AI 变更记录：CLI MCP 审批支持
 
+## 2026-09-08（接入 test 环境联调）
+
+- 改动内容：新增 test 预设，复用环境校验及凭据隔离，同步帮助、README、授权 Skill。
+- 影响范围：CLI 配置、user/app 登录、Device 凭据恢复、HTTP 重定向；默认 prod 保持不变。
+- 关键决策：test 使用 test-open/test-myaccount.qtech.cn，浏览器 OAuth + PKCE，不复用生产 Device client ID；切换环境清理旧授权，多跳重定向禁止跨环境。
+- 验证结果：TDD 先复现失败后修复；make test、环境 race 测试、go vet 通过，真实 test 元数据与隔离配置初始化成功；按 qfei Go/共享模块规则完成本地复审。
+- 未处理项或风险项：未完成真实 test 用户授权和业务数据测试；test 未内置 Device client ID。未提交或推送。
+
 ## 2026-09-08（整理记录位置）
 
 - 改动内容：移除主工作区和旧网关临时工作区 docs/ai-changes.md 中本任务追加的记录，保留各自原有历史。

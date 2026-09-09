@@ -64,6 +64,7 @@ type App struct {
 }
 
 type environmentPreset struct {
+	AccountOrigin                  string
 	OpenPlatformBaseURL            string
 	AppTokenEndpoint               string
 	ProtectedResourceMetadataURL   string
@@ -112,7 +113,7 @@ func New(options Options) *App {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	httpClient = withProductionNetworkGuard(httpClient, logger)
+	httpClient = withEnvironmentNetworkGuard(httpClient, logger)
 	opener := options.OpenBrowser
 	if opener == nil {
 		opener = oauth.OpenBrowser
@@ -281,7 +282,7 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	}
 	resetAuthentication := false
 	if found {
-		resetAuthentication, err = a.productionProfileRequiresReset(existing)
+		resetAuthentication, err = a.profileRequiresAuthenticationReset(existing, env)
 		if err != nil {
 			return err
 		}
@@ -290,9 +291,9 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	if protectedResourceURL == "" {
 		protectedResourceURL = preset.ProtectedResourceMetadataURL
 	}
-	if protectedResourceURL != "" && !isProductionOriginURL(protectedResourceURL, productionOpenPlatformOrigin, true) {
-		err := productionProfileError(profileName)
-		a.logger.Error("config add rejected non-production metadata url", "profile", profileName, "error", err.Error())
+	if protectedResourceURL != "" && !isEnvironmentOriginURL(protectedResourceURL, preset.OpenPlatformBaseURL, true) {
+		err := profileEnvironmentError(profileName)
+		a.logger.Error("config add rejected mismatched environment metadata url", "profile", profileName, "error", err.Error())
 		return err
 	}
 	if redirectURL == "" {
@@ -344,16 +345,18 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	profile.Identities.User.TokenEndpoint = discovery.AuthorizationServer.TokenEndpoint
 	profile.Identities.User.RevocationEndpoint = discovery.AuthorizationServer.RevocationEndpoint
 	profile.Identities.User.RegistrationEndpoint = discovery.AuthorizationServer.RegistrationEndpoint
-	profile.Identities.User.DeviceClientID = preset.DeviceClientID
-	profile.Identities.User.DeviceScope = preset.DeviceScope
+	if preset.DeviceClientID != "" {
+		profile.Identities.User.DeviceClientID = preset.DeviceClientID
+		profile.Identities.User.DeviceScope = preset.DeviceScope
+	}
 	profile.Identities.User.RedirectURL = redirectURL
-	if err := validateProductionProfile(profile); err != nil {
-		a.logger.Error("reject discovered non-production profile", "profile", profileName, "error", err.Error())
+	if err := validateProfileEnvironment(profile); err != nil {
+		a.logger.Error("reject discovered mismatched environment profile", "profile", profileName, "error", err.Error())
 		return err
 	}
 	if resetAuthentication {
 		if err := a.clearProfileAuthenticationState(profileName); err != nil {
-			return fmt.Errorf("clear non-production authentication state for profile %q: %w", profileName, err)
+			return fmt.Errorf("clear mismatched environment authentication state for profile %q: %w", profileName, err)
 		}
 	}
 
@@ -582,8 +585,22 @@ func (a *App) providerFor(identity config.IdentityKind) authProvider {
 
 func resolveEnvironment(name string) (environmentPreset, error) {
 	switch name {
+	case "test":
+		return environmentPreset{
+			AccountOrigin:                  "https://test-myaccount.qtech.cn",
+			Resource:                       "https://test-open.qtech.cn",
+			OpenPlatformBaseURL:            "https://test-open.qtech.cn",
+			AppTokenEndpoint:               "https://test-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal",
+			ProtectedResourceMetadataURL:   "",
+			AuthorizationServerMetadataURL: "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
+			RedirectURL:                    "http://127.0.0.1:8000/callback",
+			Scopes:                         []string{"cli:tools", "cli:resources"},
+			BusinessType:                   "contract",
+			ClientName:                     "contract-cli",
+		}, nil
 	case "prod":
 		return environmentPreset{
+			AccountOrigin:                  "https://myaccount.qfei.cn",
 			OpenPlatformBaseURL:            "https://open.qfei.cn",
 			AppTokenEndpoint:               "https://open.qfei.cn/open-apis/auth/v3/tenant_access_token/internal",
 			ProtectedResourceMetadataURL:   "",
@@ -597,7 +614,7 @@ func resolveEnvironment(name string) (environmentPreset, error) {
 			DeviceScope:                    "contract:full contract-review:full",
 		}, nil
 	default:
-		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod", name)
+		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod, test", name)
 	}
 }
 

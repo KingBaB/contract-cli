@@ -27,7 +27,7 @@ func (a *App) deviceRequestContext(profile config.Profile) (openplatform.Request
 	if err != nil {
 		return openplatform.RequestContext{}, err
 	}
-	stored, err := a.loadProductionDeviceCredential(profile, store)
+	stored, err := a.loadEnvironmentDeviceCredential(profile, store)
 	if err != nil {
 		if errors.Is(err, credential.ErrCredentialNotFound) {
 			return openplatform.RequestContext{}, fmt.Errorf("user identity is not authorized; run `contract-cli auth init --profile %s --output json` first", profile.Name)
@@ -62,7 +62,7 @@ func (a *App) deviceAuthStatus(profile config.Profile) (authStatusView, error) {
 	if err != nil {
 		return authStatusView{}, err
 	}
-	stored, err := a.loadProductionDeviceCredential(profile, store)
+	stored, err := a.loadEnvironmentDeviceCredential(profile, store)
 	if errors.Is(err, credential.ErrCredentialNotFound) {
 		return view, nil
 	}
@@ -110,7 +110,7 @@ func (a *App) deviceAuthLogout(ctx context.Context, profile config.Profile) (str
 	if err != nil {
 		return "", err
 	}
-	stored, err := a.loadProductionDeviceCredential(profile, store)
+	stored, err := a.loadEnvironmentDeviceCredential(profile, store)
 	if errors.Is(err, credential.ErrCredentialNotFound) {
 		return fmt.Sprintf("Device authorization is already cleared for profile %q.", profile.Name), nil
 	}
@@ -144,7 +144,7 @@ func (a *App) refreshDeviceToken(ctx context.Context, profile config.Profile, ex
 	if err != nil {
 		return "", err
 	}
-	beforeLock, err := a.loadProductionDeviceCredential(profile, store)
+	beforeLock, err := a.loadEnvironmentDeviceCredential(profile, store)
 	if err != nil {
 		return "", err
 	}
@@ -175,7 +175,7 @@ func (a *App) refreshDeviceToken(ctx context.Context, profile config.Profile, ex
 		}
 	}()
 
-	stored, err := a.loadProductionDeviceCredential(profile, store)
+	stored, err := a.loadEnvironmentDeviceCredential(profile, store)
 	if err != nil {
 		return "", err
 	}

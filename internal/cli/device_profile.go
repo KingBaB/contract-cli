@@ -15,11 +15,11 @@ func (a *App) loadDeviceAwareProfile(profileName string) (config.Profile, error)
 		return config.Profile{}, err
 	}
 	if found {
-		if err := validateProductionProfile(profile); err != nil {
-			a.logger.Error("reject non-production profile", "profile", profile.Name, "error", err.Error())
+		if err := validateProfileEnvironment(profile); err != nil {
+			a.logger.Error("reject mismatched environment profile", "profile", profile.Name, "error", err.Error())
 			return config.Profile{}, err
 		}
-		if err := a.validateProductionDeviceCredentialIfAvailable(profile); err != nil {
+		if err := a.validateDeviceCredentialEnvironmentIfAvailable(profile); err != nil {
 			return config.Profile{}, err
 		}
 		return profile, nil
@@ -63,12 +63,12 @@ func (a *App) loadDeviceAwareProfile(profileName string) (config.Profile, error)
 		a.logger.Error("validate encrypted Device profile failed", "profile", normalizedProfileName, "error", err.Error())
 		return config.Profile{}, err
 	}
-	if err := validateProductionProfile(profile); err != nil {
-		a.logger.Error("reject non-production Device profile snapshot", "profile", normalizedProfileName, "error", err.Error())
+	if err := validateProfileEnvironment(profile); err != nil {
+		a.logger.Error("reject mismatched environment Device profile snapshot", "profile", normalizedProfileName, "error", err.Error())
 		return config.Profile{}, err
 	}
-	if err := validateProductionPendingTransaction(normalizedProfileName, stored.Pending); err != nil {
-		a.logger.Error("reject non-production Device pending state during profile restore", "profile", normalizedProfileName, "error", err.Error())
+	if err := validatePendingEnvironment(profile, stored.Pending); err != nil {
+		a.logger.Error("reject mismatched environment Device pending state during profile restore", "profile", normalizedProfileName, "error", err.Error())
 		return config.Profile{}, err
 	}
 	if err := a.store.SaveProfile(profile); err != nil {
@@ -151,10 +151,9 @@ func profileNotFoundError(profileName string) error {
 
 func deviceProfileRecoveryError(profileName, reason string) error {
 	return fmt.Errorf(
-		"cannot restore Device profile %q after sandbox rebuild: %s; run `contract-cli config add --env prod --name %s` and `contract-cli auth init --profile %s --output json` again",
+		"cannot restore Device profile %q after sandbox rebuild: %s; run `contract-cli config add` for profile %q with its original environment (prod or test) and authorize again",
 		profileName,
 		reason,
-		profileName,
 		profileName,
 	)
 }

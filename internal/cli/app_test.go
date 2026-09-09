@@ -1007,7 +1007,7 @@ func TestConfigAddRejectsDevPresetBeforeNetworkRequest(t *testing.T) {
 	})
 
 	err := app.Run(context.Background(), []string{"config", "add", "--name", "contract", "--env", "dev"})
-	if err == nil || err.Error() != `unsupported environment "dev"; supported environments: prod` {
+	if err == nil || err.Error() != `unsupported environment "dev"; supported environments: prod, test` {
 		t.Fatalf("config add dev error = %v", err)
 	}
 	if requestCount != 0 {

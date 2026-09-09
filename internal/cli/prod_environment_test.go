@@ -379,7 +379,7 @@ func TestProductionHTTPClientBlocksKnownDevHosts(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err = app.httpClient.Do(request)
-		if err == nil || !strings.Contains(err.Error(), "production build blocks non-production host") {
+		if err == nil || !strings.Contains(err.Error(), "build blocks unsupported environment host") {
 			t.Fatalf("request %s error = %v", rawURL, err)
 		}
 	}
@@ -415,8 +415,7 @@ func validProductionProfile() config.Profile {
 }
 
 func productionProfileErrorMessage(profileName string) string {
-	return `profile "` + profileName + `" belongs to a non-production environment and is not allowed in this production build; run ` +
-		"`contract-cli config add --env prod --name contract` and authorize again"
+	return `profile "` + profileName + `" has unsupported or inconsistent environment endpoints; configure matching prod/test endpoints and authorize again`
 }
 
 type productionRoundTripFunc func(*http.Request) (*http.Response, error)

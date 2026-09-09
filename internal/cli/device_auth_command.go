@@ -66,7 +66,7 @@ func (a *App) runAuthDeviceInit(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	existing, loadErr := a.loadProductionDeviceCredential(profile, store)
+	existing, loadErr := a.loadEnvironmentDeviceCredential(profile, store)
 	if loadErr != nil && !errors.Is(loadErr, credential.ErrCredentialNotFound) {
 		return loadErr
 	}
@@ -79,7 +79,7 @@ func (a *App) runAuthDeviceInit(ctx context.Context, args []string) error {
 	}
 	defer release()
 
-	existing, loadErr = a.loadProductionDeviceCredential(profile, store)
+	existing, loadErr = a.loadEnvironmentDeviceCredential(profile, store)
 	if loadErr != nil && !errors.Is(loadErr, credential.ErrCredentialNotFound) {
 		return loadErr
 	}
@@ -110,8 +110,8 @@ func (a *App) runAuthDeviceInit(ctx context.Context, args []string) error {
 		a.logger.Error("device authorization init failed", "profile", profile.Name, "error", err.Error())
 		return err
 	}
-	if !isProductionOriginURL(response.VerificationURIComplete, productionAccountOrigin, true) {
-		return productionProfileError(profile.Name)
+	if !isProfileAccountURL(profile, response.VerificationURIComplete, true) {
+		return profileEnvironmentError(profile.Name)
 	}
 	expiresAt := a.now().Add(time.Duration(response.ExpiresIn) * time.Second)
 	profile.DefaultIdentity = config.IdentityUser
@@ -161,7 +161,7 @@ func (a *App) runAuthDeviceComplete(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := a.loadProductionDeviceCredential(profile, store); err != nil {
+	if _, err := a.loadEnvironmentDeviceCredential(profile, store); err != nil {
 		return err
 	}
 	release, acquired, err := a.tryDeviceAuthorizationOperation(profile.Name)
@@ -173,7 +173,7 @@ func (a *App) runAuthDeviceComplete(ctx context.Context, args []string) error {
 	}
 	defer release()
 
-	stored, err := a.loadProductionDeviceCredential(profile, store)
+	stored, err := a.loadEnvironmentDeviceCredential(profile, store)
 	if err != nil {
 		return err
 	}
