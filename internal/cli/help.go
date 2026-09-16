@@ -201,6 +201,7 @@ func helpRegistry() map[string]helpTopic {
 		{"contract-cli skills install [flags]", "安装内置 Agent skills"},
 		{"contract-cli update check [flags]", "检查 npm 远端版本"},
 		{"contract-cli contract <subcommand> [flags]", "合同结构化命令"},
+		{"contract-cli review <subcommand> [flags]", "合同智能审查命令"},
 		{"contract-cli payment <subcommand> [flags]", "付款结构化命令"},
 		{"contract-cli mdm vendor <subcommand> [flags]", "交易方主数据命令"},
 		{"contract-cli mdm legal <subcommand> [flags]", "法人主体主数据命令"},
@@ -1727,6 +1728,7 @@ func addRuleHelp(registry map[string]helpTopic) {
 			{"contract-cli rule table <subcommand> [flags]", "app 身份操作审批矩阵规则表"},
 		},
 	}
+	addReviewHelp(registry)
 	registry["rule table"] = helpTopic{
 		Name:  "rule table",
 		Usage: []string{"contract-cli rule table <subcommand> [flags]"},
