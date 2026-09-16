@@ -12,7 +12,7 @@ description: "contract-cli 登录与身份切换技能：初始化 profile、通
 
 - 默认使用 `contract` profile 和 `prod` 环境；test 使用独立的 `contract-test` profile。禁止混用不同环境的地址和凭据。
 - 禁止未经明确要求自动切换环境，不允许因本地存在旧 profile 而降级使用它。
-- Skill 更新后必须完全退出 WorkBuddy 并新建任务。已有任务不会热加载新 Skill，因此不能用旧任务验证升级后的规则。
+- Skill 更新后必须完全退出并新建任务。已有任务不会热加载新 Skill，因此不能用旧任务验证升级后的规则。
 
 ## 适用范围
 

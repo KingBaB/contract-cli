@@ -200,6 +200,7 @@ func helpRegistry() map[string]helpTopic {
 		{"contract-cli skills list", "列出内置 Agent skills"},
 		{"contract-cli skills install [flags]", "安装内置 Agent skills"},
 		{"contract-cli update check [flags]", "检查 npm 远端版本"},
+		{"contract-cli environment inspect [flags]", "探测当前 CLI 的宿主客户端环境"},
 		{"contract-cli contract <subcommand> [flags]", "合同结构化命令"},
 		{"contract-cli review <subcommand> [flags]", "合同智能审查命令"},
 		{"contract-cli payment <subcommand> [flags]", "付款结构化命令"},
@@ -242,12 +243,46 @@ func helpRegistry() map[string]helpTopic {
 	addAuthHelp(registry)
 	addSkillsHelp(registry)
 	addUpdateHelp(registry)
+	addEnvironmentHelp(registry)
 	addContractHelp(registry)
 	addPaymentHelp(registry)
 	addMDMHelp(registry)
 	addEventHelp(registry)
 	addRuleHelp(registry)
 	return registry
+}
+
+func addEnvironmentHelp(registry map[string]helpTopic) {
+	registry["environment"] = helpTopic{
+		Name:  "environment",
+		Usage: []string{"contract-cli environment <subcommand> [flags]"},
+		Commands: []helpCommand{
+			{"contract-cli environment inspect [flags]", "探测祖先进程与宿主客户端身份"},
+		},
+	}
+	registry["environment inspect"] = helpTopic{
+		Name:    "environment inspect",
+		Summary: "通过祖先进程和运行时证据识别客户端来源；不读取完整命令行。",
+		Usage:   []string{"contract-cli environment inspect [flags]"},
+		Flags: []helpFlag{
+			{"--depth <1-128>", "祖先进程最大回溯深度，默认 32"},
+			{"--output <text|json>", "输出格式，默认 text"},
+			{"--include-processes", "输出采集到的进程链；不包含命令行参数"},
+		},
+		Examples: []string{
+			"contract-cli environment inspect",
+			"contract-cli environment inspect --output json --include-processes",
+		},
+		Notes: []string{
+			"macOS 会校验应用代码签名并匹配 Bundle ID + Team ID。",
+			"Windows 优先匹配 Package Family Name；普通桌面程序校验 Authenticode 证书指纹与路径。",
+			"Linux 当前使用可执行文件路径或进程名作为降级证据。",
+			"支持豆包、豆包工作、工作伙伴、WorkBuddy 和 Codex；无证据或产品证据冲突返回 unknown。",
+			"签名变化时保留路径或进程名证据；运行时组合证据为 low，已登记的有效身份才提升为 high。",
+			"探测共享 5 秒预算；超时保留本次已收到的完整报告，没有有效报告才返回 unknown。",
+			"每次实际业务 HTTP 请求发送前都会重新探测；结果不写入 profile 或 OAuth Token。",
+		},
+	}
 }
 
 func addConfigHelp(registry map[string]helpTopic) {
@@ -678,6 +713,9 @@ func addContractHelp(registry map[string]helpTopic) {
 			"app: /open-apis/contract/v1/files/{file_id}。",
 			"默认拉起保存文件弹窗；无 GUI/远程/CI 环境推荐显式传 --output-file。",
 			"user 文件先写同目录临时文件并校验大小，完整下载后才替换或创建目标文件。",
+			"显式 --output json|yaml|table 返回 file_id、file_name、output_path（绝对路径）、file_size（实际落盘大小，单位 B/字节）；user 另含 contract_id。默认输出保存提示。",
+			"user 的 file_name 来自下载元数据；app 使用本地保存文件名。结构化结果不包含临时 URL。",
+			"--raw 与 --output 不能同时使用。",
 			"--raw 会把文件内容写到 stdout，不打印额外提示。",
 			"不实现 dowload-file 拼写别名。",
 		},

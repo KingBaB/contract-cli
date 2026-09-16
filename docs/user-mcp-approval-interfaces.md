@@ -138,7 +138,7 @@ GET /open-apis/contract/v1/mcp/process_instances/{process_instance_id}/comments
 
 权限要求：当前用户具有审批实例关联合同的查看权限。
 
-接口没有 query 和分页参数，一次返回完整递归评论树。一级评论位于 `data.items`，回复位于每个评论的 `replies`，回复结构与一级评论相同。
+接口没有分页参数，一次返回完整递归评论树。CLI 固定携带 query `user_id_type=user_id`，统一响应人员 ID 类型；当前用户身份和权限仍由个人 Token 决定。一级评论位于 `data.items`，回复位于每个评论的 `replies`，回复结构与一级评论相同。
 
 ### 主要响应字段
 
@@ -288,7 +288,7 @@ Content-Type: application/json
 | `file_ids` | String[] | 否 | `approveAttachment` 类型的审批附件 ID |
 | `archive_number` | String | 否 | 兼容保留字段；MCP 当前不处理归档节点，无需传入 |
 
-`file_ids` 中每个 ID 必须是正整数且属于当前租户：可以是当前用户通过 MCP 上传且 commit 后未超过 30 分钟的 `approveAttachment`，也可以是已关联当前审批业务的 `approveAttachment`；重复 ID 按首次出现顺序去重。
+`file_ids` 中每个 ID 必须是正整数且属于当前租户：可以是当前用户通过 MCP 上传且 commit 后未超过 30 分钟的 `approveAttachment`；不支持直接复用已有审批附件、正文、普通附件或评论附件，需要重新按上述流程上传；重复 ID 按首次出现顺序去重。
 
 通过示例：
 
@@ -387,7 +387,7 @@ CLI 对这两类 user 上传自动执行：
 
 文件必须非空，并满足 CLI 的 200MB 与服务端 `max_size` 限制。任一步失败即停止，不自动重试，也不输出临时地址、会话 ID 或未确认的文件 ID。网络/5xx 或上传后响应无法确认时提示“执行结果不确定”；不要直接提交评论/审批，应先确认上传结果或重新准备附件。
 
-新附件授权要求同租户、同用户，commit 后有效期为 30 分钟。普通 app 上传不能代替这项 user 授权。已有当前合同可见文件可复用于评论；已有当前审批业务的 `approveAttachment` 可复用于审批，无需为复用而重复上传。
+新附件授权要求同租户、同用户，commit 后有效期为 30 分钟。普通 app 上传不能代替这项 user 授权。已有当前合同可见文件可复用于评论；审批附件只接受当前用户通过 MCP 上传、已 commit 且授权未过期的 `approveAttachment`；已有业务文件必须重新上传。
 
 app 上传及 user 的其他 `file_type` 继续使用原 `POST /open-apis/contract/v1/files/upload`；这两类 MCP 上传不使用 `--user-id` / `--user-id-type` 指定调用人。
 
