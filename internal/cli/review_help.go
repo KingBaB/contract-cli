@@ -80,6 +80,7 @@ func addReviewHelp(registry map[string]helpTopic) {
 		registry[key] = topic
 	}
 	completeReviewHelp(registry, input, dry)
+	completeReviewReferenceHelp(registry)
 	for _, key := range []string{"review file upload-url", "review run"} {
 		topic := registry[key]
 		if key == "review run" {
@@ -88,6 +89,33 @@ func addReviewHelp(registry map[string]helpTopic) {
 		topic.Notes = append(topic.Notes, "URL 文件由服务端下载并校验大小，CLI 不预先下载。")
 		registry[key] = topic
 	}
+}
+
+func completeReviewReferenceHelp(registry map[string]helpTopic) {
+	topic := registry["review file upload"]
+	topic.Summary = "上传本地/stdin 合同文件，或引用合同系统中的已有文件。"
+	topic.Flags = append(topic.Flags,
+		helpFlag{"--business-id <id>", "引用模式必填；文件流可选，后续使用上传响应的 businessId"},
+		helpFlag{"--business-file-id <id>", "引用模式必填，实际源文件记录 ID；文件流可选"},
+		helpFlag{"--business-file-version <version>", "引用模式必填，真实文件版本，最多 64 字符"},
+		helpFlag{"--source-locator <json>", "引用模式必填，JSON 对象字符串；sourceFileType 为 0/1/2；最多 4096 UTF-8 字节"},
+		helpFlag{"--source-revision-id <id>", "引用模式可选，内容修订 ID，最多 128 字符"},
+		helpFlag{"--source-content-md5 <md5>", "引用模式可选，源 MD5 原值透传，不替代 fileHash"},
+		helpFlag{"--channel-type <type>", "可选渠道参数；不传使用服务端默认值，不改变请求头"},
+	)
+	topic.Examples = append(topic.Examples, `contract-cli review file upload --business-id 123 --business-file-id 456 --name 合同.docx --business-file-version V1.0 --source-locator '{"provider":"clm","sourceFileType":1,"cooperationId":"789","cooperationFileId":"456"}' --dry-run`)
+	topic.Notes = append(topic.Notes, "引用模式不传 --file/--stdin；文件流不能混传版本、来源定位、内容修订或 MD5。", "sourceFileType：0 普通文件，1 协商文件，2 合同正文；协商关联 ID 仅放在 sourceLocator。", "引用模式由服务端获取原文件；不得用合同对象 ID 代替业务文件记录 ID。")
+	registry["review file upload"] = topic
+	fileTopic := registry["review file"]
+	fileTopic.Commands[0].Description = "上传文件或引用已有合同文件"
+	registry["review file"] = fileTopic
+	registry["review cooperation"] = helpTopic{Name: "review cooperation", Summary: "以个人身份读取协商信息，准备审查引用参数。", Usage: []string{"contract-cli review cooperation <subcommand> [flags]"}, Commands: []helpCommand{{"contract-cli review cooperation get [flags]", "查询个人可见协商详情及文件"}}}
+	registry["review cooperation get"] = helpTopic{Name: "review cooperation get", Summary: "查询个人可见协商详情，保留文件类型、版本和关联 ID；不上传或发起审查。", Usage: []string{"contract-cli review cooperation get --cooperation-id <id> [flags]"}, Flags: reviewHelpFlags(helpFlag{"--cooperation-id <id>", "必填，正 int64 协商 ID，不是合同 ID"}), Examples: []string{"contract-cli review cooperation get --profile contract --cooperation-id 123"}, Notes: []string{"仅支持 user 身份，不改变历史 contract cooperation 命令。", "协商引用上传使用 cooperation_file_id，不是底层 file_id；当前主合同需结合文件类型与 latest 标识确定。"}}
+	root := registry["review"]
+	commands := append([]helpCommand{}, root.Commands[:3]...)
+	commands = append(commands, helpCommand{"contract-cli review cooperation get [flags]", "读取个人协商及文件信息"})
+	root.Commands = append(commands, root.Commands[3:]...)
+	registry["review"] = root
 }
 
 // Complete leaf help against the actual parser, retaining Contract CLI's local renderer.

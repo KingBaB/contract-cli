@@ -1,7 +1,7 @@
 ---
 name: contract-cli-shared
 version: 1.0.1
-description: "contract-cli 开放平台共享约定技能：在 `contract`、`payment`、`mdm`、`event` 和 `rule` 模块间做选择，并遵守 `contract/v1/mcp` user-only 限制、`--input-file` 请求体输入、输出格式和 profile 选择规则。当用户要操作开放平台 CLI 但尚未明确命令模块、需要更新 contract-cli，或看到 JSON 输出中的 `_notice` / `_notice.update` 时触发。"
+description: "contract-cli 开放平台共享约定技能：在 `contract`、`review`、`payment`、`mdm`、`event` 和审批矩阵 `rule` 模块间做选择，并遵守 `contract/v1/mcp` user-only 限制、`--input-file` 请求体输入、输出格式和 profile 选择规则。当用户要操作开放平台 CLI 但尚未明确命令模块、需要更新 contract-cli，或看到 JSON 输出中的 `_notice` / `_notice.update` 时触发。"
 ---
 
 # contract-cli Shared
@@ -28,6 +28,8 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 ## 快速决策
 
+- 单份文件智能审查、系统内合同审查入口或继续审查任务：读 [../contract-cli-review/SKILL.md](../contract-cli-review/SKILL.md)，按实际能力检查系统当前正文与场景关联；不能用审批任务代替 AI 审查任务。
+- 审查清单、审查规则及规则分组查询/维护：读 [../contract-cli-review-rule/SKILL.md](../contract-cli-review-rule/SKILL.md)。仅在审查中选择已有清单仍由审查 Skill 处理；不要路由到审批矩阵。
 - 合同搜索、详情、创建、合同文本、模板、分类、枚举、字段更新、签署链接、合同授权、电子签、分享、协商、审批：读 [../contract-cli-contract/SKILL.md](../contract-cli-contract/SKILL.md)
   这里现在采用“主文档 + 字段树附录 + 枚举附录”的结构
 - 付款申请、付款计划、付款记录：读 [../contract-cli-payment/SKILL.md](../contract-cli-payment/SKILL.md)
@@ -46,6 +48,8 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 ## 当前已实现模块
 
+- `review file upload/upload-url`、`review subject extract`、`review task start/status/info/result`、`review run`
+- `review checklist`、`review rule`、`review rule group`（审查配置，与顶层审批矩阵 `rule table` 分离）
 - `contract get/search/search-v2/create/sync-user-groups/text`
 - `contract upload-file`
 - `contract field update`
@@ -79,6 +83,8 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 ## 共享约束
 
+- `review` 下远端命令仅支持 user。两个审查 Skill 复用已建立的个人上下文，不在业务步骤内编排安装授权或自行切换身份/环境；缺口交回公共能力，历史非审查 app 能力保持不变。
+- 审查覆盖外部独立预审、协商和任务中心的业务意图；系统当前正文映射、可信场景未闭合时按审查 Skill 报告缺口，不借用 app-only 入口或裸请求替代。系统合同审查链接由合同 `multi_url.pc_url` 设置 `targetType=ai-review` 生成，不依赖审查详情的 URL 字段；仅合同地址缺失/无效时按审查 Skill 处理链接缺口。外部独立预审不返回详情链接，不将未验证的网页展示声称为已验收。
 - Skill 更新后必须完全退出并新建任务。已有任务不会热加载新 Skill，不得用旧任务判断当前正式包的环境行为。
 - Device 模式业务命令提示未授权时，按 [../auth/SKILL.md](../auth/SKILL.md) 执行 `auth init`；用户明确完成授权后只执行一次 `auth complete`。
 - `auth init` 返回后严格执行授权 Skill 的展示契约：WorkBuddy 使用 `present_files` 交付 `qr_code_path` 对应的原始 PNG 附件，AgentKit 继续使用 `qr_code_path`；豆包普通工作任务只展示可点击授权链接和过期时间，不处理 `qr_code_path` 或 `qr_code_data_uri`，也不调用代码执行或图片工具。展示完成后立即结束当前轮次。

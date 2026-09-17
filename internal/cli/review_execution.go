@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -95,34 +96,48 @@ func (a *App) executeReview(ctx context.Context, parsed parsedArgs, request open
 	return a.executeReviewResponse(ctx, options, request)
 }
 
-func reviewUploadRequest(reader io.Reader, filename, name string) (openplatform.Request, error) {
-	content, err := io.ReadAll(io.LimitReader(reader, reviewMaxUploadBytes+1))
-	if err != nil {
-		return openplatform.Request{}, err
-	}
-	if len(content) > reviewMaxUploadBytes {
-		return openplatform.Request{}, fmt.Errorf("文件大小不能超过 50 MiB")
-	}
+func reviewUploadRequest(reader io.Reader, filename, name string, metadata ...map[string]string) (openplatform.Request, error) {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
-	part, err := writer.CreateFormFile("file", filepath.Base(filename))
-	if err != nil {
+	if reader != nil {
+		content, err := io.ReadAll(io.LimitReader(reader, reviewMaxUploadBytes+1))
+		if err != nil {
+			return openplatform.Request{}, err
+		}
+		if len(content) > reviewMaxUploadBytes {
+			return openplatform.Request{}, fmt.Errorf("文件大小不能超过 50 MiB")
+		}
+		part, err := writer.CreateFormFile("file", filepath.Base(filename))
+		if err != nil {
+			return openplatform.Request{}, err
+		}
+		if _, err = part.Write(content); err != nil {
+			return openplatform.Request{}, err
+		}
+	}
+	if err := writer.WriteField("name", name); err != nil {
 		return openplatform.Request{}, err
 	}
-	if _, err = part.Write(content); err != nil {
-		return openplatform.Request{}, err
+	for _, fields := range metadata {
+		keys := make([]string, 0, len(fields))
+		for key := range fields {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			if err := writer.WriteField(key, fields[key]); err != nil {
+				return openplatform.Request{}, err
+			}
+		}
 	}
-	if err = writer.WriteField("name", name); err != nil {
-		return openplatform.Request{}, err
-	}
-	if err = writer.Close(); err != nil {
+	if err := writer.Close(); err != nil {
 		return openplatform.Request{}, err
 	}
 	return openplatform.Request{Method: http.MethodPost, Path: reviewPathPrefix + "/file/upload", Headers: http.Header{"Content-Type": {writer.FormDataContentType()}}, Body: body.Bytes(), IdentityPolicy: openplatform.IdentityPolicyUserOnly}, nil
 }
 
 func (a *App) runReviewUpload(ctx context.Context, args []string) error {
-	parsed, err := parseReviewArgs(args, []string{"--file", "--name"}, []string{"--stdin", "--dry-run", "--print-input"})
+	parsed, err := parseReviewArgs(args, []string{"--file", "--name", "--business-id", "--business-file-id", "--business-file-version", "--source-locator", "--source-revision-id", "--source-content-md5", "--channel-type"}, []string{"--stdin", "--dry-run", "--print-input"})
 	if err != nil {
 		return err
 	}
@@ -133,6 +148,22 @@ func (a *App) runReviewUpload(ctx context.Context, args []string) error {
 	if err := validateReviewName(name); err != nil {
 		return err
 	}
+	stream := parsed.Bool("--stdin") || path != ""
+	fields, err := reviewUploadFields(parsed, stream)
+	if err != nil {
+		return err
+	}
+	if !stream {
+		preview := map[string]string{"name": name}
+		for key, value := range fields {
+			preview[key] = value
+		}
+		request, err := reviewUploadRequest(nil, "", name, fields)
+		if err != nil {
+			return err
+		}
+		return a.executeReview(ctx, parsed, request, preview)
+	}
 	source := path
 	if parsed.Bool("--stdin") {
 		source = "stdin"
@@ -140,7 +171,11 @@ func (a *App) runReviewUpload(ctx context.Context, args []string) error {
 		return err
 	}
 	if parsed.Bool("--dry-run") || parsed.Bool("--print-input") {
-		return a.renderReviewValue(parseReviewOptions(parsed), map[string]string{"file": source, "name": name})
+		preview := map[string]string{"file": source, "name": name}
+		for key, value := range fields {
+			preview[key] = value
+		}
+		return a.renderReviewValue(parseReviewOptions(parsed), preview)
 	}
 	var reader io.Reader = a.stdin
 	filename := name
@@ -153,7 +188,7 @@ func (a *App) runReviewUpload(ctx context.Context, args []string) error {
 		reader = file
 		filename = path
 	}
-	request, err := reviewUploadRequest(reader, filename, name)
+	request, err := reviewUploadRequest(reader, filename, name, fields)
 	if err != nil {
 		return err
 	}

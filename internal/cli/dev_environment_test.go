@@ -16,32 +16,32 @@ import (
 	"cn.qfei/contract-cli/internal/credential"
 )
 
-func validTestEnvironmentProfile(t *testing.T) config.Profile {
+func validDevEnvironmentProfile(t *testing.T) config.Profile {
 	t.Helper()
 	data, err := json.Marshal(validProductionProfile())
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := strings.NewReplacer("https://open.qfei.cn", "https://test-open.qtech.cn", "https://myaccount.qfei.cn", "https://test-myaccount.qtech.cn").Replace(string(data))
+	text := strings.NewReplacer("https://open.qfei.cn", "https://dev-open.qtech.cn", "https://myaccount.qfei.cn", "https://dev-myaccount.qtech.cn").Replace(string(data))
 	var profile config.Profile
 	if err := json.Unmarshal([]byte(text), &profile); err != nil {
 		t.Fatal(err)
 	}
-	profile.Environment = "test"
-	profile.Identities.User.DeviceClientID = "test-device-client"
+	profile.Environment = "dev"
+	profile.Identities.User.DeviceClientID = "dev-device-client"
 	return profile
 }
 
 func environmentMetadataResponse(environment string) *http.Response {
 	origin := "https://myaccount.qfei.cn"
-	if environment == "test" {
-		origin = "https://test-myaccount.qtech.cn"
+	if environment == "dev" {
+		origin = "https://dev-myaccount.qtech.cn"
 	}
 	body := strings.ReplaceAll(`{"issuer":"ACCOUNT/contract","authorization_endpoint":"ACCOUNT/api/public/oauth/authorize/contract","device_authorization_endpoint":"ACCOUNT/api/public/oauth/device-authorization/contract","token_endpoint":"ACCOUNT/api/public/oauth/token/contract","revocation_endpoint":"ACCOUNT/api/public/oauth/revoke/contract","registration_endpoint":"ACCOUNT/api/public/oauth/register/contract"}`, "ACCOUNT", origin)
 	return productionResponse(http.StatusOK, body)
 }
 
-func TestTestConfigAndExistingUserAndAppCommands(t *testing.T) {
+func TestDevConfigAndExistingUserAndAppCommands(t *testing.T) {
 	store := config.NewStore(t.TempDir())
 	requests := 0
 	app := New(Options{
@@ -49,12 +49,12 @@ func TestTestConfigAndExistingUserAndAppCommands(t *testing.T) {
 		HTTPClient: &http.Client{Transport: productionRoundTripFunc(func(request *http.Request) (*http.Response, error) {
 			requests++
 			switch request.URL.String() {
-			case "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract":
-				return environmentMetadataResponse("test"), nil
-			case "https://test-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal":
-				return productionResponse(http.StatusOK, `{"code":0,"tenant_access_token":"test-app-token","expire":7200}`), nil
-			case "https://test-open.qtech.cn/open-apis/contract/v1/mcp/tasks?user_id_type=user_id":
-				if got := request.Header.Get("Authorization"); got != "Bearer test-user-token" {
+			case "https://dev-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract":
+				return environmentMetadataResponse("dev"), nil
+			case "https://dev-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal":
+				return productionResponse(http.StatusOK, `{"code":0,"tenant_access_token":"dev-app-token","expire":7200}`), nil
+			case "https://dev-open.qtech.cn/open-apis/contract/v1/mcp/tasks?user_id_type=user_id":
+				if got := request.Header.Get("Authorization"); got != "Bearer dev-user-token" {
 					t.Fatalf("unexpected user authorization header")
 				}
 				return productionResponse(http.StatusOK, `{"code":0,"success":true,"data":{"items":[]}}`), nil
@@ -64,27 +64,27 @@ func TestTestConfigAndExistingUserAndAppCommands(t *testing.T) {
 			}
 		})},
 	})
-	if err := app.Run(context.Background(), []string{"config", "add", "--env", "test", "--name", "contract-test"}); err != nil {
+	if err := app.Run(context.Background(), []string{"config", "add", "--env", "dev", "--name", "contract-dev"}); err != nil {
 		t.Fatal(err)
 	}
-	profile, err := store.GetProfile("contract-test")
+	profile, err := store.GetProfile("contract-dev")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if profile.Environment != "test" || profile.Resource != "https://test-open.qtech.cn" || profile.Identities.User.TokenEndpoint != "https://test-myaccount.qtech.cn/api/public/oauth/token/contract" {
-		t.Fatalf("unexpected test configuration")
+	if profile.Environment != "dev" || profile.Resource != "https://dev-open.qtech.cn" || profile.Identities.User.TokenEndpoint != "https://dev-myaccount.qtech.cn/api/public/oauth/token/contract" {
+		t.Fatalf("unexpected dev configuration")
 	}
 	if profile.Identities.User.DeviceClientID != "" {
-		t.Fatal("test must not inherit the production Device client ID")
+		t.Fatal("dev must not inherit the production Device client ID")
 	}
-	profile.Identities.User.Token = &config.Token{AccessToken: "test-user-token", Expiry: time.Now().Add(time.Hour)}
+	profile.Identities.User.Token = &config.Token{AccessToken: "dev-user-token", Expiry: time.Now().Add(time.Hour)}
 	if err := store.SaveProfile(profile); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{
-		{"auth", "status", "--profile", "contract-test", "--as", "user"},
-		{"contract", "approval", "task", "list", "--profile", "contract-test", "--as", "user"},
-		{"auth", "login", "--profile", "contract-test", "--as", "app", "--app-id", "test-app", "--app-secret", "test-secret"},
+		{"auth", "status", "--profile", "contract-dev", "--as", "user"},
+		{"contract", "approval", "task", "list", "--profile", "contract-dev", "--as", "user"},
+		{"auth", "login", "--profile", "contract-dev", "--as", "app", "--app-id", "dev-app", "--app-secret", "test-secret"},
 	} {
 		if err := app.Run(context.Background(), args); err != nil {
 			t.Fatalf("%v: %v", args[:3], err)
@@ -96,12 +96,12 @@ func TestTestConfigAndExistingUserAndAppCommands(t *testing.T) {
 }
 
 func TestEnvironmentSwitchClearsAllAuthenticationAndSameEnvironmentPreservesIt(t *testing.T) {
-	for _, target := range []string{"prod", "test"} {
+	for _, target := range []string{"prod", "dev"} {
 		for _, same := range []bool{false, true} {
 			t.Run(target+"/same="+map[bool]string{true: "yes", false: "no"}[same], func(t *testing.T) {
 				profile := validProductionProfile()
-				if (target == "test") == same {
-					profile = validTestEnvironmentProfile(t)
+				if (target == "dev") == same {
+					profile = validDevEnvironmentProfile(t)
 				}
 				profile.Identities.User.AuthMode = ""
 				profile.Identities.User.Token = &config.Token{AccessToken: "user-token"}
@@ -147,8 +147,8 @@ func TestEnvironmentSwitchClearsAllAuthenticationAndSameEnvironmentPreservesIt(t
 	}
 }
 
-func TestTestBrowserLoginPreservesOAuthPKCEFlow(t *testing.T) {
-	profile := validTestEnvironmentProfile(t)
+func TestDevBrowserLoginPreservesOAuthPKCEFlow(t *testing.T) {
+	profile := validDevEnvironmentProfile(t)
 	profile.Identities.User.AuthMode = ""
 	profile.Identities.User.RedirectURL = "http://127.0.0.1:8000/callback"
 	store := config.NewStore(t.TempDir())
@@ -159,11 +159,11 @@ func TestTestBrowserLoginPreservesOAuthPKCEFlow(t *testing.T) {
 	app := New(Options{Store: store, Stdout: io.Discard, Stderr: io.Discard,
 		HTTPClient: &http.Client{Transport: productionRoundTripFunc(func(request *http.Request) (*http.Response, error) {
 			requests++
-			if request.URL.Host != "test-myaccount.qtech.cn" {
+			if request.URL.Host != "dev-myaccount.qtech.cn" {
 				t.Fatal("OAuth request reached another environment")
 			}
 			if request.URL.Path == "/api/public/oauth/register/contract" {
-				return productionResponse(http.StatusOK, `{"client_id":"test-registered-client"}`), nil
+				return productionResponse(http.StatusOK, `{"client_id":"dev-registered-client"}`), nil
 			}
 			if request.URL.Path != "/api/public/oauth/token/contract" {
 				t.Fatalf("unexpected path %s", request.URL.Path)
@@ -171,18 +171,18 @@ func TestTestBrowserLoginPreservesOAuthPKCEFlow(t *testing.T) {
 			if err := request.ParseForm(); err != nil {
 				t.Fatal(err)
 			}
-			if request.Form.Get("code_verifier") == "" || request.Form.Get("client_id") != "test-registered-client" || request.Form.Get("resource") != "https://test-open.qtech.cn" {
-				t.Fatal("OAuth token exchange must keep PKCE and the test audience")
+			if request.Form.Get("code_verifier") == "" || request.Form.Get("client_id") != "dev-registered-client" || request.Form.Get("resource") != "https://dev-open.qtech.cn" {
+				t.Fatal("OAuth token exchange must keep PKCE and the dev audience")
 			}
-			return productionResponse(http.StatusOK, `{"access_token":"test-user-token","token_type":"Bearer","expires_in":3600}`), nil
+			return productionResponse(http.StatusOK, `{"access_token":"dev-user-token","token_type":"Bearer","expires_in":3600}`), nil
 		})},
 		OpenBrowser: func(rawURL string) error {
 			parsed, err := url.Parse(rawURL)
 			if err != nil {
 				return err
 			}
-			if parsed.Host != "test-myaccount.qtech.cn" || parsed.Query().Get("code_challenge") == "" {
-				t.Fatal("invalid test authorization URL")
+			if parsed.Host != "dev-myaccount.qtech.cn" || parsed.Query().Get("code_challenge") == "" {
+				t.Fatal("invalid dev authorization URL")
 			}
 			return nil
 		},
@@ -199,15 +199,15 @@ func TestTestBrowserLoginPreservesOAuthPKCEFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if requests != 2 || saved.Identities.User.Token == nil || saved.Identities.User.Token.AccessToken != "test-user-token" || saved.Identities.User.AuthMode != config.UserAuthModeAuthorizationCode {
-		t.Fatal("test browser login did not persist the user authorization")
+	if requests != 2 || saved.Identities.User.Token == nil || saved.Identities.User.Token.AccessToken != "dev-user-token" || saved.Identities.User.AuthMode != config.UserAuthModeAuthorizationCode {
+		t.Fatal("dev browser login did not persist the user authorization")
 	}
 }
 
-func TestTestMCPApprovalAndDownloadCommands(t *testing.T) {
-	profile := validTestEnvironmentProfile(t)
+func TestDevMCPApprovalAndDownloadCommands(t *testing.T) {
+	profile := validDevEnvironmentProfile(t)
 	profile.Identities.User.AuthMode = config.UserAuthModeAuthorizationCode
-	profile.Identities.User.Token = &config.Token{AccessToken: "test-user-token"}
+	profile.Identities.User.Token = &config.Token{AccessToken: "dev-user-token"}
 	for _, command := range []struct {
 		args         []string
 		method, path string
@@ -238,7 +238,7 @@ func TestTestMCPApprovalAndDownloadCommands(t *testing.T) {
 						response.ContentLength = 4
 						return response, nil
 					}
-					if request.URL.Host != "test-open.qtech.cn" || request.URL.Path != "/open-apis/contract/v1/mcp"+command.path || request.Method != command.method || request.Header.Get("Authorization") != "Bearer test-user-token" {
+					if request.URL.Host != "dev-open.qtech.cn" || request.URL.Path != "/open-apis/contract/v1/mcp"+command.path || request.Method != command.method || request.Header.Get("Authorization") != "Bearer dev-user-token" {
 						t.Fatal("MCP request has the wrong environment, route, method or identity")
 					}
 					if command.args[0] == "download-file" {
@@ -254,7 +254,7 @@ func TestTestMCPApprovalAndDownloadCommands(t *testing.T) {
 			}
 			if command.args[0] == "download-file" {
 				if requests != 2 || stdout.String() != "file" {
-					t.Fatal("test signed download did not complete")
+					t.Fatal("dev signed download did not complete")
 				}
 			} else if requests != 1 {
 				t.Fatalf("requests = %d", requests)
@@ -263,8 +263,8 @@ func TestTestMCPApprovalAndDownloadCommands(t *testing.T) {
 	}
 }
 
-func TestTestProfileRejectsProductionDeviceSnapshot(t *testing.T) {
-	profile := validTestEnvironmentProfile(t)
+func TestDevProfileRejectsProductionDeviceSnapshot(t *testing.T) {
+	profile := validDevEnvironmentProfile(t)
 	store := config.NewStore(t.TempDir())
 	if err := store.UpsertProfile(profile, true); err != nil {
 		t.Fatal(err)
@@ -278,8 +278,8 @@ func TestTestProfileRejectsProductionDeviceSnapshot(t *testing.T) {
 	}
 }
 
-func TestTestProfileRecoveryUsesMatchingEncryptedSnapshot(t *testing.T) {
-	profile := validTestEnvironmentProfile(t)
+func TestDevProfileRecoveryUsesMatchingEncryptedSnapshot(t *testing.T) {
+	profile := validDevEnvironmentProfile(t)
 	store := config.NewStore(t.TempDir())
 	credentials := &deviceMemoryCredentialStore{values: map[string]credential.DeviceCredential{
 		profile.Name: {DeviceProfile: snapshotDeviceProfile(profile)},
@@ -292,14 +292,14 @@ func TestTestProfileRecoveryUsesMatchingEncryptedSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if restored.Environment != "test" || restored.Resource != profile.Resource {
+	if restored.Environment != "dev" || restored.Resource != profile.Resource {
 		t.Fatal("restored wrong environment")
 	}
 }
 
-func TestEnvironmentHTTPClientAllowsTestEnvironmentAndBlocksCrossEnvironmentRedirects(t *testing.T) {
-	for _, start := range []string{"https://open.qfei.cn", "https://test-open.qtech.cn"} {
-		for _, end := range []string{"https://open.qfei.cn", "https://test-open.qtech.cn"} {
+func TestEnvironmentHTTPClientAllowsDevEnvironmentAndBlocksCrossEnvironmentRedirects(t *testing.T) {
+	for _, start := range []string{"https://open.qfei.cn", "https://dev-open.qtech.cn"} {
+		for _, end := range []string{"https://open.qfei.cn", "https://dev-open.qtech.cn"} {
 			t.Run(start+"->"+end, func(t *testing.T) {
 				requests := 0
 				app := New(Options{Store: config.NewStore(t.TempDir()), Stderr: io.Discard,
@@ -332,7 +332,7 @@ func TestEnvironmentHTTPClientAllowsTestEnvironmentAndBlocksCrossEnvironmentRedi
 func TestEnvironmentRedirectChecksEntireChain(t *testing.T) {
 	app := New(Options{Store: config.NewStore(t.TempDir()), Stderr: io.Discard})
 	first, _ := http.NewRequest(http.MethodGet, "https://files.example.test/start", nil)
-	second, _ := http.NewRequest(http.MethodGet, "https://test-open.qtech.cn/continue", nil)
+	second, _ := http.NewRequest(http.MethodGet, "https://dev-open.qtech.cn/continue", nil)
 	target, _ := http.NewRequest(http.MethodGet, "https://open.qfei.cn/end", nil)
 	if err := app.httpClient.CheckRedirect(target, []*http.Request{first, second}); err == nil {
 		t.Fatal("redirect via an external host must not bypass environment isolation")
@@ -340,22 +340,54 @@ func TestEnvironmentRedirectChecksEntireChain(t *testing.T) {
 }
 
 func TestDeviceProfileRecoveryDoesNotSuggestSwitchingToProd(t *testing.T) {
-	err := deviceProfileRecoveryError("contract-test", "snapshot missing")
+	err := deviceProfileRecoveryError("contract-dev", "snapshot missing")
 	if strings.Contains(err.Error(), "--env prod") {
-		t.Fatal("recovery must not suggest switching a test profile to prod")
+		t.Fatal("recovery must not suggest switching a dev profile to prod")
 	}
 }
 
-func TestTestAppRecoveryKeepsEnvironment(t *testing.T) {
-	profile := validTestEnvironmentProfile(t)
+func TestDevAppRecoveryKeepsEnvironment(t *testing.T) {
+	profile := validDevEnvironmentProfile(t)
 	profile.AppTokenEndpoint = ""
 	store := config.NewStore(t.TempDir())
 	if err := store.UpsertProfile(profile, true); err != nil {
 		t.Fatal(err)
 	}
 	app := New(Options{Store: store, Secrets: config.NewSecretsStore(t.TempDir()), Stderr: io.Discard})
-	err := app.Run(context.Background(), []string{"auth", "login", "--profile", profile.Name, "--as", "app", "--app-id", "test-app", "--app-secret", "test-secret"})
-	if err == nil || !strings.Contains(err.Error(), "--env test") {
+	err := app.Run(context.Background(), []string{"auth", "login", "--profile", profile.Name, "--as", "app", "--app-id", "dev-app", "--app-secret", "test-secret"})
+	if err == nil || !strings.Contains(err.Error(), "--env dev") {
 		t.Fatalf("wrong recovery hint: %v", err)
+	}
+}
+
+func TestDevReviewPreservesUserIdentityAndSourceHeaders(t *testing.T) {
+	profile := validDevEnvironmentProfile(t)
+	profile.Identities.User.AuthMode = config.UserAuthModeAuthorizationCode
+	profile.Identities.User.Token = &config.Token{AccessToken: "dev-user-token", Expiry: time.Now().Add(time.Hour)}
+	store := config.NewStore(t.TempDir())
+	if err := store.UpsertProfile(profile, true); err != nil {
+		t.Fatal(err)
+	}
+	requests := 0
+	app := New(Options{Store: store, Stdout: io.Discard, Stderr: io.Discard,
+		HTTPClient: &http.Client{Transport: productionRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+			requests++
+			if request.URL.Host != "dev-open.qtech.cn" || request.URL.Path != "/open-apis/contract/v3/review/status" {
+				t.Fatalf("wrong dev review route: %s", request.URL)
+			}
+			if request.Header.Get("Authorization") != "Bearer dev-user-token" || request.Header.Get("X-Qfei-Channel-Type") != "cli" || request.Header.Get("X-Qfei-Product-Code") != "contract" {
+				t.Fatal("review identity or source headers changed")
+			}
+			return productionResponse(http.StatusOK, `{"code":0,"data":{"status":0}}`), nil
+		})},
+	})
+	if err := app.Run(context.Background(), []string{"review", "task", "status", "--task-id", "1", "--profile", profile.Name, "--as", "user"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Run(context.Background(), []string{"review", "task", "status", "--task-id", "1", "--profile", profile.Name, "--as", "app"}); err == nil {
+		t.Fatal("review must remain user-only")
+	}
+	if requests != 1 {
+		t.Fatalf("requests = %d, want 1", requests)
 	}
 }

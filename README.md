@@ -17,17 +17,17 @@
 - **发布闭环**：提供源码构建、预编译二进制、GitHub Release assets、npm/npx 薄包装和发布前检查脚本。
 - **可控默认值**：默认 profile 为 `contract`，默认环境为 `prod`，帮助命令只读本地说明，不读取 profile、不发 HTTP。
 
-## 本地连接 test 环境
+## 本地连接 dev 环境
 
 从本分支运行 `./build.sh` 后，使用本地构建的二进制：
 
 ```bash
-./contract-cli config add --env test --name contract-test
-./contract-cli auth login --profile contract-test --as user
-./contract-cli contract approval task list --profile contract-test --as user
+./contract-cli config add --env dev --name contract-dev
+./contract-cli auth login --profile contract-dev --as user
+./contract-cli contract approval task list --profile contract-dev --as user
 ```
 
-test 开放平台为 `https://test-open.qtech.cn`，授权服务为 `https://test-myaccount.qtech.cn`。用户登录沿用 OAuth + PKCE；app 身份使用 test 自身的应用凭据。test 未内置 Device client ID，不能直接复用生产环境的 `auth init` 配置。切换同名 profile 的环境会清理原授权，建议分别使用 `contract` 和 `contract-test`；后续命令显式指定 profile。
+dev 开放平台为 `https://dev-open.qtech.cn`，授权服务为 `https://dev-myaccount.qtech.cn`。用户登录沿用 OAuth + PKCE；app 身份使用 dev 自身的应用凭据。dev 未内置 Device client ID，不能直接复用生产环境的 `auth init` 配置。切换同名 profile 的环境会清理原授权，建议分别使用 `contract` 和 `contract-dev`；后续命令显式指定 profile。此分支仅支持 prod/dev，不支持 test；已有 test profile 不会自动删除，但无法在此构建中使用。
 
 ## Features
 

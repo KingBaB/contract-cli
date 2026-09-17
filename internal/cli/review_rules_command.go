@@ -25,6 +25,8 @@ func (a *App) runReview(ctx context.Context, args []string) error {
 	switch args[0] {
 	case "file":
 		return a.runReviewFile(ctx, args[1:])
+	case "cooperation":
+		return a.runReviewCooperation(ctx, args[1:])
 	case "subject":
 		return a.runReviewSubject(ctx, args[1:])
 	case "task":
