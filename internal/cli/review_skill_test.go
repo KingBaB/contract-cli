@@ -62,8 +62,11 @@ func TestReviewSkillDistributionAndRouting(t *testing.T) {
 	// Packaged references must resolve after installation. Historical source-code
 	// citations intentionally point outside the skill package; check those in source.
 	links := regexp.MustCompile(`\]\(([^)#]+)(?:#[^)]*)?\)`)
+	// Fenced output templates contain illustrative links, not package dependencies.
+	fencedExamples := regexp.MustCompile("(?ms)^[ \\t]*```[^\\n]*\\n.*?^[ \\t]*```[ \\t]*$")
 	for _, name := range []string{"contract-cli-shared", "contract-cli-contract", "contract-cli-review", "contract-cli-review-rule"} {
 		content := readTextFile(t, filepath.Join(target, name, "SKILL.md"))
+		content = fencedExamples.ReplaceAllString(content, "")
 		for _, link := range links.FindAllStringSubmatch(content, -1) {
 			if strings.Contains(link[1], "://") {
 				continue

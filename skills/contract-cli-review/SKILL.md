@@ -1,12 +1,10 @@
-***
+---
 
 name: contract-cli-review
 
 description: "使用 Contract CLI 审查单份合同文件、按合同 ID 发起协商或任务中心合同审查、继续已有审查任务和展示风险结果。维护审查清单、规则和分组使用 contract-cli-review-rule；选择已有清单仍属于本 Skill。合同起草、一般法律问答和审批任务办理不使用本 Skill。"
 
-
-
-***
+---
 
 # 智书合同智能审查
 
@@ -26,8 +24,6 @@ description: "使用 Contract CLI 审查单份合同文件、按合同 ID 发起
 
 以下目标能力不能仅凭本 Skill 当作已实现：
 
-
-
 * 所有按合同 ID 发起的审查（协商和任务中心各阶段）都按 “合同取数 → 引用上传 → subject extract → 用户选择文件主体 → task start” 推进，不因缺少专用 --contract-id 参数拒绝执行。文件来源类型和版本按对应场景取数；审查主体和角色统一来自该文件的提取结果，不使用合同详情中的交易方替代。
 
 * 审查发起 JSON 当前不接受合同分类、场景、cooperationId 或 processTaskInstanceId 等额外字段；不得猜测嵌套位置。分类用于真实清单候选筛选，不暗示已传入审查任务。
@@ -44,8 +40,6 @@ description: "使用 Contract CLI 审查单份合同文件、按合同 ID 发起
 
 首次读取 / 上传合同前告知：“将把《文件名》提交至智书合同审查服务，用于合同智能审查。” 先明确文件 / 合同和来源场景。外部文件按 “上传成功 → 选择合同分类 → 主体 → 强度 → 按分类自动筛选并选择清单 → 发起审查” 推进；不要等到清单步骤才补问分类。已明确且在本次真实候选中唯一匹配的选择直接复用，不重复确认。
 
-
-
 * 外部文件：上传后按下文 “选择合同分类” 展示真实候选供用户选择，不根据文件名猜类型；已上传则复用文件标识，不为补选分类重复上传。
 
 * 系统内合同：用既有个人合同搜索 / 详情定位，多个结果要求选择，合同 ID 也需权限校验；读取现有分类，不另选分类覆盖合同。定位方法见 [合同入口](../contract-cli-contract/SKILL.md)，不借其 app-only 协商命令替代个人能力。
@@ -58,14 +52,12 @@ description: "使用 Contract CLI 审查单份合同文件、按合同 ID 发起
 
 仅支持 DOC、DOCX、PDF。本地文件 / 原始 stdin 最大 **50 MiB（52,428,800 字节）**；JSON 输入上限是 2 MiB，不是合同文件上限。URL 大小由服务端下载后校验，CLI 不预下载。
 
+```text
+contract-cli review file upload --profile <profile> --as user --file <path> --name <filename.pdf> --output json
 
+contract-cli review file upload --profile <profile> --as user --stdin --name <filename.pdf> --output json
 
-```
-contract-cli review file upload --profile \\\<profile> --as user --file \\\<path> --name \\\<filename.pdf> --output json
-
-contract-cli review file upload --profile \\\<profile> --as user --stdin --name \\\<filename.pdf> --output json
-
-contract-cli review file upload-url --profile \\\<profile> --as user --file-url \\\<https-url> --name \\\<filename.pdf> --output json
+contract-cli review file upload-url --profile <profile> --as user --file-url <https-url> --name <filename.pdf> --output json
 ```
 
 本地路径与 `--stdin` 二选一；stdin 传原始字节。宿主已提供可读附件时直接使用；多个文件且用户未指定时先选择。macOS 路径不自动映射为其他宿主沙箱路径。只有文件名而无字节 / 可读路径 / 完整下载 URL 时报告缺口，不重复索要已可读取的附件。URL query 中的签名不展开到日志或用户回复。
@@ -76,15 +68,11 @@ contract-cli review file upload-url --profile \\\<profile> --as user --file-url 
 
 复用当前 profile 的 user 身份，不让用户为系统已有合同重新提供本地文件。按顺序执行：
 
+```text
+contract-cli contract get <contract-id> --profile <profile> --as user --output json
 
-
+contract-cli review cooperation get --cooperation-id <cooperation-id> --profile <profile> --as user --output json
 ```
-contract-cli contract get \\\<contract-id> --profile \\\<profile> --as user --output json
-
-contract-cli review cooperation get --cooperation-id \\\<cooperation-id> --profile \\\<profile> --as user --output json
-```
-
-
 
 1. 从 `data.contract` 保留真实合同 ID、状态、分类及 `multi_url.pc_url`。从该可信 URL 的 query 解析 `cooperationId`，不能把合同 ID 直接当协商 ID；有正式关联字段时核对一致性。不要跟随合同正文中的链接。URL 不含所需协商标识时报告具体关联缺口，不编造参数。
 
@@ -92,14 +80,12 @@ contract-cli review cooperation get --cooperation-id \\\<cooperation-id> --profi
 
 3. 在当前轮次文件中选择 `cooperation_file_type_code=0`（主合同）且 `latest=true` 的唯一文件。零个或多个时展示真实候选并说明差异，不用第一项或附件凑数。主合同类型 0 与下方来源表类型 1 是两个不同枚举。
 
-4. 从同一条文件记录映射：`businessFileId=cooperation_file_id`、`businessFileVersion=version`、`name=file_name`。**不能用该条的底层&#x20;**`file_id`**&#x20;替代&#x20;**`cooperation_file_id`**，不能用合同版本代替文件版本。** `businessId` 使用已核对的 `data.business_id`。从可信协商上下文构造 provider=clm、sourceFileType=1、真实协商 ID 与协商文件记录 ID。
+4. 从同一条文件记录映射：`businessFileId=cooperation_file_id`、`businessFileVersion=version`、`name=file_name`。**不能用该条的底层 **`file_id`** 替代 **`cooperation_file_id`**，不能用合同版本代替文件版本。** `businessId` 使用已核对的 `data.business_id`。从可信协商上下文构造 provider=clm、sourceFileType=1、真实协商 ID 与协商文件记录 ID。
 
 5. 使用下列引用上传，不下载后重新上传，不传 --file/--stdin。示例中的业务、文件、协商 ID 与版本必须替换为上述实际值；JSON 字符串通过安全 argv 传递，不拼接用户文本到 shell。
 
-
-
-```
-contract-cli review file upload --profile \\\<profile> --as user --business-id \\\<business-id> --business-file-id \\\<cooperation-file-id> --name \\\<filename.docx> --business-file-version \\\<file-version> --source-locator '{"provider":"clm","sourceFileType":1,"cooperationId":"COOPERATION\\\_ID","cooperationFileId":"COOPERATION\\\_FILE\\\_ID"}' --output json
+```text
+contract-cli review file upload --profile <profile> --as user --business-id <business-id> --business-file-id <cooperation-file-id> --name <filename.docx> --business-file-version <file-version> --source-locator '{"provider":"clm","sourceFileType":1,"cooperationId":"COOPERATION_ID","cooperationFileId":"COOPERATION_FILE_ID"}' --output json
 ```
 
 `sourceRevisionId`、`sourceContentMd5` 是可选项：仅在同一文件版本的可信返回中存在时，通过 --source-revision-id /--source-content-md5 原值传递；未返回则省略，不猜值、不计算其他文件的 MD5、不因此阻断。MD5 不能代替平台 fileHash。不要传顶层 appType/cooperationId/cooperationFileId；两个协商 ID 只放入 sourceLocator。--channel-type 仅在已有明确渠道要求时传入，不改变 CLI 的固定产品 / 渠道请求头。
@@ -110,42 +96,34 @@ contract-cli review file upload --profile \\\<profile> --as user --business-id \
 
 复用同一 profile、user 身份的 `contract get` 响应，不调用 `review cooperation get`。根据可信合同上下文及下方状态表确认任务中心场景；审批任务实例 ID 不作为合同 ID 或审查任务 ID 使用。
 
-
-
 1. 从 `data.contract` 保留合同 ID、状态、分类及 `multi_url.pc_url`。取 `contract_files.contract_text` 这个单一当前正文对象，不选合同附件、扫描件或协商文件代替。变更 / 终止业务使用本次业务正文，不擅自切换到原合同。登记交易方仅供辅助核对，不能作为审查主体候选。
 
-2. `businessId=contract.contract_id`；从上述同一个正文对象取 `businessFileId=file_id`、`businessFileVersion=text_id`、`name=file_name`。**text\_id 是正文记录 ID，不是 contract\_version、正文 version、file\_id 或 processTaskInstanceId。** 所有 ID 保留精确十进制字符串，不经浮点数转换。
+2. `businessId=contract.contract_id`；从上述同一个正文对象取 `businessFileId=file_id`、`businessFileVersion=text_id`、`name=file_name`。**text_id 是正文记录 ID，不是 contract_version、正文 version、file_id 或 processTaskInstanceId。** 所有 ID 保留精确十进制字符串，不经浮点数转换。
 
-3. 正文或 file\_id/text\_id/file\_name 缺失时报告具体取数缺口并停止上传；text\_id 未返回可能是后端尚未提供新字段，不能伪造默认版本，也不降级为下载后重新上传。不要混用另一次查询的文件 ID 和版本。
+3. 正文或 file_id/text_id/file_name 缺失时报告具体取数缺口并停止上传；text_id 未返回可能是后端尚未提供新字段，不能伪造默认版本，也不降级为下载后重新上传。不要混用另一次查询的文件 ID 和版本。
 
 4. 构造 `sourceLocator={"provider":"clm","sourceFileType":2}`，使用以下引用上传。示例占位符替换为真实值，文件名与 JSON 通过安全 argv 传递；不传 --file/--stdin、顶层 fileType/appType 或协商 ID。
 
-
-
-```
-contract-cli review file upload --profile \\\<profile> --as user --business-id \\\<contract-id> --business-file-id \\\<file-id> --name \\\<filename.docx> --business-file-version \\\<text-id> --source-locator '{"provider":"clm","sourceFileType":2}' --output json
+```text
+contract-cli review file upload --profile <profile> --as user --business-id <contract-id> --business-file-id <file-id> --name <filename.docx> --business-file-version <text-id> --source-locator '{"provider":"clm","sourceFileType":2}' --output json
 ```
 
 可选 sourceRevisionId/sourceContentMd5 沿用上节规则，仅同一正文版本真实返回时传递，缺失不阻断。上传后保存审查服务返回的 businessId/fileId/fileHash，核对业务归属，后续 fileId 使用上传响应中的审查文件 ID。
 
 任务中心同样必须提取当前审查文件主体，以下参数全部来自上述上传响应，而非合同源文件记录：
 
-
-
-```
-contract-cli review subject extract --profile \\\<profile> --as user --business-id \\\<business-id> --file-id \\\<file-id> --file-hash \\\<file-hash> --output json
+```text
+contract-cli review subject extract --profile <profile> --as user --business-id <business-id> --file-id <file-id> --file-hash <file-hash> --output json
 ```
 
-按 “主体与立场” 规则展示提取候选并让用户选择；确认强度和清单后沿用 `task start → task status → task info` 执行首次创建和查询。已有 taskId 只恢复查询；未取得 taskId 时统一按 “发起失败与结果不确定” 处理。完成后按下节导航规则用合同 pc\_url 设置 targetType=ai-review 返回 “查看审查”，不依赖 info 中的 URL。字段映射与本地预检不代表后端已经部署或真实审查已通过。
+按 “主体与立场” 规则展示提取候选并让用户选择；确认强度和清单后沿用 `task start → task status → task info` 执行首次创建和查询。已有 taskId 只恢复查询；未取得 taskId 时统一按 “发起失败与结果不确定” 处理。完成后按下节导航规则用合同 pc_url 设置 targetType=ai-review 返回 “查看审查”，不依赖 info 中的 URL。字段映射与本地预检不代表后端已经部署或真实审查已通过。
 
 ## 选择合同分类
 
 外部文件上传成功并保存文件标识后，先查询同一 profile、user 身份可见的真实分类：
 
-
-
-```
-contract-cli contract category list --profile \\\<profile> --as user --output json
+```text
+contract-cli contract category list --profile <profile> --as user --output json
 ```
 
 按实际响应中的分类树读取名称、ID 和层级路径，不假定不同版本的响应封装字段相同。展示 “编号、分类名称、完整层级路径” 供用户单选；候选过多可按真实父子层级逐层选择，直到确定具体业务分类。不要只要求用户自行提供分类名称或 ID，也不按文件名替用户选择。用户已明确指定的分类在真实候选中唯一匹配时直接复用；重名时展示路径消歧，输入无效只重问本步。无可见分类或查询失败时保留上传结果并报告缺口，不跳过分类进入清单选择或创建任务。
@@ -158,12 +136,10 @@ contract-cli contract category list --profile \\\<profile> --as user --output js
 
 ### 主体与立场
 
-外部预审及所有按合同 ID 发起的场景（协商、任务中心审批 / 签订 / 归档 / 完成 / 变更 / 终止），统一使用本次上传的同一文件提取主体。沿用上传响应中的 businessId/fileId/fileHash，不把 businessFileId 或 text\_id 当作审查 fileId。当前命令使用 flags，**不接受&#x20;**`--input-file`：
+外部预审及所有按合同 ID 发起的场景（协商、任务中心审批 / 签订 / 归档 / 完成 / 变更 / 终止），统一使用本次上传的同一文件提取主体。沿用上传响应中的 businessId/fileId/fileHash，不把 businessFileId 或 text_id 当作审查 fileId。当前命令使用 flags，**不接受 **`--input-file`：
 
-
-
-```
-contract-cli review subject extract --profile \\\<profile> --as user --business-id \\\<business-id> --file-id \\\<file-id> --file-hash \\\<file-hash> --output json
+```text
+contract-cli review subject extract --profile <profile> --as user --business-id <business-id> --file-id <file-id> --file-hash <file-hash> --output json
 ```
 
 `--file-hash` 可选；前两项必填。从真实 `counterparts` 候选保存成对的 name/role，把每个候选的 `name` 和 `role` 作为同一组数据，按 `name（role）` 展示并保存映射。编号文字模式按本次候选顺序展示连续编号，要求回复一个编号；展示编号与解析用户回复必须使用同一份冻结映射，编号解析与后续 `name/role` 取值也使用这份映射，不重新排序或把编号当作资源 ID。用户输入或完整展示项唯一匹配时选中同一个候选。所选 name 写 `selectedPosition`、同一候选 role 写 `selectedAuditRole`。不从公司名称、文件名、登录用户或常见甲乙方关系猜测角色。候选的 `name` 或 `role` 为空时报告主体数据不完整，不发起任务。缺名 / 角色或有歧义时停留本步，不能从名称、操作者、甲乙方惯例推断。
@@ -177,8 +153,6 @@ contract-cli review subject extract --profile \\\<profile> --as user --business-
 Codex、豆包和 WorkBuddy 统一按「主体 → 强度 → 清单」执行。每次交互只收集一个业务维度，收到有效回复后再展示下一步。用户已经明确给出且能在本次真实候选中唯一匹配的值直接复用，跳过已完成步骤。
 
 主体、强度分别单选；强度固定为 `1. 弱势`、`2. 中立`、`3. 强势`，要求回复一个编号，将对应中文值原样写入 `reviewStrength`，CLI 转为 0/1/2。不把用户选择序号直接当数值枚举。用户已经明确给出其中一个中文值时直接复用，不再次询问。
-
-
 
 * **WorkBuddy**：主体、强度、清单三步均在回复正文展示编号列表，等待用户回复编号，不调用 `AskUserQuestion` 或其他选项组件。主体和强度单选。
 
@@ -194,10 +168,8 @@ Codex、豆包和 WorkBuddy 统一按「主体 → 强度 → 清单」执行。
 
 复用前面选定的分类；系统内合同则复用其真实现有分类。自动将映射后的分类 ID 传入 `--contract-category`，并用 `--enabled=true` 查询启用清单；不要先展示未过滤清单，也不要让用户重复提供已选分类或手动筛选：
 
-
-
-```
-contract-cli review checklist list --profile \\\<profile> --as user --contract-category \\\<category-id> --enabled=true --page-index 1 --page-size 100 --output json
+```text
+contract-cli review checklist list --profile <profile> --as user --contract-category <category-id> --enabled=true --page-index 1 --page-size 100 --output json
 ```
 
 分类映射和 “全部类型” 语义必须先明确。读取全部远端分页，按服务真实关系合并当前分类适用及全部类型的启用清单、按 ID 去重；不能假设一次分类过滤自动包含全部类型。需要另查全部类型时沿用同一身份和启用状态过滤，使用已证实的表示，不猜固定值。分页响应不能判定完整时报告缺口，不能把第一页当全部候选。不要猜测页大小或 total 的含义。
@@ -207,8 +179,6 @@ contract-cli review checklist list --profile \\\<profile> --as user --contract-c
 所有宿主的清单选择列表固定置顶 `0. 通用审查清单（系统内置）`，不等待远端返回同名清单。其后按查询顺序从 1 开始编号，完整展示经过分类及启用状态筛选的自定义清单。系统内置项不参与自定义清单分类过滤，也不等同于 “全部类型” 的自定义清单；远端恰有同名项时仍按真实 ID 作为独立自定义项展示并标明来源。
 
 完整展示候选的稳定全局编号和名称，不进行对话分页，不只展示推荐项；长列表可分段输出完再等待。提示 “请回复清单编号；多选请用逗号或空格分隔”。重复编号去重；任一无效编号则整次选择不提交，保留候选与已完成步骤。编号映射在展示后冻结，不重新排序或把编号当 ID。
-
-
 
 * 只选 0：设置 `config.matchContractTypeRulePackage=true`，省略 `selectedCheckListIds`，不传空数组或伪造清单 ID `"0"`。
 
@@ -224,49 +194,43 @@ contract-cli review checklist list --profile \\\<profile> --as user --contract-c
 
 请求通过权限受限的本地 JSON 文件和 `--input-file` 传入；不将合同内容拼进 shell。以下仅演示结构，所有示例值须替换成本次真实上传和选择；`fileId` 输入是正 int64 JSON 整数，HTTP 由 CLI 转字符串，`fileHash` 为上传返回的 64 位十六进制 SHA-256。
 
-
-
-```
+```json
 {
 
-\&#x20; "businessId": "BUSINESS\\\_ID\\\_FROM\\\_UPLOAD",
+  "businessId": "BUSINESS_ID_FROM_UPLOAD",
 
-\&#x20; "fileId": 1175703921365090648,
+  "fileId": 1175703921365090648,
 
-\&#x20; "fileHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "fileHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 
-\&#x20; "config": {
+  "config": {
 
-\&#x20;   "selectedPosition": "主体名称示例",
+    "selectedPosition": "主体名称示例",
 
-\&#x20;   "selectedAuditRole": "主体角色示例",
+    "selectedAuditRole": "主体角色示例",
 
-\&#x20;   "reviewStrength": "中立",
+    "reviewStrength": "中立",
 
-\&#x20;   "selectedCheckListIds": \\\["CHECKLIST\\\_ID\\\_FROM\\\_QUERY"],
+    "selectedCheckListIds": ["CHECKLIST_ID_FROM_QUERY"],
 
-\&#x20;   "matchContractTypeRulePackage": true
+    "matchContractTypeRulePackage": true
 
-\&#x20; }
+  }
 
 }
 ```
 
 config 只接受上例五键；示例演示 “0 + 自定义清单” 组合，不代表默认同时选中。只选 0 时删除 `selectedCheckListIds`，只选自定义清单时删除 `matchContractTypeRulePackage`；至少有非空清单集合或内置包 true。不要传 null、空清单数组或未注册字段。CLI 固定注入用量归因 `clm_100_openApi_cli`，Skill 不提供或覆盖 `usageReportContext`、产品 / 渠道头。
 
+```text
+contract-cli review task start --profile <profile> --as user --input-file <start.json> --dry-run --output json
 
-
-```
-contract-cli review task start --profile \\\<profile> --as user --input-file \\\<start.json> --dry-run --output json
-
-contract-cli review task start --profile \\\<profile> --as user --input-file \\\<start.json> --output json
+contract-cli review task start --profile <profile> --as user --input-file <start.json> --output json
 ```
 
 预检通过且所有业务输入已确认后发起一次正式请求，不额外追加 “开始 / 扣点” 确认。预检失败只修正对应输入；预检成功不证明权限、额度或服务端语义通过。只转述真实返回的额度不足，不套用其他产品费率。未取得 taskId 时按下节处理，不自动重发。
 
 ### 发起失败与结果不确定
-
-
 
 * 明确未创建任务：修正失败原因后可以重新发起；仅凭未取得 taskId 不能认定创建失败。
 
@@ -282,42 +246,36 @@ contract-cli review task start --profile \\\<profile> --as user --input-file \\\
 
 本节仅用于已有完整输入的外部预审；所有按合同 ID 发起的流程使用上文引用上传、主体提取和用户选择的分步链路，不用 run 绕过主体确认。只在真实分类、主体、强度和清单均已明确，清单已按该分类及既有显式跨类型规则验证，且尚未上传时使用；分类未选则使用上述分步流程，不能用 run 跳过分类选择。已上传则走 task start，已有 taskId 则只查询。不依赖 extractSubjects 自动选择立场，也不用 run 重新上传来补链接。
 
-
-
-```
+```json
 {
 
-\&#x20; "source": {"type": "url", "fileUrl": "https://example.com/contract.pdf", "name": "contract.pdf"},
+  "source": {"type": "url", "fileUrl": "https://example.com/contract.pdf", "name": "contract.pdf"},
 
-\&#x20; "config": {"selectedPosition": "主体名称示例", "selectedAuditRole": "主体角色示例", "reviewStrength": "中立", "selectedCheckListIds": \\\["CHECKLIST\\\_ID\\\_FROM\\\_QUERY"], "matchContractTypeRulePackage": true},
+  "config": {"selectedPosition": "主体名称示例", "selectedAuditRole": "主体角色示例", "reviewStrength": "中立", "selectedCheckListIds": ["CHECKLIST_ID_FROM_QUERY"], "matchContractTypeRulePackage": true},
 
-\&#x20; "extractSubjects": false,
+  "extractSubjects": false,
 
-\&#x20; "wait": true
+  "wait": true
 
 }
 ```
 
+```text
+contract-cli review run --profile <profile> --as user --input-file <run.json> --dry-run --output json
 
-
-```
-contract-cli review run --profile \\\<profile> --as user --input-file \\\<run.json> --dry-run --output json
-
-contract-cli review run --profile \\\<profile> --as user --input-file \\\<run.json> --output json
+contract-cli review run --profile <profile> --as user --input-file <run.json> --output json
 ```
 
 本地来源改为 type=file、path/name，不带 fileUrl。不要擅自给 businessId/fileHash 兼容字段赋值；通常由上传响应提供。wait=true 才等待；deadline 限制整个 run。
 
 ## 原任务查询、恢复与结果
 
+```text
+contract-cli review task status --profile <profile> --as user --task-id <review-task-id> --output json
 
+contract-cli review task info --profile <profile> --as user --task-id <review-task-id> --output json
 
-```
-contract-cli review task status --profile \\\<profile> --as user --task-id \\\<review-task-id> --output json
-
-contract-cli review task info --profile \\\<profile> --as user --task-id \\\<review-task-id> --output json
-
-contract-cli review task result --profile \\\<profile> --as user --task-id \\\<review-task-id> --interval 2s --deadline 10m --output json
+contract-cli review task result --profile <profile> --as user --task-id <review-task-id> --interval 2s --deadline 10m --output json
 ```
 
 status/info 各查询一次，result 轮询同一任务成功后取详情。需要业务关联时复用真实 `--business-id`；指定 `--visibility-scope contractResult` 必须同时提供它，不能用该参数伪造系统场景。查询恢复保留原场景、文件和清单；来源不明时先核实，不从 taskId 猜场景。
@@ -326,7 +284,30 @@ status/info 各查询一次，result 轮询同一任务成功后取详情。需�
 
 成功后展示文件名、分类、立场、强度、全部清单名称和真实风险概览。风险统计缺失写 “未返回”；仅完整列表才能自行汇总，分页 / 截断不能声称无风险或完整结果。
 
+### 结果输出前置准备与连续输出规则
 
+**原则：先准备、后输出，输出一次性完成。**
+
+#### 一、输出前必须完成全部数据准备
+
+在开始输出审查结果（即输出第一行基础信息表）之前，先核验结果完整性，再用宿主可用工具按需完成以下准备工作；工具调用和进度说明在最终回复之前完成，不要求宿主具备特定工具：
+
+1. 统计：从 ruleResult 中统计风险项总数、各等级数量（剔除主体风险项）
+2. 归类：归纳风险类别并统计每类数量，确保类别合计等于风险项总数
+3. 图表数据：计算环形图各等级弧度与占比、条形图各类别宽度与坐标、viewBox 尺寸
+4. 风险详情解析：每项风险的标题、等级、风险说明、合同原文、修改建议、关联规则数
+5. 主体风险准备
+
+#### 二、输出过程约束
+
+1. **连续输出**：所有结果内容必须在同一个回复中连续输出，中间不得穿插任何工具调用、思考过程、状态更新或其他内容。输出一旦开始，必须一次性完成全部内容。
+
+2. **固定输出顺序**：
+   - 独立预审：基础信息表 → 审查概览 → 风险可视化图表 → 风险详情（全部风险项）→ 主体风险
+   - 系统合同：基础信息表 → 审查概览 → 风险可视化图表 → 审查结果链接 → 有效期提示
+   - 按下文例外输出：完整零风险隐藏图表、普通风险详情显示无风险项；无主体风险时省略该节；不完整结果不输出总数、等级数量或图表，明确已取得的部分详情并标注不完整；缺失字段不伪造。
+
+3. **输出中禁止调用工具**：一旦开始输出结果，不得再调用任何工具。发现缺失数据时标注“未返回”；发现计算错误时不得使用已知错误数字，省略受影响统计或图表并标注“统计未完成”。如需进一步核实，先完成核实再提交最终回复，不承诺输出后自动修正。
 
 * 外部独立预审：Codex、豆包和 WorkBuddy 统一使用以下结构：基础信息表、审查概览、风险可视化、风险详情和主体风险。不附带原始 JSON、状态机信息或调用参数。**不生成或展示详情 URL**，也不提示链接缺失或固定有效期（独立预审无平台页面）。
 
@@ -340,10 +321,9 @@ status/info 各查询一次，result 轮询同一任务成功后取详情。需�
 
   风险项按 CLI 返回的 ruleResult 原始顺序展示（剔除主体风险项后），不自行重排序。
 
-  **主体风险**：在全部普通风险项之后，单独展示主体风险项（subjectRiskCompanyKey 非空），标题为 "主体风险"。每项展示风险标题（reviewRuleName）+ 等级标签（用原始 riskLevelName，如 `致命风险`）+ 风险说明（riskTips \[0]）。主体风险不计入风险项总数、不计入等级分布。
+  **主体风险**：在全部普通风险项之后，单独展示主体风险项（subjectRiskCompanyKey 非空），标题为 "主体风险"。每项展示风险标题（reviewRuleName）+ 等级标签（用原始 riskLevelName，如 `致命风险`）+ 风险说明（riskTips [0]）。主体风险不计入风险项总数、不计入等级分布。
 
-  统计以真实结果为准，以 CLI 返回的 ruleResult 列表为唯一权威数据源，所有统计（风险项数、等级分布、类别分布）均从该列表自行计数；完整风险列表的判断条件：CLI 返回 status=success 且 ruleResult 为数组（空数组视为完整零风险）；status≠success 或 ruleResult 缺失时视为不完整，不输出统计，在 "说明" 行标注 "审查结果不完整"。不统计风险点数；不将分页或截断结果当作全量，不把建议数当作风险数；数据缺失时写 "未返回"，不填假数字。问题概括只基于真实结果。
-
+  统计以真实结果为准，以 CLI 返回的 ruleResult 列表为唯一权威数据源，所有统计（风险项数、等级分布、类别分布）均从该列表自行计数；完整风险列表的判断条件：CLI 返回 status=success、ruleResult 为数组，且确认未分页/未截断或已取全所有分页（满足这些条件的空数组才视为完整零风险）；status≠success、ruleResult 缺失、分页未取全或存在截断时视为不完整，不输出统计，在 "说明" 行标注 "审查结果不完整"。不统计风险点数；不将分页或截断结果当作全量，不把建议数当作风险数；数据缺失时写 "未返回"，不填假数字。问题概括只基于真实结果。
 
   * 风险项数：按平台 "风险卡片" 口径，等于 ruleResult 中剔除主体风险项（subjectRiskCompanyKey 非空）后的条数（含未知等级）；等级内合计（红线 + 高 + 中 + 低）为已知四级数量之和，存在未知等级时等级内合计≤风险项数，差额在概览 "说明" 行标注；不统计风险点数（CLI 无权威字段，禁止按 changeReason 文本启发式猜测风险点数量）。
 
@@ -353,13 +333,56 @@ status/info 各查询一次，result 轮询同一任务成功后取详情。需�
 
   * 第二行：关联统计 ——"关联规则 N | 法律法规 N | 司法案例 N"，其中关联规则数 = suggestionNameList 长度，法律法规和司法案例数通过 reviewCardId 在 lawsRegulationsResult.lawsRegulationsItems 中关联统计（smartAuditCardId 匹配后累加 relatedLawsItems 和 relatedCases 长度）
 
-  * 风险说明：取 riskTips \[0]，无则写 "未返回"
+  * 风险说明：取 riskTips [0]，无则写 "未返回"
 
-  * 合同原文：取 reviewContent \[].content，多条逐行引用（> 前缀）；纯空行的表格内容简化为 "\[表格内容：< 简述 >]"；无则不展示该小节
+  * 合同原文：取 reviewContent [].content，多条逐行引用（> 前缀）；纯空行的表格内容简化为 "[表格内容：< 简述 >]"；无则不展示该小节
 
-  * 修改建议：取 reviewContent \[].suggestion，多条逐行引用；无则不展示该小节
+  * 修改建议：取 reviewContent [].suggestion，多条逐行引用；无则不展示该小节
 
   * 每项之间用 `---` 分隔线分隔
+
+  最终回复按以下模板自上而下输出，不追加 "已完成"、更新状态、诊断信息、免责声明或其他段落。模板中的 `<!-- -->` 注释行为内部位置标记，仅用于指示渲染位置，不得出现在最终回复正文中；图表块前不输出任何引导文字。模板中 "说明：" 行为可选行，仅在存在未知等级、图表降级、结果不完整或数据缺失时输出，无异常时不输出该行；该行属于模板内固定位置，不算 "追加段落"。
+
+  ```text
+  **基础信息**
+
+  | 项目 | 内容 |
+  | --- | --- |
+  | 合同文件名称 | <实际文件名> |
+  | 合同类型 | <用户选择的合同分类名称> |
+  | 审查立场 | <实际立场> |
+  | 审查强度 | <实际强度> |
+  | 审查清单 | <全部已选清单名称> |
+
+  **审查概览**
+
+  共发现<风险项总数>项风险：
+
+  - 红线风险：<红线数>项
+  - 高风险：<高风险数>项
+  - 中风险：<中风险数>项
+  - 低风险：<低风险数>项
+
+  说明：<可选，仅在存在未知等级/图表降级/结果不完整/数据缺失时输出；无异常时此行不输出>
+  问题主要集中在：<基于真实结果简洁概括>。
+  <!-- 风险可视化：在此处直接渲染上下竖排两个图表（风险等级分布环形图在上、风险类别分布条形图在下），风险项总数为0时隐藏图表；图表必须用 ```html type="renderer" 代码块包裹；此注释行不输出 -->
+  **风险详情**
+  <!-- 以下逐项展示全部风险项，按 CLI 返回的 ruleResult 原始顺序（剔除主体风险项后），不得省略、折叠或截断；每项之间用 --- 分隔；此注释行不输出 -->
+  1. <风险标题> `等级标签`
+  关联规则 N | 法律法规 N | 司法案例 N
+  风险说明：<riskTips[0]，无则写"未返回">
+  合同原文：
+  > <reviewContent[].content，多条逐行引用>
+  修改建议：
+  > <reviewContent[].suggestion，多条逐行引用>
+  ---
+  2. <风险标题> `等级标签`
+  ...（逐项展示全部风险项）
+  <!-- 主体风险：在全部普通风险项之后展示，标题为"主体风险"；无主体风险时此节不输出；此注释行不输出 -->
+  **主体风险**
+  <风险标题> `原始riskLevelName，如致命风险`
+  风险说明：<riskTips[0]>
+  ```
 
 * 系统合同：Codex、豆包和 WorkBuddy 统一使用以下结构：基础信息表、审查概览、风险可视化、审查结果和有效期提示。不附带原始 JSON、状态机信息或调用参数。
 
@@ -373,65 +396,56 @@ status/info 各查询一次，result 轮询同一任务成功后取详情。需�
 
   图表数据与文字统计必须一致；宿主不支持纯静态 HTML/SVG 渲染时，降级为两段结构化文字（等级分布、类别分布），并在概览 "说明" 行标注 "图表已降级为文字展示"，不生成图片代替。
 
-  统计以真实结果为准，以 CLI 返回的 ruleResult 列表为唯一权威数据源，所有统计（风险项数、等级分布、类别分布）均从该列表自行计数；若 CLI 未来返回汇总字段，以汇总字段为准并与列表计数交叉校验，不一致时以列表计数为准并在 "说明" 行标注差异。完整风险列表的判断条件：CLI 返回 status=success 且 ruleResult 为数组（空数组视为完整零风险）；status≠success 或 ruleResult 缺失时视为不完整，不输出统计，在 "说明" 行标注 "审查结果不完整"。等级名（riskLevelName）按 致命风险→红线、重大风险→高、警示风险→中、建议优化→低 映射为平台口径；主体风险项（subjectRiskCompanyKey 非空）不计入等级分布、不计入风险项总数；映射之外的未知等级在概览 "说明" 行单独标注，不计入等级内合计；不统计风险点数；不将分页或截断结果当作全量，不把建议数当作风险数；数据缺失时写 "未返回"，不填假数字。问题概括只基于真实结果。
+  统计以真实结果为准，以 CLI 返回的 ruleResult 列表为唯一权威数据源，所有统计（风险项数、等级分布、类别分布）均从该列表自行计数；若 CLI 返回汇总字段，仅用于与完整列表计数交叉校验；不一致时仍以完整列表计数为准并在 "说明" 行标注差异。完整风险列表的判断条件：CLI 返回 status=success、ruleResult 为数组，且确认未分页/未截断或已取全所有分页（满足这些条件的空数组才视为完整零风险）；status≠success、ruleResult 缺失、分页未取全或存在截断时视为不完整，不输出统计，在 "说明" 行标注 "审查结果不完整"。等级名（riskLevelName）按 致命风险→红线、重大风险→高、警示风险→中、建议优化→低 映射为平台口径；主体风险项（subjectRiskCompanyKey 非空）不计入等级分布、不计入风险项总数；映射之外的未知等级在概览 "说明" 行单独标注，不计入等级内合计；不统计风险点数；不将分页或截断结果当作全量，不把建议数当作风险数；数据缺失时写 "未返回"，不填假数字。问题概括只基于真实结果。
 
   末尾固定为两行，每行标题与内容同行，标题不加粗；审查结果链接文字为 "查看详情"，有效期提示逐字使用下面的文案。详情链接按下节从合同 `multi_url.pc_url` 生成（设置 query 参数 `targetType=ai-review`）；`info` 中的 `url`、`reviewDetailUrl`、`documentLocator` 缺失或为空，不影响生成此链接，也不得用这些字段替代合同地址。仅合同地址确实缺失或无效时报告链接缺口，不把任务改写为失败。
 
   最终回复按以下模板自上而下输出，不追加 "已完成"、更新状态、诊断信息、免责声明或其他段落。模板中的 `<!-- -->` 注释行为内部位置标记，仅用于指示渲染位置，不得出现在最终回复正文中；图表块前不输出任何引导文字。模板中 "说明：" 行为可选行，仅在存在未知等级、图表降级、结果不完整或数据缺失时输出，无异常时不输出该行；该行属于模板内固定位置，不算 "追加段落"。
 
+```text
+**基础信息**
 
+| 项目 | 内容 |
+| --- | --- |
+| 合同文件名称 | <实际文件名> |
+| 审查立场 | <实际立场> |
+| 审查强度 | <实际强度> |
+| 审查清单 | <全部已选清单名称> |
 
-```
-\*\*基础信息\*\*
-
-\| 项目 | 内容 |
-
-\| --- | --- |
-
-\| 合同文件名称 | <实际文件名> |
-
-\| 审查立场 | <实际立场> |
-
-\| 审查强度 | <实际强度> |
-
-\| 审查清单 | <全部已选清单名称> |
-
-\*\*审查概览\*\*
+**审查概览**
 
 共发现<风险项总数>项风险：
 
-\- 红线风险：<红线数>项
+- 红线风险：<红线数>项
 
-\- 高风险：<高风险数>项
+- 高风险：<高风险数>项
 
-\- 中风险：<中风险数>项
+- 中风险：<中风险数>项
 
-\- 低风险：<低风险数>项
+- 低风险：<低风险数>项
 
 说明：<可选，仅在存在未知等级/图表降级/结果不完整/数据缺失时输出；无异常时此行不输出>
 
 问题主要集中在：<基于真实结果简洁概括>。
 
-\<!-- 风险可视化：在此处直接渲染上下竖排两个图表（风险等级分布环形图在上、风险类别分布条形图在下），风险项总数为0时隐藏图表；图表必须用 \`\`\`html type="renderer" 代码块包裹；此注释行不输出 -->
+<!-- 风险可视化：在此处直接渲染上下竖排两个图表（风险等级分布环形图在上、风险类别分布条形图在下），风险项总数为0时隐藏图表；图表必须用 ```html type="renderer" 代码块包裹；此注释行不输出 -->
 
-审查结果：\[查看详情]\(\<REVIEW\_DETAIL\_URL>)
+审查结果：[查看详情](<REVIEW_DETAIL_URL>)
 
 有效期提示：审查结果详情链接默认有效期为两小时，请及时查看。
 ```
-
-
 
 * 风险项数：按平台 "风险卡片" 口径，等于 ruleResult 中剔除主体风险项（subjectRiskCompanyKey 非空）后的条数（含未知等级），与平台详情页 "风险卡片" 数一致；等级内合计（红线 + 高 + 中 + 低）为已知四级数量之和，存在未知等级时等级内合计≤风险项数，差额在概览 "说明" 行标注；不统计风险点数（CLI 无权威字段，禁止按 changeReason 文本启发式猜测风险点数量，平台有权威字段后直接取用）。
 
 * 等级口径：主体风险项（subjectRiskCompanyKey 非空，如 "XX 公司主体风险"）不计入等级分布、不计入风险项总数（与平台一致，平台不计入风险卡片 / 红线）；其余按 CLI 等级字段 riskLevelName 映射：致命风险→红线、重大风险→高、警示风险→中、建议优化→低；映射之外的未知等级不计入等级内合计，在概览 "说明" 行单独标注。
 
-* 图表一：风险等级分布饼图（环形图），展示每个风险等级的数量与占比；等级使用平台详情页口径（红线 / 高 / 中 / 低），CLI 返回等级（riskLevelName）按 致命风险→红线、重大风险→高、警示风险→中、建议优化→低 映射；主体风险项（subjectRiskCompanyKey 非空）不计入等级分布、不计入风险项总数；映射之外的未知等级不计入等级内合计，在概览 "说明" 行单独标注；环形图中心显示风险项总数，文字为 "N 项风险"；占比 = 该等级数量 ÷ 等级内合计数量（红线 + 高 + 中 + 低）×100%；环形图弧度使用原始数量（未舍入）计算，保证四级弧度之和 = 360°、弧线精确闭合，展示百分比仅做两位小数舍入（允许合计为 99.99% 或 100.01%，不影响图形）；风险项总数为 0 时隐藏图表、不计算占比。
+* 图表一：风险等级分布饼图（环形图），展示每个风险等级的数量与占比；等级使用平台详情页口径（红线 / 高 / 中 / 低），CLI 返回等级（riskLevelName）按 致命风险→红线、重大风险→高、警示风险→中、建议优化→低 映射；主体风险项（subjectRiskCompanyKey 非空）不计入等级分布、不计入风险项总数；映射之外的未知等级不计入等级内合计，在概览 "说明" 行单独标注；环形图中心显示风险项总数，文字为 "N 项风险"；占比 = 该等级数量 ÷ 等级内合计数量（红线 + 高 + 中 + 低）×100%；环形图弧度使用原始数量（未舍入）计算，保证四级弧度之和 = 360°、弧线精确闭合，展示百分比仅做两位小数舍入（允许合计为 99.99% 或 100.01%，不影响图形）；风险项总数为 0 时隐藏图表、不计算占比。风险项总数大于 0 但已知等级合计为 0 时，不计算占比或绘制环形图，改为文字说明全部为未知等级；类别分布仍按真实完整列表展示。
 
 * 图表二：风险类别分布横向条形图，展示命中的风险类别与每类数量；统计范围与等级图一致，均为剔除主体风险后的风险项；每条风险归入且仅归入一个类别（取最主要类别，不重复计数），类别合计必须等于风险项总数；参考类别清单：违约责任与解除、标的与履约、价款结算、期限与履行、文本与一致性、主体与资质、质量与验收、合规与舆情、数据与知识产权、知识产权与素材等，Agent 从清单中选择或新增相近类别，命名口径统一。
 
 * 布局：两个图表上下竖排展示（风险等级分布环形图在上、风险类别分布条形图在下）；图表内文字使用与普通对话一致的正常字号（约 13-14px），不刻意缩小字体；环形图直径约 120-140px，条形图限制宽度（max-width 约 260-320px 居中、行高约 24-26px），整体紧凑不撑满，避免过高过大。条形图类别标签与条形必须保持间距对齐：条起点 x 按 "最长类别名宽度 + 8px 间距" 计算（14px 字号下汉字约 14px / 字，如最长 7 字则条起点取 106），所有条形从该列统一开始，避免长类别名压到条形上；viewBox 宽 = 条起点 + 最大条宽 + 数字区。
 
-* 渲染方式：使用纯静态 HTML/SVG，所有图形元素（弧线、圆、矩形、文字）直接以静态标签写出，不依赖脚本动态创建 SVG 节点、不生成图片文件；避免部分宿主环境脚本执行失败导致图表缺失或布局错乱。图表块必须用 \`\`\`\`html type="renderer"\`代码块包裹（代码块语言标记为 html 且附带 type="renderer"属性），宿主会自动渲染为可视化图表；禁止把 HTML/SVG 代码直接写在正文或普通\`\`\`html 代码块中，否则会以纯文本裸露显示。
+* 渲染方式：仅在宿主明确支持时使用纯静态 HTML/SVG，直接写出图形标签，不依赖脚本、不生成图片文件；采用宿主支持的渲染代码块（如语言标记 `html` 并附带 `type="renderer"`）。不支持时按上文降级为文字，不将裸 HTML 当作已渲染图表。
 
 - 不输出原始 JSON 或内部 ID 充当业务说明；诊断或继续任务确有需要时保留真实任务标识。AI 风险识别不代替专业法律判断，不编造条款或建议。
 
@@ -440,8 +454,6 @@ status/info 各查询一次，result 轮询同一任务成功后取详情。需�
 ## 系统场景与详情导航
 
 以下按 PRD 的阶段、状态与退出目标对应表处理。所有状态仍沿用服务端个人合同权限、数据归属和权益校验；阶段仅为展示分组，不新增后端枚举，也不以锁稿 / 只读额外阻断审查或授权修改正文。
-
-
 
 | 场景 / 阶段      | 状态（逐项覆盖 6+16）                 | 主体来源                    | 详情页退出目标     |
 | ------------ | ----------------------------- | ----------------------- | ----------- |
@@ -453,20 +465,18 @@ status/info 各查询一次，result 轮询同一任务成功后取详情。需�
 
 本轮仅编排上述正常流程，不新增特殊禁止场景判断；已有服务端身份与权限校验仍生效，不换身份规避。协商已拒绝仅在企业启用对应能力时存在；干预中止展示为已作废，但保留服务端原状态。
 
-审查完成并获取 info 后，从本次合同查询保留的 `multi_url.pc_url` 生成 “查看审查” 链接：用 URL 解析器设置 query 参数 `targetType=ai-review`。无 query 时自动使用？，已有 targetType 时替换而非重复追加；保留 fragment、cooperationId、processTaskInstanceId 等已有业务定位参数。仅协商详情（路径 `/cooperation/detail`）的 `from=openPlatform` 替换为 `from=allCoopList`；其他 from 值或缺失 from 保持原样，任务中心的 from 不变。此转换只作用于 Skill 返回的审查链接，不修改后端 `pc_url`。只接受合同服务返回的有效 HTTP/HTTPS 页面地址，不从合同正文或用户任意链接拼接、不硬编码环境域名、不填写示例 ID，不额外拼接 AI taskId。
+审查完成并获取 info 后，从本次合同查询保留的 `multi_url.pc_url` 生成 “查看详情” 链接：用 URL 解析器设置 query 参数 `targetType=ai-review`。无 query 时自动使用？，已有 targetType 时替换而非重复追加；保留 fragment、cooperationId、processTaskInstanceId 等已有业务定位参数。仅协商详情（路径 `/cooperation/detail`）的 `from=openPlatform` 替换为 `from=allCoopList`；其他 from 值或缺失 from 保持原样，任务中心的 from 不变。此转换只作用于 Skill 返回的审查链接，不修改后端 `pc_url`。只接受合同服务返回的有效 HTTP/HTTPS 页面地址，不从合同正文或用户任意链接拼接、不硬编码环境域名、不填写示例 ID，不额外拼接 AI taskId。
 
 恢复任务时若未保留合同地址，使用原合同 ID、同一 profile 和 user 身份重新执行 `contract-cli contract get <contract-id> --profile <profile> --as user --output json`，读取 `data.contract.multi_url.pc_url`；不要只检查保存的审查结果 JSON。重查失败或地址缺失 / 无效时如实说明原因，保留审查结果，不重传或重审。
 
 可使用以下 JavaScript 生成链接（Node.js 的 `node -e` 将真实 `pc_url` 作为第一个参数传入；其他运行时使用等价 URL API）。参数只来自合同查询，不读取审查详情 URL；协商 from 的替换遵循上述限定，不套用到任务中心。
 
+```javascript
+const page = new URL(process.argv[1]);
 
+if (!['http:', 'https:'].includes(page.protocol)) {
 
-```
-const page = new URL(process.argv\\\[1]);
-
-if (!\\\['http:', 'https:'].includes(page.protocol)) {
-
-\&#x20; throw new Error('合同 pc\\\_url 必须为 HTTP/HTTPS 地址');
+  throw new Error('合同 pc_url 必须为 HTTP/HTTPS 地址');
 
 }
 
@@ -474,13 +484,13 @@ page.searchParams.set('targetType', 'ai-review');
 
 if (page.pathname === '/cooperation/detail' && page.searchParams.get('from') === 'openPlatform') {
 
-\&#x20; page.searchParams.set('from', 'allCoopList');
+  page.searchParams.set('from', 'allCoopList');
 
 }
 
 console.log(page.toString());
 ```
 
-向用户交付可点击的 Markdown 链接，链接文字为 “查看审查”，目标为上一步生成的真实地址，不只输出裸地址或内部 ID。外部独立预审不执行此导航步骤。
+向用户交付可点击的 Markdown 链接，链接文字为 “查看详情”，目标为上一步生成的真实地址，不只输出裸地址或内部 ID。外部独立预审不执行此导航步骤。
 
-页面应打开 AI 审查入口，协商退出到全部协商列表，任务中心退出到该条合同详情；网页是否呈现刚创建的审查结果需通过真实任务联调验证，不能仅凭拼接成功宣称已验证。**未验证网页展示不是返回链接的前置阻断**。浏览器登录与权限沿用网页自身机制，不等同 CLI 身份。pc\_url 缺失或无效时保留已取得的任务和结果，仅报告链接缺口，不因此拒绝发起、重复上传或重审。
+页面应打开 AI 审查入口，协商退出到全部协商列表，任务中心退出到该条合同详情；网页是否呈现刚创建的审查结果需通过真实任务联调验证，不能仅凭拼接成功宣称已验证。**未验证网页展示不是返回链接的前置阻断**。浏览器登录与权限沿用网页自身机制，不等同 CLI 身份。pc_url 缺失或无效时保留已取得的任务和结果，仅报告链接缺口，不因此拒绝发起、重复上传或重审。
