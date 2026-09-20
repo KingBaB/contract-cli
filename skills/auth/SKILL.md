@@ -8,9 +8,9 @@ description: "contract-cli 登录与身份切换技能：初始化 profile、通
 
 本技能指导你如何在本仓库中使用 `contract-cli` 的登录与身份切换能力，并保持和当前实现一致。
 
-## 正式包环境边界
+## 当前测试分支环境边界
 
-- 默认使用 `contract` profile 和 `prod` 环境；test 使用独立的 `contract-test` profile。禁止混用不同环境的地址和凭据。
+- 本测试分支仅启用 `test` 环境；prod 暂时禁用，dev 入口已屏蔽。建议使用独立的 `contract-test` profile；CLI 默认 profile 名仍为 `contract`。禁止混用不同环境的地址和凭据。
 - 禁止未经明确要求自动切换环境，不允许因本地存在旧 profile 而降级使用它。
 - Skill 更新后必须完全退出并新建任务。已有任务不会热加载新 Skill，因此不能用旧任务验证升级后的规则。
 
@@ -44,10 +44,10 @@ description: "contract-cli 登录与身份切换技能：初始化 profile、通
 首次使用前，必须先执行：
 
 ```bash
-contract-cli config add --env prod --name contract
+contract-cli config add --env test --name contract-test
 ```
 
-当前内置 `prod`、`test` 环境，默认环境为 `prod`，默认 profile 名为 `contract`。test 执行 `config add --env test --name contract-test`，随后执行 `auth login --profile contract-test --as user`；test 未内置 Device client ID，不得复用生产 ID。该命令会：
+当前默认且仅启用 `test` 环境，默认 profile 名为 `contract`。test 执行 `config add --env test --name contract-test`，随后执行 `auth login --profile contract-test --as user`；test 未内置 Device client ID，不得复用生产 ID。保留的 prod/dev profile 无法在此构建中使用，不删除或自动迁移旧凭据。该命令会：
 
 - 发现 well-known 元数据
 - 保存 MCP server / resource / OAuth server 配置
@@ -79,17 +79,18 @@ Device Grant 一次授权同时包含合同与智审平台访问范围；本 Ski
 
 ### 豆包 / WorkBuddy Device 授权
 
+本节仅适用于已配置有效 test 专属 Device client 的 profile；新建 test profile 不满足此前提，使用下节 OAuth + PKCE，宿主无法完成回调时报告能力缺口，禁止复用生产 client 或切换到 prod/dev。
+
 ```bash
-contract-cli config add --env prod --name contract
-contract-cli auth init --profile contract --output json
+contract-cli auth init --profile contract-test --output json
 # 按当前 Agent 的展示契约呈现授权信息，等用户完成手机号、企业确认和同意授权
-contract-cli auth complete --profile contract --output json
+contract-cli auth complete --profile contract-test --output json
 ```
 
 完成授权后的每次合同业务调用也必须显式传入同一个 profile，例如：
 
 ```bash
-contract-cli contract get <contract-id> --profile contract --output json
+contract-cli contract get <contract-id> --profile contract-test --output json
 ```
 
 固定规则：
@@ -140,9 +141,9 @@ contract-cli contract get <contract-id> --profile contract --output json
 ### `user` 登录
 
 ```bash
-contract-cli config add --env prod --name contract
-contract-cli auth login --as user
-contract-cli auth status --as user
+contract-cli config add --env test --name contract-test
+contract-cli auth login --profile contract-test --as user
+contract-cli auth status --profile contract-test --as user
 ```
 
 行为约束：
@@ -258,11 +259,11 @@ contract-cli auth use --as app
 
 ## 故障排查
 
-- `user identity is not configured`：先执行 `contract-cli config add --env prod --name contract`
+- `user identity is not configured`：先执行 `contract-cli config add --env test --name contract-test`
 - 浏览器未自动打开：改用 `--no-open-browser`，手动访问输出的授权链接
 - 回调超时：检查 `redirect_url` 对应端口是否可监听，必要时调大 `--timeout`
 - app 凭据不完整：补齐 `--app-id/--app-secret` 或设置 `CONTRACT_CLI_APP_ID/CONTRACT_CLI_APP_SECRET`
-- app 登录提示缺少 `app_token_endpoint`：说明 profile 过旧，重跑 `contract-cli config add --env prod --name <profile>`
+- app 登录提示缺少 `app_token_endpoint`：说明 profile 过旧，确认目标为 test 后重跑 `contract-cli config add --env test --name <profile>`
 - app 状态显示 `expired`：重新执行 `contract-cli auth login --as app`
 - user 状态显示 `expired`：重新执行 `contract-cli auth login --as user`
 - 旧脚本仍传 `--as bot`：可以继续执行；后续新脚本请改写为 `--as app`

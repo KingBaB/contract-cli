@@ -15,19 +15,19 @@
 - **双身份支持**：支持 `user` OAuth 与 `app` 应用身份，旧脚本中的 `bot` 身份值继续兼容并按 `app` 处理。
 - **输出稳定**：业务命令默认 JSON 输出，支持 `yaml`、`table`、`--raw`，便于人工查看和自动化解析。
 - **发布闭环**：提供源码构建、预编译二进制、GitHub Release assets、npm/npx 薄包装和发布前检查脚本。
-- **可控默认值**：默认 profile 为 `contract`，默认环境为 `prod`，帮助命令只读本地说明，不读取 profile、不发 HTTP。
+- **可控默认值**：默认 profile 为 `contract`，本测试分支默认且仅启用 `test` 环境，帮助命令只读本地说明，不读取 profile、不发 HTTP。
 
-## 本地连接 dev 环境
+## 本地连接 test 环境
 
 从本分支运行 `./build.sh` 后，使用本地构建的二进制：
 
 ```bash
-./contract-cli config add --env dev --name contract-dev
-./contract-cli auth login --profile contract-dev --as user
-./contract-cli contract approval task list --profile contract-dev --as user
+./contract-cli config add --env test --name contract-test
+./contract-cli auth login --profile contract-test --as user
+./contract-cli contract approval task list --profile contract-test --as user
 ```
 
-dev 开放平台为 `https://dev-open.qtech.cn`，授权服务为 `https://dev-myaccount.qtech.cn`。用户登录沿用 OAuth + PKCE；app 身份使用 dev 自身的应用凭据。dev 未内置 Device client ID，不能直接复用生产环境的 `auth init` 配置。切换同名 profile 的环境会清理原授权，建议分别使用 `contract` 和 `contract-dev`；后续命令显式指定 profile。此分支仅支持 prod/dev，不支持 test；已有 test profile 不会自动删除，但无法在此构建中使用。
+用户登录沿用 test 自身的 OAuth + PKCE；app 身份使用 test 自身的应用凭据。test 不内置生产 Device client ID，不能直接复用生产环境的 `auth init` 配置。本分支保留 prod 预设但暂时禁用，dev 入口直接屏蔽；已有 prod/dev profile 不会自动删除，但配置、鉴权和业务请求均不可用。不会将旧 token 自动迁移到 test；请新建独立 `contract-test` profile 并授权。切换同名 profile 的环境会清理原授权，后续命令应显式指定 profile。审查详情链接仍使用合同服务返回的 `pc_url`，不改写环境域名。
 
 ## Features
 
@@ -95,12 +95,12 @@ contract-cli --version
 
 ```bash
 # 1. 初始化或更新 profile
-contract-cli config add --env prod --name contract
+contract-cli config add --env test --name contract
 
 # 2. 本地环境可继续使用旧 user 授权码模式
 contract-cli auth login --profile contract --as user
 
-# 3. 豆包 / WorkBuddy 使用 Device Grant：init 立即返回授权信息
+# 3. 仅已配置有效 test 专属 Device client 的 profile 可使用 Device Grant
 contract-cli auth init --profile contract --output json
 # 用户完成手机号和企业授权后，只查询一次
 contract-cli auth complete --profile contract --output json
@@ -149,21 +149,21 @@ contract-cli skills list
 **Step 3：初始化 profile**
 
 ```bash
-contract-cli config add --env prod --name contract
+contract-cli config add --env test --name contract
 ```
 
 **Step 4：登录并验证**
 
 ```bash
-contract-cli auth init --profile contract --output json
-# Agent 展示授权信息，用户明确完成授权后：
-contract-cli auth complete --profile contract --output json
+contract-cli auth login --profile contract --as user
 contract-cli auth status --profile contract --as user
 ```
 
-WorkBuddy 使用 `qr_code_path` 交付原始 PNG 附件，AgentKit 使用 `qr_code_path`。豆包普通工作任务只展示 `verification_uri_complete` 和 `expires_at_display`，不展示二维码，也不读取或交付二维码文件。
+新建 test profile 使用 OAuth + PKCE，不自带 Device client。以下 Device 说明仅适用于已经配置有效 test 专属 Device client 的 profile；宿主不能完成 PKCE 回调时应报告缺口，不能借用生产 client。
 
-本分支支持 `prod`、`test`，默认仍为 `prod`。test 使用独立 profile 和授权，不能复用生产凭据。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
+Device 模式下，WorkBuddy 使用 `qr_code_path` 交付原始 PNG 附件，AgentKit 使用 `qr_code_path`。豆包普通工作任务只展示 `verification_uri_complete` 和 `expires_at_display`，不展示二维码，也不读取或交付二维码文件。
+
+本分支默认且仅启用 `test`；prod 配置保留但暂时禁用，dev 入口已屏蔽。test 使用独立 profile 和授权，不能复用生产凭据。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
 
 `auth init` 和 `auth complete` 都只请求一次。`complete` 返回 `pending` 时不持续轮询；请用户完成授权后再主动查询。返回 `uncertain`、`denied`、`expired` 或 `restart_required` 时禁止自动重试；用户明确同意重新授权后，才执行 `auth init --profile contract --output json --restart`。
 
@@ -226,7 +226,7 @@ contract-cli skills install --target ~/.codex/skills
 常用命令：
 
 ```bash
-contract-cli config add --env prod --name contract
+contract-cli config add --env test --name contract
 contract-cli auth init --profile contract --output json
 contract-cli auth complete --profile contract --output json
 contract-cli auth login --profile contract --as user

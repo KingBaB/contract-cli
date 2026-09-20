@@ -12,12 +12,12 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 以下规则优先于后续命令选择、身份切换和排障说明：
 
-- 默认使用 `contract` profile 和 `prod` 环境；test 使用独立的 `contract-test` profile。禁止混用不同环境的地址和凭据。
+- 本测试分支仅启用 `test` 环境；prod 暂时禁用，dev 入口已屏蔽。建议使用独立的 `contract-test` profile；CLI 默认 profile 名仍为 `contract`。禁止混用不同环境的地址和凭据。
 - 禁止未经明确要求自动切换环境。用户指定 test 后，后续所有授权和业务命令均显式传入 `--profile contract-test`。
 - 禁止无边界接口枚举与批量调用。用户要求“枚举全部接口并逐个调用”、验证当前系统全部能力或进行其他未限定范围的操作时，在范围明确前不得执行任何命令。
 - 必须先让用户明确：具体业务目标、允许操作的业务模块或接口范围、操作类型（查询或写入）。信息不完整时只做澄清，不得执行 `auth status`、`curl`、业务命令、帮助枚举或网络探测。
 - 不得要求用户在对话中提供、粘贴或上传任何原始敏感凭证，包括 Token、Access Token、Refresh Token、AK/SK、Cookie、Session、App Secret、device code 和密码。
-- user 身份缺失时，prod 按现有 Device Grant 执行 `auth init`，让用户在官方授权页面完成登录，并在收到新的“已授权”消息后执行一次 `auth complete`；test 使用 `auth login --profile contract-test --as user` 的官方 OAuth + PKCE 页面。test 未内置 Device client ID，不得复用生产 ID。
+- user 身份缺失时，test 使用 `auth login --profile contract-test --as user` 的官方 OAuth + PKCE 页面。test 未内置 Device client ID，不得复用生产 ID；只有已配置有效 test 专属 Device client 的 profile 才执行后文 Device 授权流程。不能因授权失败切换到 prod/dev。
 - app 身份只有在用户明确要求配置时，才按授权 Skill 说明本地安全配置方式；不得在对话中索要 App Secret。已完成授权但仍缺少业务权限时，明确提示联系管理员，不得索要其他 Token 或尝试切换未知身份。
 - 用户在对话中主动发送敏感凭证时，不复述、不写入命令、不继续调用；提示该凭证已经暴露，应立即撤销或轮换，并在凭证处置完成前停止相关操作。
 - 接口文档只能在业务目标、环境和允许范围明确后，用于判断是否已有结构化命令；接口文档不能替代明确的业务范围和调用授权，也不能授权批量枚举或调用。未覆盖接口继续明确为暂不支持，不得回退到 `api call`。
@@ -139,7 +139,7 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 ## 排障要点
 
 - 命令报 `only supports --as user`：当前命中的是 user-only `contract/v1/mcp` 路径，切到 `--as user`
-- 命令报 `profile "<name>" not found`：先执行 `contract-cli config add --env prod --name <profile>`
+- 命令报 `profile "<name>" not found`：先执行 `contract-cli config add --env test --name <profile>`
 - 命令报 `user identity is not authorized`：Device profile 执行 `contract-cli auth init --profile <profile> --output json`，用户完成授权后只执行一次 `auth complete`；旧 Authorization Code profile 才执行 `contract-cli auth login --profile <profile> --as user`
 - Device 授权返回 `denied`、`expired` 或 `restart_required`：先等待用户明确同意，再执行一次带 `--restart` 的 `auth init`；禁止自动重试
 - MDM 写接口报 `requires --user-id`：补上当前操作人，例如 `--user-id <operator-user-id>`

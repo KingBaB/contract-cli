@@ -14,7 +14,7 @@ import (
 	"cn.qfei/contract-cli/internal/openplatform"
 )
 
-func TestLoadDeviceAwareProfileRejectsNonProductionProfileAndEndpoints(t *testing.T) {
+func TestLoadDeviceAwareProfileRejectsNonTestProfileAndEndpoints(t *testing.T) {
 	tests := []struct {
 		name   string
 		mutate func(*config.Profile)
@@ -51,7 +51,7 @@ func TestLoadDeviceAwareProfileRejectsNonProductionProfileAndEndpoints(t *testin
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			store := config.NewStore(t.TempDir())
-			profile := validProductionProfile()
+			profile := validTestEnvironmentProfile()
 			test.mutate(&profile)
 			if err := store.UpsertProfile(profile, true); err != nil {
 				t.Fatal(err)
@@ -102,7 +102,7 @@ func TestAuthAndBusinessCommandsRejectInconsistentDevProfileBeforeNetworkRequest
 	for _, command := range commands {
 		t.Run(command.name, func(t *testing.T) {
 			store := config.NewStore(t.TempDir())
-			profile := validProductionProfile()
+			profile := validTestEnvironmentProfile()
 			profile.Environment = "dev"
 			profile.OpenPlatformBaseURL = "https://dev-open.qtech.cn"
 			profile.Resource = "https://dev-open.qtech.cn"
@@ -131,10 +131,10 @@ func TestAuthAndBusinessCommandsRejectInconsistentDevProfileBeforeNetworkRequest
 	}
 }
 
-func TestDeviceProfileRecoveryRejectsTestSnapshotBeforeSavingProfile(t *testing.T) {
+func TestDeviceProfileRecoveryRejectsProdSnapshotBeforeSavingProfile(t *testing.T) {
 	credentials := &deviceMemoryCredentialStore{values: map[string]credential.DeviceCredential{
 		"contract": {DeviceProfile: &credential.DeviceProfile{
-			Name: "contract", Environment: "test", OpenPlatformBaseURL: "https://test-open.qtech.cn",
+			Name: "contract", Environment: "prod", OpenPlatformBaseURL: "https://open.qfei.cn",
 			Resource: "https://test-open.qtech.cn", BusinessType: "contract", ClientName: "contract-cli",
 			DeviceClientID: "zscli_892efdadc11a3f53", DeviceScope: "contract:full contract-review:full",
 			DeviceAuthorizationEndpoint: "https://test-myaccount.qtech.cn/api/public/oauth/device-authorization/contract",
@@ -162,8 +162,8 @@ func TestDeviceProfileRecoveryRejectsTestSnapshotBeforeSavingProfile(t *testing.
 	}
 }
 
-func TestDeviceProfileRecoveryRejectsDevPendingBeforeSavingProductionSnapshot(t *testing.T) {
-	profile := validProductionProfile()
+func TestDeviceProfileRecoveryRejectsDevPendingBeforeSavingTestSnapshot(t *testing.T) {
+	profile := validTestEnvironmentProfile()
 	credentials := &deviceMemoryCredentialStore{values: map[string]credential.DeviceCredential{
 		"contract": {
 			DeviceProfile: snapshotDeviceProfile(profile),
@@ -213,7 +213,7 @@ func TestDeviceCommandsRejectHistoricalDevStateBeforeNetworkRequest(t *testing.T
 			credential: credential.DeviceCredential{Pending: &credential.PendingTransaction{
 				Status: credential.PendingStatusPending, DeviceCode: "secret-device",
 				VerificationURIComplete: "https://dev-myaccount.qtech.cn/device?user_code=secret-user-code",
-				TokenEndpoint:           "https://myaccount.qfei.cn/api/public/oauth/token/contract",
+				TokenEndpoint:           "https://test-myaccount.qtech.cn/api/public/oauth/token/contract",
 				ClientID:                "zscli_892efdadc11a3f53", ExpiresAt: time.Now().Add(time.Minute),
 			}},
 		},
@@ -222,7 +222,7 @@ func TestDeviceCommandsRejectHistoricalDevStateBeforeNetworkRequest(t *testing.T
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			store := config.NewStore(t.TempDir())
-			if err := store.UpsertProfile(validProductionProfile(), true); err != nil {
+			if err := store.UpsertProfile(validTestEnvironmentProfile(), true); err != nil {
 				t.Fatal(err)
 			}
 			credentials := &deviceMemoryCredentialStore{values: map[string]credential.DeviceCredential{"contract": test.credential}}
@@ -246,9 +246,9 @@ func TestDeviceCommandsRejectHistoricalDevStateBeforeNetworkRequest(t *testing.T
 	}
 }
 
-func TestBusinessCommandRejectsHistoricalDevDeviceStateWithProductionProfile(t *testing.T) {
+func TestBusinessCommandRejectsHistoricalDevDeviceStateWithTestProfile(t *testing.T) {
 	store := config.NewStore(t.TempDir())
-	profile := validProductionProfile()
+	profile := validTestEnvironmentProfile()
 	profile.DefaultIdentity = config.IdentityApp
 	profile.Identities.App = config.AppIdentity{AppID: "production-app", Token: &config.Token{AccessToken: "production-app-token"}}
 	if err := store.UpsertProfile(profile, true); err != nil {
@@ -284,11 +284,11 @@ func TestBusinessCommandRejectsHistoricalDevDeviceStateWithProductionProfile(t *
 	}
 }
 
-func TestConfigAddProdResetsSameNameDevProfileAndCredentials(t *testing.T) {
+func TestConfigAddTestResetsSameNameDevProfileAndCredentials(t *testing.T) {
 	configDir := t.TempDir()
 	store := config.NewStore(configDir)
 	secrets := config.NewSecretsStore(configDir)
-	oldProfile := validProductionProfile()
+	oldProfile := validTestEnvironmentProfile()
 	oldProfile.Environment = "dev"
 	oldProfile.OpenPlatformBaseURL = "https://dev-open.qtech.cn"
 	oldProfile.Resource = "https://dev-open.qtech.cn"
@@ -313,21 +313,21 @@ func TestConfigAddProdResetsSameNameDevProfileAndCredentials(t *testing.T) {
 	app := New(Options{
 		Store: store, Secrets: secrets, CredentialStore: credentials,
 		HTTPClient: &http.Client{Transport: productionRoundTripFunc(func(request *http.Request) (*http.Response, error) {
-			if request.URL.String() != "https://myaccount.qfei.cn/.well-known/oauth-authorization-server/contract" {
+			if request.URL.String() != "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract" {
 				t.Fatalf("unexpected metadata request: %s", request.URL.String())
 			}
-			return productionResponse(http.StatusOK, `{"issuer":"common-organization-v2","authorization_endpoint":"https://myaccount.qfei.cn/api/public/oauth/authorize/contract","device_authorization_endpoint":"https://myaccount.qfei.cn/api/public/oauth/device-authorization/contract","token_endpoint":"https://myaccount.qfei.cn/api/public/oauth/token/contract","revocation_endpoint":"https://myaccount.qfei.cn/api/public/oauth/revoke/contract","registration_endpoint":"https://myaccount.qfei.cn/api/public/oauth/register/contract"}`), nil
+			return productionResponse(http.StatusOK, `{"issuer":"common-organization-v2","authorization_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/authorize/contract","device_authorization_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/device-authorization/contract","token_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/token/contract","revocation_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/revoke/contract","registration_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/register/contract"}`), nil
 		})},
 	})
 
-	if err := app.Run(context.Background(), []string{"config", "add", "--env", "prod", "--name", "contract"}); err != nil {
+	if err := app.Run(context.Background(), []string{"config", "add", "--env", "test", "--name", "contract"}); err != nil {
 		t.Fatalf("config add error = %v", err)
 	}
 	profile, err := store.GetProfile("contract")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if profile.Environment != "prod" || profile.OpenPlatformBaseURL != "https://open.qfei.cn" || profile.Resource != "https://open.qfei.cn" {
+	if profile.Environment != "test" || profile.OpenPlatformBaseURL != "https://test-open.qtech.cn" || profile.Resource != "https://test-open.qtech.cn" {
 		t.Fatalf("unexpected reset profile: %+v", profile)
 	}
 	if profile.DefaultIdentity != config.IdentityUser || profile.Identities.User.Token != nil || profile.Identities.App.AppID != "" || profile.Identities.App.Token != nil {
@@ -341,7 +341,7 @@ func TestConfigAddProdResetsSameNameDevProfileAndCredentials(t *testing.T) {
 	}
 }
 
-func TestConfigAddRejectsNonProductionMetadataOverrideBeforeNetworkRequest(t *testing.T) {
+func TestConfigAddRejectsNonTestMetadataOverrideBeforeNetworkRequest(t *testing.T) {
 	requestCount := 0
 	app := New(Options{
 		Store: config.NewStore(t.TempDir()),
@@ -352,7 +352,7 @@ func TestConfigAddRejectsNonProductionMetadataOverrideBeforeNetworkRequest(t *te
 	})
 
 	err := app.Run(context.Background(), []string{
-		"config", "add", "--env", "prod", "--name", "contract",
+		"config", "add", "--env", "test", "--name", "contract",
 		"--resource-metadata-url", "https://dev-open.qtech.cn/.well-known/oauth-protected-resource",
 	})
 	if err == nil || err.Error() != productionProfileErrorMessage("contract") {
@@ -363,7 +363,7 @@ func TestConfigAddRejectsNonProductionMetadataOverrideBeforeNetworkRequest(t *te
 	}
 }
 
-func TestProductionHTTPClientBlocksKnownTestHosts(t *testing.T) {
+func TestTestHTTPClientBlocksKnownProdAndDevHosts(t *testing.T) {
 	requestCount := 0
 	app := New(Options{
 		Store: config.NewStore(t.TempDir()),
@@ -373,7 +373,7 @@ func TestProductionHTTPClientBlocksKnownTestHosts(t *testing.T) {
 		})},
 	})
 
-	for _, rawURL := range []string{"https://test-open.qtech.cn/open-apis/test", "https://test-myaccount.qtech.cn./device"} {
+	for _, rawURL := range []string{"https://open.qfei.cn/open-apis/test", "https://myaccount.qfei.cn./device", "https://dev-open.qtech.cn/open-apis/test", "https://dev-myaccount.qtech.cn./device"} {
 		request, err := http.NewRequest(http.MethodGet, rawURL, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -388,15 +388,15 @@ func TestProductionHTTPClientBlocksKnownTestHosts(t *testing.T) {
 	}
 }
 
-func validProductionProfile() config.Profile {
+func validTestEnvironmentProfile() config.Profile {
 	return config.Profile{
 		Name:                           "contract",
-		Environment:                    "prod",
-		OpenPlatformBaseURL:            "https://open.qfei.cn",
-		AppTokenEndpoint:               "https://open.qfei.cn/open-apis/auth/v3/tenant_access_token/internal",
-		ProtectedResourceMetadataURL:   "https://open.qfei.cn/.well-known/oauth-protected-resource",
-		AuthorizationServerMetadataURL: "https://myaccount.qfei.cn/.well-known/oauth-authorization-server/contract",
-		Resource:                       "https://open.qfei.cn",
+		Environment:                    "test",
+		OpenPlatformBaseURL:            "https://test-open.qtech.cn",
+		AppTokenEndpoint:               "https://test-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal",
+		ProtectedResourceMetadataURL:   "https://test-open.qtech.cn/.well-known/oauth-protected-resource",
+		AuthorizationServerMetadataURL: "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
+		Resource:                       "https://test-open.qtech.cn",
 		Scopes:                         []string{"cli:tools", "cli:resources"},
 		BusinessType:                   "contract",
 		ClientName:                     "contract-cli",
@@ -405,17 +405,17 @@ func validProductionProfile() config.Profile {
 			AuthMode:                    config.UserAuthModeDevice,
 			DeviceClientID:              "zscli_892efdadc11a3f53",
 			DeviceScope:                 "contract:full contract-review:full",
-			AuthorizationEndpoint:       "https://myaccount.qfei.cn/api/public/oauth/authorize/contract",
-			DeviceAuthorizationEndpoint: "https://myaccount.qfei.cn/api/public/oauth/device-authorization/contract",
-			TokenEndpoint:               "https://myaccount.qfei.cn/api/public/oauth/token/contract",
-			RevocationEndpoint:          "https://myaccount.qfei.cn/api/public/oauth/revoke/contract",
-			RegistrationEndpoint:        "https://myaccount.qfei.cn/api/public/oauth/register/contract",
+			AuthorizationEndpoint:       "https://test-myaccount.qtech.cn/api/public/oauth/authorize/contract",
+			DeviceAuthorizationEndpoint: "https://test-myaccount.qtech.cn/api/public/oauth/device-authorization/contract",
+			TokenEndpoint:               "https://test-myaccount.qtech.cn/api/public/oauth/token/contract",
+			RevocationEndpoint:          "https://test-myaccount.qtech.cn/api/public/oauth/revoke/contract",
+			RegistrationEndpoint:        "https://test-myaccount.qtech.cn/api/public/oauth/register/contract",
 		}},
 	}
 }
 
 func productionProfileErrorMessage(profileName string) string {
-	return `profile "` + profileName + `" has unsupported or inconsistent environment endpoints; configure matching prod/dev endpoints and authorize again`
+	return `profile "` + profileName + `" has unsupported or inconsistent environment endpoints; this build only enables test (prod temporarily disabled, dev blocked); configure matching test endpoints and authorize again`
 }
 
 type productionRoundTripFunc func(*http.Request) (*http.Response, error)

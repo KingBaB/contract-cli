@@ -151,7 +151,7 @@ func profileNotFoundError(profileName string) error {
 
 func deviceProfileRecoveryError(profileName, reason string) error {
 	return fmt.Errorf(
-		"cannot restore Device profile %q after sandbox rebuild: %s; run `contract-cli config add` for profile %q with its original environment (prod or test) and authorize again",
+		"cannot restore Device profile %q after sandbox rebuild: %s; run `contract-cli config add --env test` for profile %q and authorize again; prod is temporarily disabled and dev is blocked",
 		profileName,
 		reason,
 		profileName,

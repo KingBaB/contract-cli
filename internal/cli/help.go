@@ -298,14 +298,14 @@ func addConfigHelp(registry map[string]helpTopic) {
 		Summary: "初始化或更新 profile，并写入开放平台、user OAuth 和 app token endpoint 配置。",
 		Usage:   []string{"contract-cli config add [flags]"},
 		Flags: []helpFlag{
-			{"--env <prod|dev>", "环境预设；支持 prod、dev，默认 prod"},
+			{"--env <test>", "环境预设；仅支持 test，默认 test；prod 暂时禁用，dev 已屏蔽"},
 			{"--name <profile>", "profile 名称，默认 contract"},
 			{"--resource-metadata-url <url>", "覆盖 protected resource metadata 地址"},
 			{"--redirect-url <url>", "覆盖 OAuth callback 地址"},
 			{"--scope <scopes>", "覆盖默认 OAuth scopes，多个 scope 用空格分隔"},
 		},
 		Examples: []string{
-			"contract-cli config add --env prod --name contract",
+			"contract-cli config add --env test --name contract-test",
 		},
 	}
 }

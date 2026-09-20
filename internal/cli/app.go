@@ -27,7 +27,7 @@ const defaultProfileName = "contract"
 var errAPICommandUnavailable = errors.New("api call 暂未开放使用，请使用已开放的结构化命令")
 
 type Options struct {
-	Stdin           io.Reader
+	Stdin              io.Reader
 	Stdout             io.Writer
 	Stderr             io.Writer
 	Logger             *slog.Logger
@@ -47,7 +47,7 @@ type Options struct {
 }
 
 type App struct {
-	stdin           io.Reader
+	stdin              io.Reader
 	stdout             io.Writer
 	stderr             io.Writer
 	logger             *slog.Logger
@@ -149,7 +149,7 @@ func New(options Options) *App {
 	}
 
 	app := &App{
-		stdin:           stdin,
+		stdin:              stdin,
 		stdout:             stdout,
 		stderr:             stderr,
 		logger:             logger,
@@ -281,7 +281,7 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	var redirectURL string
 	var scopes string
 
-	flags.StringVar(&env, "env", "prod", "environment preset")
+	flags.StringVar(&env, "env", "test", "environment preset")
 	flags.StringVar(&profileName, "name", defaultProfileName, "profile name")
 	flags.StringVar(&protectedResourceURL, "resource-metadata-url", "", "override protected resource metadata URL")
 	flags.StringVar(&redirectURL, "redirect-url", "", "OAuth redirect URL")
@@ -604,22 +604,29 @@ func (a *App) providerFor(identity config.IdentityKind) authProvider {
 	}
 }
 
+// This test branch retains production settings for a future reviewed release.
+// There is deliberately no runtime switch to re-enable production access.
+const productionEnvironmentEnabled = false
+
 func resolveEnvironment(name string) (environmentPreset, error) {
 	switch name {
-	case "dev":
+	case "test":
 		return environmentPreset{
-			AccountOrigin:                  "https://dev-myaccount.qtech.cn",
-			Resource:                       "https://dev-open.qtech.cn",
-			OpenPlatformBaseURL:            "https://dev-open.qtech.cn",
-			AppTokenEndpoint:               "https://dev-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal",
+			AccountOrigin:                  "https://test-myaccount.qtech.cn",
+			Resource:                       "https://test-open.qtech.cn",
+			OpenPlatformBaseURL:            "https://test-open.qtech.cn",
+			AppTokenEndpoint:               "https://test-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal",
 			ProtectedResourceMetadataURL:   "",
-			AuthorizationServerMetadataURL: "https://dev-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
+			AuthorizationServerMetadataURL: "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
 			RedirectURL:                    "http://127.0.0.1:8000/callback",
 			Scopes:                         []string{"cli:tools", "cli:resources"},
 			BusinessType:                   "contract",
 			ClientName:                     "contract-cli",
 		}, nil
 	case "prod":
+		if !productionEnvironmentEnabled {
+			return environmentPreset{}, fmt.Errorf("prod environment is temporarily disabled in this build; use test")
+		}
 		return environmentPreset{
 			AccountOrigin:                  "https://myaccount.qfei.cn",
 			OpenPlatformBaseURL:            "https://open.qfei.cn",
@@ -634,8 +641,10 @@ func resolveEnvironment(name string) (environmentPreset, error) {
 			DeviceClientID:                 "zscli_892efdadc11a3f53",
 			DeviceScope:                    "contract:full contract-review:full",
 		}, nil
+	case "dev":
+		return environmentPreset{}, fmt.Errorf("dev environment is blocked in this build; use test")
 	default:
-		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod, dev", name)
+		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: test", name)
 	}
 }
 

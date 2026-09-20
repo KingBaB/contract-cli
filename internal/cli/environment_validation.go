@@ -103,7 +103,7 @@ func parseEnvironmentURL(rawURL string) (*url.URL, error) {
 }
 
 func profileEnvironmentError(profileName string) error {
-	return fmt.Errorf("profile %q has unsupported or inconsistent environment endpoints; configure matching prod/dev endpoints and authorize again", profileName)
+	return fmt.Errorf("profile %q has unsupported or inconsistent environment endpoints; this build only enables test (prod temporarily disabled, dev blocked); configure matching test endpoints and authorize again", profileName)
 }
 
 // Match net/http's default redirect limit when the caller has no custom policy.
@@ -144,6 +144,8 @@ func environmentForHost(host string) string {
 		return "prod"
 	case "dev-open.qtech.cn", "dev-myaccount.qtech.cn":
 		return "dev"
+	case "test-open.qtech.cn", "test-myaccount.qtech.cn":
+		return "test"
 	default:
 		return ""
 	}
@@ -231,7 +233,7 @@ func (a *App) clearProfileAuthenticationState(profileName string) error {
 	return nil
 }
 
-// Test is unsupported in this build; reject it before sending credentials.
+// Block disabled environments before sending credentials, including redirects.
 type environmentGuardTransport struct {
 	next   http.RoundTripper
 	logger *slog.Logger
@@ -240,7 +242,8 @@ type environmentGuardTransport struct {
 func (transport environmentGuardTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	host := strings.ToLower(strings.TrimSuffix(request.URL.Hostname(), "."))
 	transport.logger.Debug("environment network request", "method", request.Method, "host", host)
-	if host == "test-open.qtech.cn" || host == "test-myaccount.qtech.cn" {
+	environment := environmentForHost(host)
+	if environment == "dev" || (environment == "prod" && !productionEnvironmentEnabled) {
 		transport.logger.Error("blocked unsupported environment request", "method", request.Method, "host", host)
 		return nil, fmt.Errorf("build blocks unsupported environment host %q", host)
 	}

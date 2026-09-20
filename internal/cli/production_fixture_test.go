@@ -6,22 +6,22 @@ import (
 	"cn.qfei/contract-cli/internal/config"
 )
 
-func productionProfileFixture(profile config.Profile) config.Profile {
-	profile.Environment = "prod"
-	profile.OpenPlatformBaseURL = "https://open.qfei.cn"
-	profile.Resource = "https://open.qfei.cn"
-	profile.AppTokenEndpoint = productionFixtureURL(profile.AppTokenEndpoint, "https://open.qfei.cn")
-	profile.ProtectedResourceMetadataURL = productionFixtureURL(profile.ProtectedResourceMetadataURL, "https://open.qfei.cn")
-	profile.AuthorizationServerMetadataURL = productionFixtureURL(profile.AuthorizationServerMetadataURL, "https://myaccount.qfei.cn")
-	profile.Identities.User.AuthorizationEndpoint = productionFixtureURL(profile.Identities.User.AuthorizationEndpoint, "https://myaccount.qfei.cn")
-	profile.Identities.User.DeviceAuthorizationEndpoint = productionFixtureURL(profile.Identities.User.DeviceAuthorizationEndpoint, "https://myaccount.qfei.cn")
-	profile.Identities.User.TokenEndpoint = productionFixtureURL(profile.Identities.User.TokenEndpoint, "https://myaccount.qfei.cn")
-	profile.Identities.User.RevocationEndpoint = productionFixtureURL(profile.Identities.User.RevocationEndpoint, "https://myaccount.qfei.cn")
-	profile.Identities.User.RegistrationEndpoint = productionFixtureURL(profile.Identities.User.RegistrationEndpoint, "https://myaccount.qfei.cn")
+func testEnvironmentProfileFixture(profile config.Profile) config.Profile {
+	profile.Environment = "test"
+	profile.OpenPlatformBaseURL = "https://test-open.qtech.cn"
+	profile.Resource = "https://test-open.qtech.cn"
+	profile.AppTokenEndpoint = testEnvironmentFixtureURL(profile.AppTokenEndpoint, "https://test-open.qtech.cn")
+	profile.ProtectedResourceMetadataURL = testEnvironmentFixtureURL(profile.ProtectedResourceMetadataURL, "https://test-open.qtech.cn")
+	profile.AuthorizationServerMetadataURL = testEnvironmentFixtureURL(profile.AuthorizationServerMetadataURL, "https://test-myaccount.qtech.cn")
+	profile.Identities.User.AuthorizationEndpoint = testEnvironmentFixtureURL(profile.Identities.User.AuthorizationEndpoint, "https://test-myaccount.qtech.cn")
+	profile.Identities.User.DeviceAuthorizationEndpoint = testEnvironmentFixtureURL(profile.Identities.User.DeviceAuthorizationEndpoint, "https://test-myaccount.qtech.cn")
+	profile.Identities.User.TokenEndpoint = testEnvironmentFixtureURL(profile.Identities.User.TokenEndpoint, "https://test-myaccount.qtech.cn")
+	profile.Identities.User.RevocationEndpoint = testEnvironmentFixtureURL(profile.Identities.User.RevocationEndpoint, "https://test-myaccount.qtech.cn")
+	profile.Identities.User.RegistrationEndpoint = testEnvironmentFixtureURL(profile.Identities.User.RegistrationEndpoint, "https://test-myaccount.qtech.cn")
 	return profile
 }
 
-func productionFixtureURL(rawURL, origin string) string {
+func testEnvironmentFixtureURL(rawURL, origin string) string {
 	if rawURL == "" {
 		return ""
 	}

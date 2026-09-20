@@ -15,7 +15,7 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 	for _, required := range []string{
 		"禁止无边界接口枚举与批量调用",
 		"具体业务目标",
-		"默认使用 `contract` profile 和 `prod` 环境；test 使用独立的 `contract-test` profile",
+		"本测试分支仅启用 `test` 环境；prod 暂时禁用，dev 入口已屏蔽",
 		"禁止混用不同环境的地址和凭据",
 		"禁止未经明确要求自动切换环境",
 		"允许操作的业务模块或接口范围",
@@ -30,7 +30,7 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 		"App Secret",
 		"device code",
 		"密码",
-		"prod 按现有 Device Grant 执行 `auth init`",
+		"test 使用 `auth login --profile contract-test --as user`",
 		"明确提示联系管理员",
 		"不得索要其他 Token",
 		"不复述、不写入命令、不继续调用",
@@ -46,7 +46,7 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 
 	for _, required := range []string{
 		"不得主动询问或接收原始凭证",
-		"默认使用 `contract` profile 和 `prod` 环境；test 使用独立的 `contract-test` profile",
+		"本测试分支仅启用 `test` 环境；prod 暂时禁用，dev 入口已屏蔽",
 		"Skill 更新后必须完全退出并新建任务",
 		"已有任务不会热加载新 Skill",
 		"命令示例仅供本地操作者使用",
@@ -62,6 +62,7 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 	}
 
 	for _, forbidden := range []string{
+		"--env prod",
 		"使用环境（dev、test 或 prod）",
 		"contract-dev",
 		"--env dev",
