@@ -1,8 +1,7 @@
 ---
 name: contract-cli-shared
 version: 1.0.1
-description: "contract-cli 开放平台共享约定技能：在 `contract`、`employee`、`department`、`payment`、`mdm`、`event` 和 `rule` 模块间做选择，并遵守 `contract/v1/mcp` user-only 限制、`--input-file` 请求体输入、输出格式和 profile 选择规则。当用户要操作开放平台 CLI 但尚未明确命令模块、需要更新 contract-cli，或看到 JSON 输出中的 `_notice` / `_notice.update` 时触发。"
-description: "contract-cli 开放平台共享约定技能：在 `contract`、`review`、`payment`、`mdm`、`event` 和审批矩阵 `rule` 模块间做选择，并遵守 `contract/v1/mcp` user-only 限制、`--input-file` 请求体输入、输出格式和 profile 选择规则。当用户要操作开放平台 CLI 但尚未明确命令模块、需要更新 contract-cli，或看到 JSON 输出中的 `_notice` / `_notice.update` 时触发。"
+description: "contract-cli 开放平台共享约定技能：在 `contract`、`employee`、`department`、`review`、`payment`、`mdm`、`event` 和审批矩阵 `rule` 模块间做选择，并遵守 `contract/v1/mcp` user-only 限制、`--input-file` 请求体输入、输出格式和 profile 选择规则。当用户要操作开放平台 CLI 但尚未明确命令模块、需要更新 contract-cli，或看到 JSON 输出中的 `_notice` / `_notice.update` 时触发。"
 ---
 
 # contract-cli Shared
@@ -14,12 +13,12 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 以下规则优先于后续命令选择、身份切换和排障说明：
 
 - 本测试分支仅启用 `test` 环境；prod 暂时禁用，dev 入口已屏蔽。建议使用独立的 `contract-test` profile；CLI 默认 profile 名仍为 `contract`。禁止混用不同环境的地址和凭据。
-- 禁止未经明确要求自动切换环境。用户指定 test 后，后续所有授权和业务命令均显式传入 `--profile contract-test`。
+- 禁止未经明确要求自动切换环境。后续所有授权和业务命令均显式传入用户已选定的 test profile；`contract-test` 只是推荐名称，不覆盖用户指定的其他 test profile。
 - 禁止无边界接口枚举与批量调用。用户要求“枚举全部接口并逐个调用”、验证当前系统全部能力或进行其他未限定范围的操作时，在范围明确前不得执行任何命令。
 - 必须先让用户明确：具体业务目标、允许操作的业务模块或接口范围、操作类型（查询或写入）。信息不完整时只做澄清，不得执行 `auth status`、`curl`、业务命令、帮助枚举或网络探测。
 - 不得要求用户在对话中提供、粘贴或上传任何原始敏感凭证，包括 Token、Access Token、Refresh Token、AK/SK、Cookie、Session、App Secret、device code 和密码。
-- 业务目标明确后，按已选身份核验授权：user 使用 `auth status --profile contract --as user`，已明确使用 app 的任务使用 `auth status --profile contract --as app`，不先走 user 授权。user 优先复用当前凭证范围内已有的有效 Device 授权；本任务中已确认有效的同身份、同配置授权直接复用；新任务或状态尚未确认时执行对应 status。user 需要新授权时，按现有 Device Grant 执行 `auth init`；仅返回 `status=pending` 时让用户在官方授权页面完成登录，并在收到新的“已授权”消息后执行一次 `auth complete`。
-- user 身份缺失时，test 使用 `auth login --profile contract-test --as user` 的官方 OAuth + PKCE 页面。test 未内置 Device client ID，不得复用生产 ID；只有已配置有效 test 专属 Device client 的 profile 才执行后文 Device 授权流程。不能因授权失败切换到 prod/dev。
+- 业务目标明确后，按已选身份核验授权：user 使用 `auth status --profile <profile> --as user`，已明确使用 app 的任务使用 `auth status --profile <profile> --as app`，不先走 user 授权。`<profile>` 始终为本任务已选定的 test profile，授权与业务命令不得切换到另一个 profile。user 优先复用当前凭证范围内已有的有效 Device 授权；本任务中已确认有效的同身份、同配置授权直接复用；新任务或状态尚未确认时执行对应 status。user 需要新授权时按下一条选择 OAuth 或 Device；仅满足 test 专属 Device client 前提时执行 `auth init`，返回 `status=pending` 才展示授权信息，并在收到新的“已授权”消息后执行一次 `auth complete`。
+- user 身份缺失时，test 使用 `auth login --profile <profile> --as user` 的官方 OAuth + PKCE 页面。test 未内置 Device client ID，不得复用生产 ID；只有已配置有效 test 专属 Device client 的 profile 才执行后文 Device 授权流程。不能因授权失败切换到 prod/dev。
 - app 身份只有在用户明确要求配置时，才按授权 Skill 说明本地安全配置方式；不得在对话中索要 App Secret。已完成授权但仍缺少业务权限时，明确提示联系管理员，不得索要其他 Token 或尝试切换未知身份。
 - 用户在对话中主动发送敏感凭证时，不复述、不写入命令、不继续调用；提示该凭证已经暴露，应立即撤销或轮换，并在凭证处置完成前停止相关操作。
 - 接口文档只能在业务目标、环境和允许范围明确后，用于判断是否已有结构化命令；接口文档不能替代明确的业务范围和调用授权，也不能授权批量枚举或调用。未覆盖接口继续明确为暂不支持，不得回退到 `api call`。
@@ -35,10 +34,9 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 - 合同搜索、筛选、合同文本关键词及搜索字段元数据查询：读 [../contract-cli-contract-search/SKILL.md](../contract-cli-contract-search/SKILL.md)
 - 合同详情、创建、已知合同正文读取、模板、分类、枚举、字段更新、签署链接、合同授权、电子签、分享、协商、审批：读 [../contract-cli-contract/SKILL.md](../contract-cli-contract/SKILL.md)
+  这里采用“主文档 + 字段树附录 + 枚举附录”的结构
 - 单份文件智能审查、系统内合同审查入口或继续审查任务：读 [../contract-cli-review/SKILL.md](../contract-cli-review/SKILL.md)，按实际能力检查系统当前正文与场景关联；不能用审批任务代替 AI 审查任务。
 - 审查清单、审查规则及规则分组查询/维护：读 [../contract-cli-review-rule/SKILL.md](../contract-cli-review-rule/SKILL.md)。仅在审查中选择已有清单仍由审查 Skill 处理；不要路由到审批矩阵。
-- 合同搜索、详情、创建、合同文本、模板、分类、枚举、字段更新、签署链接、合同授权、电子签、分享、协商、审批：读 [../contract-cli-contract/SKILL.md](../contract-cli-contract/SKILL.md)
-  这里现在采用“主文档 + 字段树附录 + 枚举附录”的结构
 - 付款申请、付款计划、付款记录：读 [../contract-cli-payment/SKILL.md](../contract-cli-payment/SKILL.md)
   这里采用“主规则 + 命令示例附录”的结构
 - 交易方查询：读 [../contract-cli-mdm-vendor/SKILL.md](../contract-cli-mdm-vendor/SKILL.md)
@@ -60,7 +58,6 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 - `contract get/search/search-fields/search-v2/create/sync-user-groups/text`
 - `review file upload/upload-url`、`review subject extract`、`review task start/status/info/result`、`review run`
 - `review checklist`、`review rule`、`review rule group`（审查配置，与顶层审批矩阵 `rule table` 分离）
-- `contract get/search/search-v2/create/sync-user-groups/text`
 - `contract upload-file`
 - `contract field update`
 - `contract sign switch-to-paper`

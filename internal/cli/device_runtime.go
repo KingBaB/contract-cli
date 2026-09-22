@@ -92,7 +92,7 @@ func (a *App) reuseDeviceAuthorization(ctx context.Context, profile config.Profi
 	if _, err := a.refreshDeviceTokenUnderLock(ctx, profile, existing.Token.AccessToken, false, store); err != nil {
 		return true, err
 	}
-	stored, err := a.loadProductionDeviceCredential(profile, store)
+	stored, err := a.loadEnvironmentDeviceCredential(profile, store)
 	if err != nil {
 		return true, err
 	}
@@ -125,7 +125,7 @@ func (a *App) restoreLocalDeviceIdentity(profile config.Profile) (config.Profile
 	if err != nil {
 		return config.Profile{}, err
 	}
-	stored, err := a.loadProductionDeviceCredential(profile, store)
+	stored, err := a.loadEnvironmentDeviceCredential(profile, store)
 	if errors.Is(err, credential.ErrCredentialNotFound) {
 		return profile, nil
 	}

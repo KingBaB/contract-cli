@@ -45,8 +45,8 @@ func TestReviewSkillDistributionAndRouting(t *testing.T) {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(target)
-	if err != nil || len(entries) != 13 {
-		t.Fatalf("want 13 installed skills, got %d: %v", len(entries), err)
+	if err != nil || len(entries) != 16 {
+		t.Fatalf("want 16 installed skills, got %d: %v", len(entries), err)
 	}
 	for _, name := range []string{"contract-cli-shared", "contract-cli-contract"} {
 		content := readTextFile(t, filepath.Join(target, name, "SKILL.md"))

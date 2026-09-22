@@ -8,7 +8,7 @@
   "scripts": {
     "postinstall": "node scripts/install.js",
     "build": "./build.sh",
-    "test": "go test ./...",
+    "test": "node --test scripts/skill-merge.test.js && go test ./...",
     "test:installer": "node --test scripts/install.test.js"
   },
   "config": {

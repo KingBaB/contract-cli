@@ -30,8 +30,8 @@ func localDeviceApp(t *testing.T, task string, token *config.Token, handler devi
 		return invocation.Result{Platform: "darwin", AgentSourceType: "doubaoWork", EvidenceType: "macos_code_signature", Confidence: "high", RuleID: "client.doubao_work.signed-bundle"}
 	}
 	profile := mustDeviceProfile(t, app.store)
-	profile.Identities.User.DeviceAuthorizationEndpoint = "https://myaccount.qfei.cn/api/public/oauth/device-authorization/contract"
-	profile.Identities.User.RevocationEndpoint = "https://myaccount.qfei.cn/api/public/oauth/revoke/contract"
+	profile.Identities.User.DeviceAuthorizationEndpoint = "https://test-myaccount.qtech.cn/api/public/oauth/device-authorization/contract"
+	profile.Identities.User.RevocationEndpoint = "https://test-myaccount.qtech.cn/api/public/oauth/revoke/contract"
 	profile.Identities.User.DeviceScope = "contract:full contract-review:full"
 	if err := app.store.SaveProfile(profile); err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestLocalDeviceRealStoreReusesAuthorizationAfterTaskAndProfileDirectoryChan
 		requests++
 		switch request.URL.Path {
 		case "/api/public/oauth/device-authorization/contract":
-			return deviceTokenTestResponse(http.StatusOK, `{"device_code":"test-device","user_code":"test-code","verification_uri":"https://myaccount.qfei.cn/device","verification_uri_complete":"https://myaccount.qfei.cn/device?user_code=test-code","expires_in":600}`), nil
+			return deviceTokenTestResponse(http.StatusOK, `{"device_code":"test-device","user_code":"test-code","verification_uri":"https://test-myaccount.qtech.cn/device","verification_uri_complete":"https://test-myaccount.qtech.cn/device?user_code=test-code","expires_in":600}`), nil
 		case "/api/public/oauth/token/contract":
 			return deviceTokenTestResponse(http.StatusOK, `{"access_token":"test-access","refresh_token":"test-refresh","expires_in":3600}`), nil
 		case "/api/public/oauth/revoke/contract":
@@ -322,8 +322,8 @@ func TestLocalDeviceRestorePreservesLegacyLoginConfiguration(t *testing.T) {
 	profile := mustDeviceProfile(t, app.store)
 	shared.values["contract"] = credential.DeviceCredential{Token: shared.values["contract"].Token, DeviceProfile: snapshotDeviceProfile(profile)}
 	profile.Identities.User.AuthMode = ""
-	profile.Identities.User.AuthorizationEndpoint = "https://myaccount.qfei.cn/authorize"
-	profile.Identities.User.RegistrationEndpoint = "https://myaccount.qfei.cn/register"
+	profile.Identities.User.AuthorizationEndpoint = "https://test-myaccount.qtech.cn/authorize"
+	profile.Identities.User.RegistrationEndpoint = "https://test-myaccount.qtech.cn/register"
 	profile.Identities.User.RedirectURL = "http://127.0.0.1:8000/callback"
 	profile.Identities.User.ClientID = "legacy-client"
 	if err := app.store.SaveProfile(profile); err != nil {

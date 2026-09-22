@@ -142,7 +142,7 @@ func TestDeviceAuthSkillsDistinguishReusableCredentialsFromPendingAuthorization(
 	} {
 		content := readDeviceAuthSkillFile(t, path)
 		for _, required := range []string{
-			"auth status --profile contract --as user",
+			"auth status --profile ",
 			"status=authorized",
 			"status=pending",
 		} {

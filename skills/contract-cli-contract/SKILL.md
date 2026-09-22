@@ -1,7 +1,6 @@
 ---
 name: contract-cli-contract
-description: "contract-cli 合同命令技能：支持 user/app 双身份下的合同详情、创建、文本、分类、模板、上传、下载和审批详情；支持 user 身份查询/创建审批评论、查询个人任务、通过/拒绝任务；并支持 app 身份下的合同与审批管理。当用户要读取已知合同、创建、更新、下载或办理合同时触发；搜索和筛选合同使用 contract-cli-contract-search。"
-description: "contract-cli 合同命令技能：支持 user/app 双身份下的合同详情、搜索、创建、文本、分类、模板、上传、下载和审批详情；支持 user 身份查询/创建审批评论、查询个人任务、通过/拒绝任务；并支持 app 身份下的合同与审批管理。当用户要使用 `contract-cli contract ...` 操作合同能力时触发；智能审查及审查配置请求分派至独立审查 Skill。"
+description: "contract-cli 合同命令技能：支持 user/app 双身份下的合同详情、创建、文本、分类、模板、上传、下载和审批详情；支持 user 身份查询/创建审批评论、查询个人任务、通过/拒绝任务；并支持 app 身份下的合同与审批管理。当用户要读取已知合同、创建、更新、下载或办理合同时触发；搜索和筛选合同使用 contract-cli-contract-search，智能审查及审查配置请求分派至独立审查 Skill。"
 ---
 
 # contract-cli Contract
@@ -212,8 +211,9 @@ CRITICAL — 开始前 MUST 先读取 [../contract-cli-shared/SKILL.md](../contr
 ## 操作建议
 
 - 先确认 profile 已完成目标身份的登录：
-  - 新任务先执行 `auth status --profile contract --as user`；profile 的 `user.auth_mode=device` 且已有有效授权时直接复用。需要授权时按授权 Skill 执行一次 `auth init`：`status=authorized` 直接继续业务请求，不展示授权链接、不执行 `auth complete`；仅 `status=pending` 时展示授权信息，用户确认完成后再执行一次 `auth complete`。不要启动本机回调登录或持续轮询。
-  - 仅保留的 Authorization Code 模式使用 `auth login --as user`。
+  - user 任务先执行 `auth status --profile <profile> --as user`；app 任务执行 `auth status --profile <profile> --as app`，不先请求 user 授权。`<profile>` 始终为本任务选定的 test profile。
+  - profile 的 `user.auth_mode=device` 且已有有效授权时直接复用。只有已配置有效 test 专属 Device client 的 profile 才按授权 Skill 执行 `auth init`：`status=authorized` 直接继续业务请求，不展示授权链接、不执行 `auth complete`；仅 `status=pending` 时展示授权信息，用户确认完成后再执行一次 `auth complete`，不持续轮询。
+  - 新建 test profile 未配置 Device client 时，以及保留的 Authorization Code 模式，使用 `auth login --profile <profile> --as user`；宿主无法完成本机回调时报告缺口，不复用生产 client 或切换环境。
   - user 身份覆盖详情、搜索、创建、同步用户组、合同文本、分类、模板、文件上传和其他 user-only 命令。
   - app 详情、app 搜索、app 创建、app 同步用户组、app 合同文本、app 分类查询、app 模板列表、app 模板详情、app 模板实例、app 文件上传、app 提交/重提/更新/删除/下载/打印/分享/协商查询/审批管理：`auth login --as app`
 - 复杂请求体优先用 `--input-file`
