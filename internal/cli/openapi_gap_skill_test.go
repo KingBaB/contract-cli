@@ -257,7 +257,7 @@ func TestSharedSkillRoutesAllCurrentContractCapabilities(t *testing.T) {
 	}
 }
 
-func TestDisabledAPICallAgentMetadataDoesNotSuggestInvocation(t *testing.T) {
+func TestNonStandaloneAPICallAgentMetadataDoesNotSuggestInvocation(t *testing.T) {
 	t.Parallel()
 
 	content := readTextFile(t, filepath.Join("..", "..", "skills", "contract-cli-api-call", "agents", "openai.yaml"))
@@ -266,7 +266,7 @@ func TestDisabledAPICallAgentMetadataDoesNotSuggestInvocation(t *testing.T) {
 		"allow_implicit_invocation: true",
 	} {
 		if strings.Contains(content, forbidden) {
-			t.Fatalf("disabled api-call agent metadata should not suggest invocation: %q", forbidden)
+			t.Fatalf("non-standalone api-call metadata should not suggest direct invocation: %q", forbidden)
 		}
 	}
 }

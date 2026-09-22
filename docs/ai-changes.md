@@ -1,5 +1,14 @@
 # AI 变更记录
 
+- 2026-09-22
+  变更摘要：开放 `contract-cli api call --channel web`，为业务 Skill 提供 Open Web 通用执行通道。
+  涉及文件/模块：CLI API 命令与帮助、openplatform 路径/身份策略、命令/README/Changelog、非独立 API Skill 维护资料及测试。
+  关键逻辑/决策：仅允许 user 身份、`/open-web/web/**` 相对路径和网关支持的方法；授权只复用 CLI profile / Device Grant。
+  安全边界：拒绝外部 Authorization/Cookie/租户/用户/网关/代理来源头、危险路径形式和超过 1 MiB 的 body。
+  传输语义：支持重复 `--query`/`--header`、`--data`/`--input-file` 和既有输出；不追加 OpenPlatform 默认 query。
+  架构边界：CLI 不发现接口或编排业务；通道不发布独立 Skill，由业务 Skill 提供 method/path/query/body/响应映射。
+  验证：TDD 覆盖 profile 与 Device Grant 授权复用、请求映射和拒绝路径；可提交快照 `go test ./...` 通过，golangci-lint 0 issues。
+
 - 2026-09-21
   变更摘要：将合同搜索 Skill 调整为“页面默认关键词＋实体/字段引导”的混合路由。
   涉及文件/模块：搜索主 Skill、openai.yaml、全部关键词与引导参考、路由回归测试。

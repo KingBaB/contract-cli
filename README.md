@@ -4,7 +4,7 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D16-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-UNLICENSED-lightgrey.svg)](./LICENSE)
 
-`contract-cli` 是合同开放平台的命令行工具，面向人类使用者和 AI Agent 共同设计。它覆盖 profile 配置、user OAuth、app 身份、合同结构化命令、MDM 主数据命令、Agent skills 安装、版本检查、源码构建和 npm/npx 薄包装分发。
+`contract-cli` 是合同开放平台的命令行工具，面向人类使用者和 AI Agent 共同设计。它覆盖 profile 配置、user OAuth、app 身份、合同结构化命令、MDM 主数据命令、Open Web 通用执行通道、Agent skills 安装、版本检查、源码构建和 npm/npx 薄包装分发。
 
 [快速开始](#installation--quick-start) · [AI Agent](#quick-start-ai-agent) · [Agent Skills](#agent-skills) · [鉴权](#authentication) · [命令体系](#command-system) · [高级用法](#advanced-usage) · [安全提示](#security--risk-warnings) · [完整命令文档](docs/cli-command-reference.md) · [User MCP 审批接口](docs/user-mcp-approval-interfaces.md)
 
@@ -29,6 +29,7 @@
 | 模板与分类 | 分类列表、模板列表、模板详情、模板实例创建、枚举查询 |
 | 分享与协商 | 合同分享记录、协商邀请链接、协商操作记录 |
 | MDM 主数据 | 交易方列表/详情、法人主体列表/详情、字段配置查询 |
+| Open Web | 复用 CLI user 授权执行由业务 Skill 提供的已知 `/open-web/web/**` 页面接口配方 |
 | Agent Skills | `auth`、共享约定、合同命令、交易方、法人主体、字段配置等内置 skills |
 | 构建发布 | Go 构建、npm 包、release assets、发布前检查、本地安装验证 |
 
@@ -239,6 +240,7 @@ contract-cli auth logout --profile contract --as app
 
 - `config`、`version`、`update check`、`skills list/install` 不需要登录态。
 - `contract ...`、`mdm ...` 结构化命令会根据 `--as user|app` 选择对应底层路径。
+- `api call --channel web` 固定使用 user 身份和 CLI 自身授权，不接受外部 Token 或 app 身份。
 - 当前大部分 MCP 路径仍是 user-only；显式用 app 调用 user-only 路径会直接报错。
 - `contract search-v2`、`contract field update`、`contract sign switch-to-paper`、`contract sign-url get`、`contract form attribute list`、`contract authorization grant`、`contract esign *`、`contract submit/resubmit/patch/delete/print-file`、`contract share get/batch-create`、`contract cooperation link/record/search/file`、`contract approval start`、`payment *`、`mdm vendor create/update/list-all/query-by-cert`、`mdm legal get --code/create/update`、`mdm fixed-exchange-rate get/update`、`mdm file download`、`event outbound-ip list` 和 `rule table *` 当前仅支持 app 身份。
 - `contract download-file`、`contract approval get` 支持 user/app；`contract search-fields`、`contract approval comment list/create` 与 `contract approval task list/approve/reject` 仅支持 user。
@@ -246,7 +248,7 @@ contract-cli auth logout --profile contract --as app
 
 ## Command System
 
-`contract-cli` 不暴露未开放的 raw API 入口。当前命令体系分三层，优先使用结构化命令和本地帮助。
+`contract-cli` 不暴露任意 raw API 入口。除结构化命令外，只开放受限的 Open Web 通道，用于执行业务 Skill 已提供的已知接口配方。
 
 ### 1. 本地帮助与基础命令
 
@@ -293,6 +295,22 @@ contract-cli mdm legal update <legal-entity-id> --profile contract --as app --us
 contract-cli mdm fields list --profile contract --as user --biz-line vendor
 contract-cli mdm fields list --profile contract --as app --biz-line legal_entity
 ```
+
+### 4. Open Web 通用执行通道
+
+业务 Skill 已给出 method、Open Web path、query/body 和响应映射时，Agent 可通过统一通道执行；CLI 不发现或猜测页面接口。
+
+```bash
+contract-cli api call \
+  --channel web \
+  --profile contract \
+  --as user \
+  --output json \
+  POST /open-web/web/clm/statistic/contractInfoByTradingParty \
+  --data '<JSON>'
+```
+
+该通道仅接受 user 身份和相对 `/open-web/web/**` 路径。授权来自 CLI profile / Device Grant；`Authorization`、`Cookie`、租户/用户及网关可信身份头不能通过 `--header` 传入。完整参数与安全边界见[命令文档](docs/cli-command-reference.md#3-open-web-通用调用)。
 
 ## Advanced Usage
 

@@ -174,10 +174,19 @@ func commonBoolFlags(extra ...string) map[string]struct{} {
 }
 
 func (a *App) executeOpenPlatformCommand(ctx context.Context, options commandOptions, request openplatform.Request) error {
-	client, requestContext, err := a.openPlatformClientAndContextForOptions(options, request.Path, request.IdentityPolicy)
+	return a.executeOpenPlatformCommandWithCommonQuery(ctx, options, request, commandCommonQuery(options))
+}
+
+func (a *App) executeOpenPlatformCommandWithoutCommonQuery(ctx context.Context, options commandOptions, request openplatform.Request) error {
+	return a.executeOpenPlatformCommandWithCommonQuery(ctx, options, request, nil)
+}
+
+func (a *App) executeOpenPlatformCommandWithCommonQuery(ctx context.Context, options commandOptions, request openplatform.Request, commonQuery url.Values) error {
+	client, requestContext, err := a.openPlatformClientAndContext(options.profileName, options.identity, request.Path, request.IdentityPolicy)
 	if err != nil {
 		return err
 	}
+	requestContext.CommonQuery = commonQuery
 
 	response, err := client.Do(ctx, requestContext, request)
 	if err != nil {
