@@ -1,0 +1,7 @@
+interface:
+  display_name: "Contract CLI Contract"
+  short_description: "Run contract commands with identity-aware field references"
+  default_prompt: "Use $contract-cli-contract to run contract get/create/text/template/file/action/esign/authorization/cooperation commands from bundled references; route contract search and search-v2 to $contract-cli-contract-search."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,59 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  NPM_REGISTRY_URL: https://registry.npmjs.org/
+  NPM_ACCESS: public
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: ${{ env.NPM_REGISTRY_URL }}
+          package-manager-cache: false
+
+      - name: Publish GitHub Release
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Prepare package
+        env:
+          PACKAGE_NAME: ${{ vars.NPM_PACKAGE_NAME }}
+        run: |
+          [ -z "${PACKAGE_NAME:-}" ] || npm pkg set "name=$PACKAGE_NAME"
+          npm pkg set "version=${GITHUB_REF_NAME#v}" "config.downloadBaseURLTemplate=https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME"
+
+      - name: Build npm release assets
+        run: make release-assets
+
+      - name: Publish npm package
+        if: ${{ github.repository == 'qfeius/contract-cli' }}
+        env:
+          NPM_TAG: ${{ contains(github.ref_name, 'beta') && 'beta' || 'latest' }}
+        run: npm publish --provenance --registry "$NPM_REGISTRY_URL" --access "$NPM_ACCESS" --tag "$NPM_TAG"

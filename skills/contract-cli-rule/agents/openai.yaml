@@ -1,0 +1,7 @@
+interface:
+  display_name: "Contract CLI Rule"
+  short_description: "Operate approval matrix rule tables"
+  default_prompt: "Use $contract-cli-rule to query and operate approval matrix rule tables with contract-cli."
+
+policy:
+  allow_implicit_invocation: true

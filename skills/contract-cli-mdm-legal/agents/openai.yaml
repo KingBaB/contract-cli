@@ -1,0 +1,7 @@
+interface:
+  display_name: "Contract CLI MDM Legal"
+  short_description: "Query legal entities and create or update legal entities"
+  default_prompt: "Use $contract-cli-mdm-legal to query legal entity candidates or legal entity details with user or app identity, or create, update, and query by code with app identity."
+
+policy:
+  allow_implicit_invocation: true

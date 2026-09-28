@@ -1,0 +1,53 @@
+{
+  "name": "@qfeius/contract-cli",
+  "version": "1.9.2-beta.1",
+  "description": "CLI for Qfei contract open platform",
+  "bin": {
+    "contract-cli": "scripts/run.js",
+    "contract-cli-setup": "scripts/setup.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js",
+    "build": "./build.sh",
+    "test": "go test ./...",
+    "test:installer": "node --test scripts/install.test.js scripts/setup.test.js"
+  },
+  "config": {
+    "binaryName": "contract-cli",
+    "downloadBaseURLTemplate": "https://github.com/qfeius/contract-cli/releases/download/v{version}"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qfeius/contract-cli.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "license": "UNLICENSED",
+  "files": [
+    "scripts/install.js",
+    "scripts/run.js",
+    "scripts/setup.js",
+    "dist/release-assets/**",
+    "skills/**/SKILL.md",
+    "skills/**/agents/**",
+    "skills/**/references/**",
+    "!skills/contract-cli-api-call/**",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ]
+}
