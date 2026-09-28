@@ -1,0 +1,7 @@
+interface:
+  display_name: "Contract CLI API Call"
+  short_description: "Disabled raw open-platform API call skill metadata kept for historical context"
+  default_prompt: "Do not invoke this disabled skill. Use opened structured contract-cli commands; if an endpoint is not covered, add a structured command and matching skill first."
+
+policy:
+  allow_implicit_invocation: false
