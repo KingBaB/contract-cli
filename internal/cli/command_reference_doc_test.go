@@ -28,6 +28,7 @@ func TestCommandReferenceDocumentCoversCurrentSupportedCommands(t *testing.T) {
 		"contract-cli help contract upload-file",
 		"contract-cli contract search --help",
 		"contract-cli config add --env prod --name contract",
+		"contract-cli config add --env test --name contract",
 		"contract-cli config add",
 		"contract-cli auth login",
 		"contract-cli auth status",
@@ -52,6 +53,8 @@ func TestCommandReferenceDocumentCoversCurrentSupportedCommands(t *testing.T) {
 		"contract-cli-employee",
 		"contract-cli-department",
 		"contract-cli contract search-v2",
+		"contract-cli contract summary query",
+		"contract-cli contract summary generate",
 		"contract-cli contract get",
 		"contract-cli contract sync-user-groups",
 		"contract-cli contract text",
@@ -120,6 +123,7 @@ func TestCommandReferenceDocumentCoversCurrentSupportedCommands(t *testing.T) {
 		"contract-cli rule table import plan",
 		"contract-cli rule table import apply",
 		"`contract approval comment list/create` 与 `contract approval task list/approve/reject` 仅支持 `--as user`",
+		"`contract summary query/generate` 仅支持 `--as user`",
 		"`rule *`（包括 `approval-matrix` 别名）支持 `--as user` / `--as app`",
 		"`contract search-v2`、`contract field update`、`contract sign switch-to-paper`、`contract sign-url get`",
 		"`contract share get/batch-create`、`contract cooperation link/record/search/file`",
@@ -150,8 +154,6 @@ func TestCommandReferenceDocumentCoversCurrentSupportedCommands(t *testing.T) {
 		"/Users/lyy/",
 		"当前只预置 `dev`",
 		"`--env`：当前仅支持 `dev`",
-		"支持 `prod` 和 `dev`",
-		"contract-cli config add --env dev",
 		"`contract text --as app` 走 `POST /open-apis/contract/v1/contracts/{contract_id}/text?...`",
 		"除上述 app 能力外，当前其他结构化业务命令仍只支持 `--as user`",
 	} {
@@ -212,12 +214,14 @@ func TestREADMECoversBundledSkillsAndNewAppOnlyCommands(t *testing.T) {
 
 	text := string(content)
 	requiredFragments := []string{
+		"`zhishu-contract-summary`",
 		"`contract-cli-payment`",
 		"`contract-cli-mdm-exchange`",
 		"`contract-cli-mdm-file`",
 		"`contract-cli-event`",
 		"`contract-cli-rule`",
 		"`contract search-v2`",
+		"`contract summary query/generate`",
 		"`contract authorization grant`",
 		"`mdm vendor create/update/list-all/query-by-cert`",
 		"`mdm legal get --code/create/update`",

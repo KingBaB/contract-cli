@@ -620,13 +620,9 @@ func (a *App) providerFor(identity config.IdentityKind) authProvider {
 	}
 }
 
-/*
-resolveEnvironment 只提供线上 prod 环境预设，非生产环境在任何网络请求前被拒绝。
-入参 name（string）为环境名；返回 environmentPreset 和 error。
-*/
 func resolveEnvironment(name string) (environmentPreset, error) {
 	switch name {
-	case "prod":
+	case productionEnvironment:
 		return environmentPreset{
 			OpenPlatformBaseURL:            "https://open.qfei.cn",
 			AppTokenEndpoint:               "https://open.qfei.cn/open-apis/auth/v3/tenant_access_token/internal",
@@ -640,8 +636,22 @@ func resolveEnvironment(name string) (environmentPreset, error) {
 			DeviceClientID:                 "zscli_892efdadc11a3f53",
 			DeviceScope:                    "contract:full contract-review:full",
 		}, nil
+	case testEnvironment:
+		return environmentPreset{
+			OpenPlatformBaseURL:            "https://test-open.qtech.cn",
+			AppTokenEndpoint:               "https://test-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal",
+			ProtectedResourceMetadataURL:   "",
+			AuthorizationServerMetadataURL: "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
+			Resource:                       "https://test-open.qtech.cn",
+			RedirectURL:                    "http://127.0.0.1:8000/callback",
+			Scopes:                         []string{"cli:tools", "cli:resources"},
+			BusinessType:                   "contract",
+			ClientName:                     "contract-cli",
+			DeviceClientID:                 "zscli_892efdadc11a3f53",
+			DeviceScope:                    "contract:full contract-review:full",
+		}, nil
 	default:
-		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod", name)
+		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod, test", name)
 	}
 }
 

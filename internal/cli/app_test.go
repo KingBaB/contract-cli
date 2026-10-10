@@ -1063,27 +1063,52 @@ func TestConfigAddUsesProdPresetByDefault(t *testing.T) {
 	}
 }
 
-func TestConfigAddRejectsDevPresetBeforeNetworkRequest(t *testing.T) {
+func TestConfigAddSupportsTestPreset(t *testing.T) {
 	t.Parallel()
 
-	requestCount := 0
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	store := config.NewStore(t.TempDir())
+
 	app := cli.New(cli.Options{
-		Stdout: &bytes.Buffer{},
-		Stderr: &bytes.Buffer{},
-		Store:  config.NewStore(t.TempDir()),
+		Stdout: stdout,
+		Stderr: stderr,
+		Store:  store,
 		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			requestCount++
-			t.Fatalf("dev preset must be rejected before network request: %s", req.URL.String())
-			return nil, nil
+			if req.URL.String() != "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract" {
+				t.Fatalf("unexpected request url: %s", req.URL.String())
+			}
+			return jsonResponse(`{"issuer":"common-organization-v2","authorization_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/authorize/contract","device_authorization_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/device-authorization/contract","token_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/token/contract","revocation_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/revoke/contract","registration_endpoint":"https://test-myaccount.qtech.cn/api/public/oauth/register/contract"}`), nil
 		})},
 	})
 
-	err := app.Run(context.Background(), []string{"config", "add", "--name", "contract", "--env", "dev"})
-	if err == nil || err.Error() != `unsupported environment "dev"; supported environments: prod` {
-		t.Fatalf("config add dev error = %v", err)
+	if err := app.Run(context.Background(), []string{"config", "add", "--name", "contract", "--env", "test"}); err != nil {
+		t.Fatalf("config add test error = %v", err)
 	}
-	if requestCount != 0 {
-		t.Fatalf("network request count = %d, want 0", requestCount)
+	savedProfile, err := store.GetProfile("contract")
+	if err != nil {
+		t.Fatalf("GetProfile() error = %v", err)
+	}
+	if savedProfile.Environment != "test" {
+		t.Fatalf("environment = %q", savedProfile.Environment)
+	}
+	if savedProfile.OpenPlatformBaseURL != "https://test-open.qtech.cn" {
+		t.Fatalf("open platform base url = %q", savedProfile.OpenPlatformBaseURL)
+	}
+	if savedProfile.AppTokenEndpoint != "https://test-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal" {
+		t.Fatalf("app token endpoint = %q", savedProfile.AppTokenEndpoint)
+	}
+	if savedProfile.AuthorizationServerMetadataURL != "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract" {
+		t.Fatalf("authorization server metadata url = %q", savedProfile.AuthorizationServerMetadataURL)
+	}
+	if savedProfile.Resource != "https://test-open.qtech.cn" {
+		t.Fatalf("resource = %q", savedProfile.Resource)
+	}
+	if savedProfile.Identities.User.DeviceAuthorizationEndpoint != "https://test-myaccount.qtech.cn/api/public/oauth/device-authorization/contract" {
+		t.Fatalf("device authorization endpoint = %q", savedProfile.Identities.User.DeviceAuthorizationEndpoint)
+	}
+	if !strings.Contains(stdout.String(), `Profile "contract" saved for test.`) {
+		t.Fatalf("unexpected output: %s", stdout.String())
 	}
 }
 
@@ -1460,7 +1485,7 @@ func TestAuthLoginAppReturnsErrorWhenProfileMissesTokenEndpoint(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error")
 	}
-	if !strings.Contains(err.Error(), "run `contract-cli config add --env prod --name contract` first") {
+	if !strings.Contains(err.Error(), "run `contract-cli config add --env prod --name contract` (or `--env test` for test) first") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

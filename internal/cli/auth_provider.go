@@ -214,7 +214,7 @@ func (p appAuthProvider) Login(ctx context.Context, profile *config.Profile, opt
 		return "", err
 	}
 	if profile.AppTokenEndpoint == "" {
-		err = fmt.Errorf("app identity is not configured; run `contract-cli config add --env prod --name %s` first", profile.Name)
+		err = fmt.Errorf("app identity is not configured; run `contract-cli config add --env prod --name %s` (or `--env test` for test) first", profile.Name)
 		p.logger.Error("app auth token endpoint missing", "profile", profile.Name, "environment", profile.Environment, "error", err.Error())
 		return "", err
 	}

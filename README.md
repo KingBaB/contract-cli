@@ -24,7 +24,7 @@
 | 配置与版本 | 初始化 profile、查看版本、检查 npm 远端版本、自动注入 `_notice.update` |
 | 调用环境识别 | 每次实际业务 HTTP 请求发送前重新识别 Doubao、WorkBuddy、Codex 或 `unknown`，并通过请求 Header 透传 |
 | 鉴权 | `user` OAuth 登录、`appId/appSecret` 应用登录、状态查看、登出、默认身份切换 |
-| 合同 | 搜索、详情、创建、提交、重提、更新、删除、文本读取、用户组同步 |
+| 合同 | 搜索、摘要查询、详情、创建、提交、重提、更新、删除、文本读取、用户组同步 |
 | 合同文件 | 正文/附件上传、文件下载、打印文件生成 |
 | 模板与分类 | 分类列表、模板列表、模板详情、模板实例创建、枚举查询 |
 | 分享与协商 | 合同分享记录、协商邀请链接、协商操作记录 |
@@ -36,7 +36,7 @@
 
 ### 环境与本地预发布包
 
-当前源码构建和正式构建都只支持 `prod`，默认 profile 为 `contract`；将 `--env` 指定为 `test`、`blue` 或 `dev` 会在发请求前拒绝，历史非 prod profile 也不会自动迁移或复用凭据。API 地址为 `https://open.qfei.cn`，账号地址为 `https://myaccount.qfei.cn`。
+当前源码构建支持 `prod` 和 `test`，默认 profile 为 `contract`、默认环境为 `prod`；将 `--env` 指定为 `dev` 或 `blue` 会在发请求前拒绝，跨环境重配同名 profile 会清理旧认证，避免复用凭据。prod API 地址为 `https://open.qfei.cn`、账号地址为 `https://myaccount.qfei.cn`；test API 地址为 `https://test-open.qtech.cn`、账号地址为 `https://test-myaccount.qtech.cn`。
 
 若需验证 npm 包构建流程，仍可生成独立的本地预发布包；版本中的 `-test` 只是包标记，不开放 test 环境，也不发布到 npm：
 
@@ -96,6 +96,8 @@ contract-cli --version
 ```bash
 # 1. 初始化或更新 profile
 contract-cli config add --env prod --name contract
+# 如需联调 test 环境：
+# contract-cli config add --env test --name contract
 
 # 2. 本地环境可继续使用旧 user 授权码模式
 contract-cli auth login --profile contract --as user
@@ -152,6 +154,8 @@ contract-cli skills list
 
 ```bash
 contract-cli config add --env prod --name contract
+# test 环境使用：
+# contract-cli config add --env test --name contract
 ```
 
 **Step 4：登录并验证**
@@ -169,7 +173,7 @@ contract-cli auth status --profile contract --as user
 
 CLI 确认当前进程来自本地桌面客户端时，豆包、WorkBuddy、Codex 按当前系统用户 + profile 使用系统安全存储，Device 登录态可跨任务复用；macOS 使用 Keychain，Windows 使用 Credential Manager，Linux 使用 Secret Service。云端、沙箱或识别不明确时保持任务隔离，不能仅凭操作系统类型或 `SESSION_ID` 开启共享。不自动迁移旧任务凭证，升级后首次可能需要重新授权；本地共享模式退出登录后，同一 profile 的所有本地任务都会失去该登录态。
 
-正式包固定使用 `contract` profile 和 `prod` 环境，不会使用历史非生产 profile 发起授权或业务请求。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
+正式包默认使用 `contract` profile 和 `prod` 环境；用户明确选择 test 时使用 `config add --env test` 初始化。CLI 不会使用历史 dev/blue profile 发起授权或业务请求，也不会跨 prod/test 复用旧凭据。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
 
 需要新授权时，`auth init` 只发起一次请求；复用有效共享凭证时不创建新授权。`auth complete` 只查询一次，返回 `pending` 时不持续轮询；请用户完成授权后再主动查询。返回 `uncertain`、`denied`、`expired` 或 `restart_required` 时禁止自动重试；用户明确同意重新授权后，才执行 `auth init --profile contract --output json --restart`。
 
@@ -198,6 +202,7 @@ contract-cli mdm fields list --profile contract --as user --biz-line vendor
 | `contract-cli-department` | 顶层 department list，查询部门候选、department_id 和层级 |
 | `contract-cli-contract-search` | 合同搜索与筛选、搜索字段元数据、正文/附件文本关键词、user/app 接口选择、条件组合和分页 |
 | `contract-cli-contract` | 合同详情、创建、字段、签署、授权、电子签、提交、更新、文件、分享、协商和审批命令 |
+| `zhishu-contract-summary` | user 身份按合同编号或完整名称查询智书摘要，或为单个本地合同文件生成独立摘要 |
 | `contract-cli-payment` | 付款申请、付款计划和付款记录命令 |
 | `contract-cli-mdm-vendor` | 交易方列表、详情、创建、更新、全量分页和按证件查询 |
 | `contract-cli-mdm-legal` | 法人主体列表、详情、按编码查询、创建和更新 |
@@ -238,6 +243,8 @@ contract-cli skills install --name contract-cli-rule --force
 
 ```bash
 contract-cli config add --env prod --name contract
+# test 环境使用：
+# contract-cli config add --env test --name contract
 contract-cli auth init --profile contract --output json
 contract-cli auth complete --profile contract --output json
 contract-cli auth login --profile contract --as user
@@ -255,7 +262,7 @@ contract-cli auth logout --profile contract --as app
 - `contract ...`、`mdm ...` 结构化命令会根据 `--as user|app` 选择对应底层路径。
 - 当前大部分 MCP 路径仍是 user-only；显式用 app 调用 user-only 路径会直接报错。
 - `contract search-v2`、`contract field update`、`contract sign switch-to-paper`、`contract sign-url get`、`contract form attribute list`、`contract authorization grant`、`contract esign *`、`contract submit/resubmit/patch/delete/print-file`、`contract share get/batch-create`、`contract cooperation link/record/search/file`、`contract approval start`、`payment *`、`mdm vendor create/update/list-all/query-by-cert`、`mdm legal get --code/create/update`、`mdm fixed-exchange-rate get/update`、`mdm file download`、`event outbound-ip list` 当前仅支持 app 身份。
-- `contract download-file`、`contract approval get` 支持 user/app；`contract search-fields`、`contract approval comment list/create` 与 `contract approval task list/approve/reject` 仅支持 user。
+- `contract download-file`、`contract approval get` 支持 user/app；`contract search-fields`、`contract summary query/generate`、`contract approval comment list/create` 与 `contract approval task list/approve/reject` 仅支持 user。
 - `rule *`（包括 `approval-matrix` 别名）支持 user/app；user 需要相应合同规则管理权限。
 - 兼容旧身份值 `bot`，但新文档和新脚本统一使用 `app`。
 

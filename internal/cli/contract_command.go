@@ -30,6 +30,8 @@ func (a *App) runContract(ctx context.Context, args []string) error {
 		return a.runContractSearchFields(ctx, args[1:])
 	case "search-v2":
 		return a.runContractSearchV2(ctx, args[1:])
+	case "summary":
+		return a.runContractSummary(ctx, args[1:])
 	case "get":
 		return a.runContractGet(ctx, args[1:])
 	case "sync-user-groups":
