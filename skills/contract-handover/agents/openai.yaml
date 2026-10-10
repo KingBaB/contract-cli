@@ -1,0 +1,4 @@
+interface:
+  display_name: "合同交接"
+  short_description: "固定合同交接清单，识别关联影响并逐份核对结果，按验证状态开放执行"
+  default_prompt: "使用 $contract-handover 查找需要交接的合同，核对接收人与实际影响，确认清单后交接并逐份核对结果。"
