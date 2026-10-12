@@ -1,7 +1,7 @@
 ---
 name: contract-cli-shared
 version: 1.0.1
-description: "contract-cli 开放平台共享约定技能：在 `contract`、`employee`、`department`、`payment`、`mdm`、`event` 和 `rule` 模块间做选择，并遵守 `contract/v1/mcp` user-only 限制、`--input-file` 请求体输入、输出格式和 profile 选择规则。当用户要操作开放平台 CLI 但尚未明确命令模块、需要更新 contract-cli，或看到 JSON 输出中的 `_notice` / `_notice.update` 时触发。"
+description: "contract-cli 开放平台共享约定技能：在 `contract`、`employee`、`department`、`review`、`payment`、`mdm`、`event` 和审批矩阵 `rule` 模块间做选择，并遵守 `contract/v1/mcp` user-only 限制、`--input-file` 请求体输入、输出格式和 profile 选择规则。当用户要操作开放平台 CLI 但尚未明确命令模块、需要更新 contract-cli，或看到 JSON 输出中的 `_notice` / `_notice.update` 时触发。"
 ---
 
 # contract-cli Shared
@@ -35,6 +35,8 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 - 合同搜索、筛选、合同文本关键词及搜索字段元数据查询：读 [../contract-cli-contract-search/SKILL.md](../contract-cli-contract-search/SKILL.md)
 - 合同详情、创建、已知合同正文读取、模板、分类、枚举、字段更新、签署链接、合同授权、电子签、分享、协商、审批：读 [../contract-cli-contract/SKILL.md](../contract-cli-contract/SKILL.md)
   这里现在采用“主文档 + 字段树附录 + 枚举附录”的结构
+- 单份文件智能审查、系统内合同审查入口或继续审查任务：读 [../contract-cli-review/SKILL.md](../contract-cli-review/SKILL.md)，按实际能力检查系统当前正文与场景关联；不能用审批任务代替 AI 审查任务。
+- 审查清单、审查规则及规则分组查询/维护：读 [../contract-cli-review-rule/SKILL.md](../contract-cli-review-rule/SKILL.md)。仅在审查中选择已有清单仍由审查 Skill 处理；不要路由到审批矩阵。
 - 付款申请、付款计划、付款记录：读 [../contract-cli-payment/SKILL.md](../contract-cli-payment/SKILL.md)
   这里采用“主规则 + 命令示例附录”的结构
 - 交易方查询：读 [../contract-cli-mdm-vendor/SKILL.md](../contract-cli-mdm-vendor/SKILL.md)
@@ -54,6 +56,8 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 - `employee list`、`department list`：顶层独立只读命令，仅 user；人员固定 user_id，部门使用开放部门 ID；不暴露身份 ID 类型或调用人覆盖参数
 
 - `contract get/search/search-fields/search-v2/create/sync-user-groups/text`
+- `review file upload/upload-url`、`review subject extract`、`review task start/status/info/result`、`review run`
+- `review checklist`、`review rule`、`review rule group`（审查配置，与顶层审批矩阵 `rule table` 分离）
 - `contract upload-file`
 - `contract field update`
 - `contract sign switch-to-paper`
@@ -86,6 +90,8 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 ## 共享约束
 
+- `review` 下远端命令仅支持 user。两个审查 Skill 复用已建立的个人上下文，不在业务步骤内编排安装授权或自行切换身份/环境；缺口交回公共能力，历史非审查 app 能力保持不变。
+- 审查覆盖外部独立预审、协商和任务中心的业务意图；系统当前正文映射、可信场景未闭合时按审查 Skill 报告缺口，不借用 app-only 入口或裸请求替代。系统合同审查链接由合同 `multi_url.pc_url` 设置 `targetType=ai-review` 生成，不依赖审查详情的 URL 字段；仅合同地址缺失/无效时按审查 Skill 处理链接缺口。外部独立预审不返回详情链接，不将未验证的网页展示声称为已验收。
 - Skill 更新后必须完全退出并新建任务。已有任务不会热加载新 Skill，不得用旧任务判断当前正式包的环境行为。
 - Device 模式按 [../auth/SKILL.md](../auth/SKILL.md) 判断凭证范围：确认本地桌面执行时跨任务复用当前系统用户 + profile 的安全存储凭证；云端、沙箱或识别不明确时保持任务隔离，不因使用本地操作系统或存在任务 ID 就推断可以共享。
 - Device 模式业务命令提示未授权时，按授权 Skill 执行 `auth init`；返回 `status=authorized` 时直接继续原业务请求，不展示缺失的授权链接或二维码，不执行 `auth complete`。返回 `status=pending` 后，用户明确完成授权时只执行一次 `auth complete`。

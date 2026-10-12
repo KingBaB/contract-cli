@@ -210,6 +210,7 @@ func helpRegistry() map[string]helpTopic {
 		{"contract-cli contract <subcommand> [flags]", "合同结构化命令"},
 		{"contract-cli employee list [flags]", "按姓名或部门查询人员"},
 		{"contract-cli department list [flags]", "查询部门候选与部门 ID"},
+		{"contract-cli review <subcommand> [flags]", "合同智能审查命令"},
 		{"contract-cli payment <subcommand> [flags]", "付款结构化命令"},
 		{"contract-cli mdm vendor <subcommand> [flags]", "交易方主数据命令"},
 		{"contract-cli mdm legal <subcommand> [flags]", "法人主体主数据命令"},
@@ -258,6 +259,7 @@ func helpRegistry() map[string]helpTopic {
 	addMDMHelp(registry)
 	addEventHelp(registry)
 	addRuleHelp(registry)
+	addReviewHelp(registry)
 	addRuleStructureHelp(registry)
 	return registry
 }
