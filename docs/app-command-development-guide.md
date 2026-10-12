@@ -348,6 +348,17 @@ description: "..."
 ---
 ```
 
+公开内置 skill（目录含 `SKILL.md` 并随 CLI 分发）还必须提供宿主元数据：
+
+```text
+<skill>/
+├── SKILL.md
+├── agents/openai.yaml
+└── references/（可选）
+```
+
+`agents/openai.yaml` 用于 Codex/OpenAI 宿主的展示名称、简短描述、默认调用提示和隐式调用策略。它不承载 CLI 业务实现；禁用、未公开且不含 `SKILL.md` 的内部描述可以不提供该文件。
+
 正文建议包含：
 
 - 适用命令。
