@@ -1,6 +1,12 @@
 # AI 变更记录
 
 - 2026-10-13
+  变更摘要：删除仓库中的重复修订稿及内部核对记录，统一以 README 为正式文档入口。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md、docs/ai-changes.md。
+  关键逻辑/决策：两个辅助文件保留在本地 outputs 目录，不再随分支交付；README 保持不变。
+  验证：未发现其他正文或代码引用这两个文件；本地备份内容核对一致。
+
+- 2026-10-13
   变更摘要：用最新飞书使用指南完整替换 README。
   涉及文件/模块：README.md、docs/ai-changes.md。
   关键逻辑/决策：同步飞书原文 revision 221 的全部章节；仅规范 Markdown 表格、代码块语言、空白行及正文占位符转义。
