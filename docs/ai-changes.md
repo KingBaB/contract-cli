@@ -1,5 +1,78 @@
 # AI 变更记录
 
+- 2026-10-13
+  变更摘要：用最新飞书使用指南完整替换 README。
+  涉及文件/模块：README.md、docs/ai-changes.md。
+  关键逻辑/决策：同步飞书原文 revision 221 的全部章节；仅规范 Markdown 表格、代码块语言、空白行及正文占位符转义。
+  验证：36 个场景与授权标记、v1.9.5 记录保留；章节和链接一致，代码内容及表格列数检查通过。
+
+- 2026-10-13
+  变更摘要：在原飞书文档版本表追加 v1.9.5 更新记录。
+  涉及文件/模块：原文档版本记录、docs/customer-skills-guide-audit.md、outputs 更新记录与快照。
+  关键逻辑/决策：按用户指定版本号记录本次 15 个 Skill、36 个场景和授权标记改造，保留历史记录。
+  验证：飞书 revision 218 回读通过；原 8 条记录及版本表外内容不变。
+
+- 2026-10-13
+  变更摘要：按用户授权将已确认的用户场景和能力地图应用到原飞书 Wiki 文档。
+  涉及文件/模块：原文档两个章节、docs/customer-skills-guide-audit.md、outputs 更新记录与快照。
+  关键逻辑/决策：仅替换两块正文，保留原章节锚点；36 个场景、15 项能力，授权标记简洁展示。
+  验证：原文 revision 217 回读通过；两块以外的内容、块 ID 和格式与 revision 215 完全一致。
+
+- 2026-10-13
+  变更摘要：简化全部场景的授权支持提示。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md、outputs 本地稿及飞书修订副本。
+  关键逻辑/决策：只保留“个人”“应用”“个人 / 应用”三种标记，不在提示行展开解释。
+  验证：36 条提示与云端逐项一致，其他内容未变，飞书 revision 103。
+
+- 2026-10-13
+  变更摘要：为全部用户场景增加清晰的授权支持提示。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md、outputs 本地稿及飞书修订副本。
+  关键逻辑/决策：每个场景单独标注所需授权；双身份及跨身份场景说明操作差异，保持原场景表格。
+  验证：36 条提示逐项回读通过；删除新增段落后正文与原稿完全一致，飞书 revision 78；未调用业务接口。
+
+- 2026-10-13
+  变更摘要：统一说明 Skill 的个人/应用授权支持，补充操作差异及跨 Skill 授权边界。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md、outputs 本地稿及飞书修订副本。
+  关键逻辑/决策：授权方式、操作身份支持和实际业务权限分开解释；地图逐项标记，避免将双身份理解为全部命令可互换。
+  验证：15 项映射核对通过，36 个场景未变；飞书 revision 41 回读与本地目标一致，未执行业务调用。
+
+- 2026-10-13
+  变更摘要：全面展开合同 Skill，补齐创建、审批、签署、协作及维护场景。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md、outputs 本地稿及飞书修订副本。
+  关键逻辑/决策：合同组 2 → 14 场景，全篇 36 场景；覆盖 37 个合同命令，按操作明确身份与业务限制。
+  验证：37 个命令帮助及示例 flags 核对通过；飞书 revision 25 回读与目标正文一致，其余内容未变；未执行真实业务调用。
+
+- 2026-10-13
+  变更摘要：移除场景中的独立 Skill 说明，将中文简称与 Skill 名称集中展示在能力地图。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md、outputs 本地稿及飞书修订副本。
+  关键逻辑/决策：地图首列改为“中文简称 / Skill”，保留四列结构及原能力和身份描述。
+  验证：15 处说明已删除、15 项中文简称齐全；24 个场景和其他内容未变，飞书 revision 20 已回读，本地稿已同步。
+
+- 2026-10-13
+  变更摘要：用户场景恢复原文的说明与提示词/命令两列表格格式。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md、outputs 本地稿及飞书修订副本。
+  关键逻辑/决策：保留 15 个 Skill、24 个场景，标明复杂命令流程前提，只替换云端场景区间。
+  验证：43 个末级命令帮助及 flags 核对；飞书 revision 13 回读确认 24 张两列表格，其他章节未变。
+
+- 2026-10-13
+  变更摘要：隐藏 shared 的独立客户入口，创建飞书修订副本并保存本地稿。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md、主目录 outputs/feishu-skill-guide-20261013。
+  关键逻辑/决策：15 个对外 Skill、24 个场景；仍如实说明安装包含 16 个 Skill。原文档复制到“我的空间”后应用修订。
+  验证：场景/地图一致，飞书副本 revision 6 与本地正文一致，原文档 revision 215 未变。
+
+- 2026-10-13
+  变更摘要：按用户要求将用户场景和能力地图统一按 Skill 组织。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md。
+  关键逻辑/决策：16 个 Skill 各 1～2 个场景，共 25 个；能力地图按同序引用场景并补足能力和身份范围。
+  验证：核对 Skill 清单、每组场景数量及地图引用；仅更新本地文档。
+
+- 2026-10-13
+  变更摘要：基于 GitHub v1.9.5 整理面向客户的 16 个内置 Skill 能力修订稿。
+  涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md。
+  关键逻辑/决策：按客户场景暴露已发布能力，核对 user/app、审查/审批、搜索及矩阵边界；更新授权说明。
+  交付边界：独立分支，仅本地 Markdown；不回写飞书，不修改运行代码或全局 skills。
+  验证：Release 源码构建、命令帮助与 16 个 Skill 清单核对、相关已有测试及独立文案复核通过。
+
 - 2026-09-23
   变更摘要：当前分支移除 test/blue 环境运行能力，源码与本地预发布包统一只支持 prod。
   涉及文件/模块：环境预设与传输拦截、构建脚本、回归测试、README、命令文档及 auth/shared Skill。
