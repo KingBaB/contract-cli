@@ -1,6 +1,13 @@
 # AI 变更记录
 
 - 2026-10-13
+  变更摘要：修复 README 完整替换导致的文档一致性回归失败。
+  涉及文件/模块：README.md、docs/ai-changes.md；未修改测试或 Go 代码。
+  关键逻辑/决策：补齐 Device Grant 状态和客户端展示边界、完整命令名称及应用身份操作人约束，并修正身份速查中的过时标记。
+  验证：先复现 3 个失败，再通过对应定向测试及 go test ./...；git diff --check 通过。
+  已知基线：独立缓存运行 golangci-lint run --enable=exhaustive ./... 报 19 项问题；Go 文件和依赖与 v1.9.5 完全一致，本次未修改。
+
+- 2026-10-13
   变更摘要：删除仓库中的重复修订稿及内部核对记录，统一以 README 为正式文档入口。
   涉及文件/模块：docs/customer-skills-guide.md、docs/customer-skills-guide-audit.md、docs/ai-changes.md。
   关键逻辑/决策：两个辅助文件保留在本地 outputs 目录，不再随分支交付；README 保持不变。

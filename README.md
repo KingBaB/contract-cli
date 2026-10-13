@@ -121,7 +121,27 @@ contract-cli auth status --profile contract --as user
 | `app` | 应用授权，使用客户应用凭证换取 tenant access token | 服务端脚本、自动化流程、系统集成、批处理 |
 | `user/app` | 同一条 CLI 命令两种身份都支持 | 查询、创建、模板、主数据等通用能力 |
 
-个人授权：
+豆包 / WorkBuddy / Codex 的个人授权使用 Device Grant，先检查当前授权：
+
+```bash
+contract-cli auth status --profile contract --as user
+# 无有效授权时发起或恢复授权；已有有效授权则直接继续任务
+contract-cli auth init --profile contract --output json
+```
+
+`auth init` 返回 `status=authorized` 时，表示已有有效或成功刷新的授权，直接继续原任务，不展示授权链接或二维码，也不执行 `auth complete`。返回 `status=pending` 时，才展示授权信息并等待用户完成授权。
+
+WorkBuddy 使用 `qr_code_path` 交付原始 PNG 附件，AgentKit 使用 `qr_code_path`。豆包普通工作任务只展示 `verification_uri_complete` 和 `expires_at_display`，不展示二维码，也不读取或交付二维码文件。授权链接必须可点击；展示后结束当前轮次，不轮询、不继续业务操作。
+
+仅在用户回复“已授权”后，查询一次授权结果：
+
+```bash
+contract-cli auth complete --profile contract --output json
+```
+
+结果仍为 `pending` 时继续等待；结果不确定时不自动重试。授权被拒绝、过期或要求重新开始时，先说明状态，经用户同意后再重新授权。登录态能否跨任务复用，以 CLI 返回的凭证范围为准。
+
+本地终端仍支持个人授权码登录：
 
 ```text
 contract-cli auth login --profile contract --as user
@@ -616,26 +636,33 @@ Agent 查询并汇总出口 IP；分页未完成时说明清单不完整。该 s
 | `contract enum list` | user-only | 当前不支持 app |
 | `contract field update/form attribute list` | app-only | 更新字段选项或查询合同流程字段 |
 | `contract sign switch-to-paper/sign-url get` | app-only | 电子签转纸质签，或获取合同签署链接 |
-| `contract authorization grant/esign *` | app-only | 合同授权，以及个人/企业实名认证链接 |
+| `contract authorization grant`、`contract esign *` | app-only | 合同授权，以及个人/企业实名认证链接 |
 | `contract submit/resubmit/patch/delete` | app-only | 写操作，需确认合同状态满足后端要求；删除前确认目标合同 |
-| `contract download-file/print-file` | app-only | 下载建议显式传 `--output-file` |
+| `contract download-file` | user/app | 个人身份还需传 `--contract`；下载建议显式传 `--output-file` |
+| `contract print-file` | app-only | 生成平台文件 ID 后，再调用下载命令保存文件 |
 | `contract share get/batch-create` | app-only | 查询分享记录或批量创建分享 |
 | `contract cooperation link/record/search` | app-only | 查询协商邀请链接、操作记录或协商列表 |
 | `contract cooperation file get/download` | app-only | 查询或下载协商文件，下载建议传 `--output-file` |
-| `contract approval start/get` | app-only | 发起流程审批或查询审批实例详情 |
+| `contract approval start` | app-only | 按权限处理已有流程；不是创建新审批流程的入口 |
+| `contract approval get` | user/app | 查询审批实例详情 |
+| `contract approval comment list/create`、`contract approval task list/approve/reject` | user-only | 查看或添加评论、查询个人任务、通过或拒绝待办；盖章和归档节点需回合同系统处理 |
 | `payment create/update/get/list` | app-only | 付款申请创建、更新、详情和列表 |
 | `payment plan notify/search` | app-only | 同步付款计划或搜索付款计划 |
 | `payment record create/update/get/list` | app-only | 付款记录创建、更新、详情和按计划查询 |
 | `mdm vendor list/get` | user/app | 查询交易方列表或详情 |
-| `mdm vendor create/update/list-all/query-by-cert` | app-only | 创建、更新、全量分页或按证件查询交易方；写操作要求 `--user-id` |
+| `mdm vendor create/update/list-all/query-by-cert` | 按操作区分 | create 支持 user/app；update、list-all、query-by-cert 仅 app；应用写操作要求 `--user-id` |
+| `mdm vendor patch` | user/app | 局部更新交易方；应用身份要求 `--user-id`，个人身份从授权中取得操作人 |
+| `mdm vendor enable/disable` | user-only | 启用或停用交易方 |
 | `mdm legal list/get <id>` | user/app | 查询法人实体列表或按 ID 获取详情 |
 | `mdm legal get --code/create/update` | app-only | 按编码查询、创建或更新法人实体；写操作要求 `--user-id` |
 | `mdm fields list` | user/app | app 当前支持 `vendor` 和 `legal_entity`；user 还支持 `vendor_risk` |
 | `mdm fixed-exchange-rate get/update` | app-only | 查询或维护固定汇率 |
 | `mdm file download` | app-only | 下载主数据附件，Agent/脚本场景建议传 `--output-file` |
 | `event outbound-ip list` | app-only | 分页查询事件出口 IP 白名单 |
-| `rule table list/pre-release/release/column-headers list` | app-only | 查询、预发布、发布规则表或查询列头 |
-| `rule table row create/get/list/search/update/delete` | app-only | 规则行完整生命周期；搜索支持 `--page-size` 和 `--page-token` |
+| `rule table list/pre-release/release/column-headers list` | user/app | 查询、预发布、发布规则表或查询列头；个人身份需合同规则管理权限 |
+| `rule table row create/get/list/search/update/delete` | user/app | 规则行完整生命周期；个人身份需合同规则管理权限；搜索支持 `--page-size` 和 `--page-token` |
+
+应用身份下，`mdm vendor create/update` 和 `mdm legal create/update` 会要求 `--user-id`，用于提供真实操作人。`mdm vendor patch --as app` 同样要求该参数；个人身份的交易方创建和局部更新从当前授权中取得操作人，不允许传 `--user-id`。
 
 ## 安装后验证
 
