@@ -13,7 +13,7 @@
 - `contract search-fields`、`contract approval comment list/create` 与 `contract approval task list/approve/reject` 仅支持 `--as user`，调用人固定来自个人 Token
 - 除上述双身份和 app-only 能力外，当前其他结构化业务命令仍只支持 `--as user`
 - `app` 目前已经支持登录、状态查看、登出、默认身份切换
-- 推荐使用 `npx skills add qfeius/contract-cli -y -g` 安装跨 Agent 平台 skills；`contract-cli skills install` 保留为 CLI 内置兜底
+- 配套 Skill 使用当前 CLI 内置内容，通过 `contract-cli skills install --target "<已确认的用户 Skill 目录>" --force` 完整安装并登记；历史 `npx skills add ...` 入口保留，但不能替代与当前 CLI 配套的版本同步
 - `update check` 支持手动检查 npm 远端版本；默认输出文本，带 `--json` 时返回飞书式 JSON；CLI 会为符合条件的普通命令按 24 小时缓存检查远端版本，并在 JSON object 输出中注入 `_notice.update`
 - `environment inspect` 可以在本地查看当前父进程链对应的客户端来源；所有实际业务 HTTP 请求都会在发送前重新探测并覆盖来源 Header
 - 当前全部已支持命令都可以通过 `--help` 查看本地帮助，例如 `contract-cli --help`、`contract-cli contract search --help`、`contract-cli help contract upload-file`
@@ -301,7 +301,13 @@ npx skills add qfeius/contract-cli -y -g
 
 #### `contract-cli skills install`
 
-用途：将当前二进制内置的 Codex skills 安装到本机 Codex skills 目录，作为通用 `npx skills add ...` 不可用时的兜底方案。
+用途：将当前 CLI 内置的配套 Skills 安装到指定目录。先核实当前客户端实际读取且允许安装的用户 Skill 目录；首次或未识别历史位置，提示用户明确指定，或由 AI 核实后推荐、等待用户确认，再代为完整安装。用户不必亲自输入路径或执行安装命令。
+
+省略 `--target` 时仍默认使用 Codex：优先 `$CODEX_HOME/skills`，否则 `~/.codex/skills`。CLI 不会因为聊天客户端、目录存在或应用运行而自动选择其他客户端；其他客户端需明确传入已确认目录。完整安装无跳过项后登记，后续全局升级同步全部已登记位置。
+
+自动同步新增官方 Skill 时，若该名称已被未管理内容占用，需要通过已有官方历史完整内容核验，否则该位置整组停止更新并记录失败，其他位置继续处理。原文件、登记版本和管理清单不变；确认覆盖范围并备份后，用户仍可明确执行完整 `skills install --target "<实际目录>" --force`。已有管理清单中的官方 Skill 仍覆盖本地修改；不能将后续强制安装成功当作原先自动同步成功。
+
+未登记历史目录不能仅凭同名自动接管：当前只对候选位置中与官方 1.9.3 / 1.9.4 完整指纹匹配的已有同名 Skill 自动迁移。任何待覆盖目录无法核验，则该位置提示“历史 Skill 未自动接管”并保持原内容；核实当前客户端实际读取的 skills 目录后，明确执行完整 `--target ... --force` 安装。已登记位置仍按覆盖规则更新用户修改；新目录安装不会自动移除旧位置登记。
 
 命令：
 
@@ -310,6 +316,7 @@ contract-cli skills install
 contract-cli skills install --target ~/.codex/skills
 contract-cli skills install --name contract-cli-rule --force
 contract-cli skills install --force
+
 ```
 
 支持参数：

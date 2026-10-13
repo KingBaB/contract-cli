@@ -197,6 +197,10 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	a.updateNotice = nil
 	a.commandContext = ctx
 	a.runtimeEvidence = nil
+	if len(args) > 0 && args[0] == "__internal" {
+		return a.runSkillSyncOnInstall(args[1:])
+	}
+	a.warnPendingSkillSync()
 	if len(args) == 0 {
 		a.printUsage()
 		return nil
