@@ -442,7 +442,9 @@ func addSkillsHelp(registry map[string]helpTopic) {
 			{"contract-cli skills install [flags]", "安装内置 Agent skills"},
 		},
 		Notes: []string{
-			"推荐跨平台安装方式：npx skills add qfeius/contract-cli -y -g。",
+			"配套 Skill 使用当前 CLI 内置内容；先核实当前客户端实际读取的用户 Skill 目录，再完整安装并登记。",
+			"首次安装或未识别的历史位置：未找到可自动同步的位置时，先提示用户确认真实目录，或提供经过核实的推荐目录；确认前不自动安装所有候选。",
+			"历史通用安装入口仍可使用，但不能用 GitHub 默认分支的 Skill 代替当前 CLI 配套版本同步。",
 		},
 	}
 	registry["skills list"] = helpTopic{
@@ -455,18 +457,24 @@ func addSkillsHelp(registry map[string]helpTopic) {
 	}
 	registry["skills install"] = helpTopic{
 		Name:    "skills install",
-		Summary: "把当前二进制内置 skills 安装到本机 Codex skills 目录。",
+		Summary: "把当前 CLI 内置的配套 Skill 安装到指定目录；请先核实当前客户端实际读取的用户 Skill 目录。",
 		Usage:   []string{"contract-cli skills install [flags]"},
 		Flags: []helpFlag{
-			{"--target <dir>", "安装目标目录；默认 $CODEX_HOME/skills 或 ~/.codex/skills"},
+			{"--target <dir>", "已确认的用户 Skill 安装目录；省略 --target 时默认使用 Codex：$CODEX_HOME/skills 或 ~/.codex/skills"},
 			{"--name <skill>", "只安装指定的内置 skill；默认安装全部"},
 			{"--force", "覆盖已存在的同名 skill；默认跳过"},
 		},
 		Examples: []string{
+			"contract-cli skills install --target \"<已确认的当前客户端用户 Skill 目录>\" --force",
 			"contract-cli skills install",
 			"contract-cli skills install --target ~/.codex/skills",
 			"contract-cli skills install --name contract-cli-rule --force",
 			"contract-cli skills install --force",
+		},
+		Notes: []string{
+			"不会自动识别当前客户端；其他客户端必须指定其实际读取且允许安装的用户 Skill 目录，不能省略 --target 来代替目录核实。",
+			"首次安装或未识别的历史位置需要先确认目录和覆盖范围；用户不知道路径时，可由 AI 核实后推荐并等待用户确认，再代为完整安装。",
+			"完整安装且无跳过项才新增整套 Skill 自动同步登记；后续全局升级处理全部已登记位置，不只更新当前客户端。",
 		},
 	}
 }

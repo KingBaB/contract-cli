@@ -45,8 +45,20 @@ func TestReviewSkillDistributionAndRouting(t *testing.T) {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(target)
-	if err != nil || len(entries) != 16 {
-		t.Fatalf("want 16 installed skills, got %d: %v", len(entries), err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, entry := range entries {
+		if entry.IsDir() {
+			count++
+		}
+	}
+	if count != 16 {
+		t.Fatalf("want 16 installed skill directories, got %d", count)
+	}
+	if _, err := os.Stat(filepath.Join(target, ".contract-cli-managed.json")); err != nil {
+		t.Fatalf("complete installation must retain its management marker: %v", err)
 	}
 	for _, name := range []string{"contract-cli-shared", "contract-cli-contract"} {
 		content := readTextFile(t, filepath.Join(target, name, "SKILL.md"))

@@ -34,27 +34,29 @@
 
 1. 确认当前运行环境
    - 确认命令实际运行在本机还是云端沙箱。
-   - 根据当前客户端的配置或已加载 skill 的真实路径，确认它实际读取的 skills 目录。
+   - 根据当前客户端的配置或已加载 skill 的真实路径，确认它实际读取且允许安装的 skills 目录。
    - 不要猜测目录，也不要默认使用 Codex 的目录。
    - 如果无法确认加载目录，请说明缺少的信息，不要宣称安装完成。
+   - 执行 npm 安装或升级前，向用户说明自动同步会更新全部有效的已记录 Skill 目录，不只当前客户端；需要保留的官方 Skill 修改应先备份。自动同步会覆盖这些修改，成功后的事务备份不会长期保留，不能替代用户备份。
 
 2. 安装或升级 CLI
    执行：
-   npm install -g @qfeius/contract-cli@latest --registry https://registry.npmjs.org
+   npm install -g @qfeius/contract-cli@latest --registry https://registry.npmjs.org --foreground-scripts
 
-   安装完成后，检查当前实际执行的 contract-cli 路径和版本。
+   安装完成后，检查当前实际执行的 contract-cli 路径和版本，并查看安装输出中的 Skill 同步结果。
    如果 PATH 仍指向旧版本，请先解决路径问题。
    后续安装 skills 和验证版本必须使用同一个已确认的新版本 CLI。
    不要只凭 npx 输出的版本判断当前 CLI 已升级。
 
 3. 同步更新全部配套 skills
-   使用新版本 CLI 内置的 skills 作为来源，执行：
+   先检查自动同步结果。新版 CLI 会同步全部有效的已记录位置；当前客户端实际目录已同步成功时，不重复安装。
+   首次安装、当前客户端没有配套 Skill、历史位置未被识别或当前目录未被覆盖时，确认真实目录、覆盖范围和备份后，使用新版本 CLI 内置 skills 完整安装：
    contract-cli skills install --target "<当前客户端实际读取的 skills 目录>" --force
-   如果当前客户端是 WorkBuddy，需要执行：contract-cli skills install --target "$HOME/.workbuddy/skills" --force
 
-   请先将占位内容替换为已确认的真实目录。
-   必须更新全部内置 skills，包括已存在的旧技能及其 references 等附属文件，不能只补装缺少的技能。
+   请先将占位内容替换为已确认的真实目录。WorkBuddy 等客户端也以实际读取目录为准，不将默认路径当作已确认配置。
+   必须更新全部内置 skills，包括已存在的旧技能及其 references 等附属文件，不能只补装缺少的技能。完整安装成功后，CLI 会记住该位置，供后续全局升级同步。
    不要使用 npx skills add qfeius/contract-cli 代替本步骤，避免从 GitHub 默认分支安装与 CLI 不配套的版本。
+   出现同步失败、权限或内容冲突时，先保留并说明原始结果，核实原因与备份后再处理；不要直接强制修复，也不要把手工补装成功说成自动同步成功。
 
 
 4. 验证安装结果
@@ -67,7 +69,8 @@
 5. 汇报结果
    请分别列出：
    - CLI 实际执行路径及版本；
-   - skills 实际安装目录；
+   - skills 实际安装目录、自动同步结果及是否后续手动安装；
+   - CLI 已记录的 Skill 位置及各位置的失败或跳过项；
    - 预期技能数量和实际已更新数量；
    - 文件验证结果；
    - 当前客户端是否已加载新版。
@@ -76,18 +79,31 @@
    如果文件已更新但客户端加载尚未验证，请明确报告“文件已更新，客户端加载待验证”。
 ```
 
-也可以在终端中手动安装或升级：
+也可以在终端中手动安装或升级。以下按首次使用和已有 Skill 升级分别执行：
 
 ```text
-npm install -g @qfeius/contract-cli@latest --registry https://registry.npmjs.org
+执行以下 npm 指令前，先确认自动同步的覆盖范围：全部有效的已记录 Skill 目录，不只当前客户端。需要保留的官方 Skill 修改请先备份；成功后的事务备份不会长期保留。
+
+首次安装，或当前客户端尚无配套 Skill：
+npm install -g @qfeius/contract-cli@latest --registry https://registry.npmjs.org --foreground-scripts
 contract-cli --version
 contract-cli skills list
+
+当前目录未被自动覆盖时，确认真实目录和备份后再执行：
 contract-cli skills install --target "<当前客户端实际读取的 skills 目录>" --force
+
+已有配套 Skill，升级 CLI：
+npm install -g @qfeius/contract-cli@latest --registry https://registry.npmjs.org --foreground-scripts
+contract-cli --version
+
+先查看自动同步结果。当前客户端目录已同步成功，无需重复安装；未识别或未覆盖时，再按上方指定目录完整安装。
 ```
 
-执行前请将占位目录替换为已确认的真实路径。确认当前实际执行的 CLI 路径和版本正确后，再用同一个 CLI 同步 skills；不要默认使用 Codex 目录，也不要省略 `--force`。
+执行 npm 安装或升级前，应先确认自动同步会更新全部有效的已记录 Skill 目录，并备份需要保留的官方 Skill 修改；成功后的事务备份不会长期保留，不能替代用户备份。手动安装 Skill 前，再将占位目录替换为当前客户端实际读取的完整路径，并确认该目录的覆盖范围和备份。`--force` 会更新官方配套 Skill（包括用户对其内容的修改）；不要默认使用 Codex 目录。完整安装成功后 CLI 会记住该位置，同一位置再次安装更新原记录。历史自定义目录未被发现、或换了客户端但新目录尚未覆盖时，也需要指定真实目录安装一次。
 
-更新后，对照 CLI 内置清单核对目标目录中的技能名称、数量、版本及附属文件，再按客户端要求刷新技能或新建会话。确认新版已加载后，才能报告同步升级完成；无法确认时应说明“文件已更新，客户端加载待验证”。
+`--foreground-scripts` 仅用于显示安装脚本输出，不是同步开关；项目局部安装、使用 `--ignore-scripts` 或安装脚本被阻止时，不能认为已自动同步。CLI 安装成功不代表全部 Skill 位置同步成功。更新后仍须对照内置清单核对文件并刷新或新建会话；无法确认加载时说明“文件已更新，客户端加载待验证”。
+
+历史自动接管仅覆盖支持探查的位置，且要求待覆盖的同名 Skill 完整内容匹配已核验的官方 1.9.3 / 1.9.4 指纹；未知来源、修改或额外文件不会仅凭名称自动接管。其他历史版本及未发现的自定义位置应确认后完整安装一次。新增官方名称与未管理的同名内容冲突时，该位置停止自动更新，其他位置继续处理。新目录完整安装不会取消旧目录登记，客户端换目录时不能据此认为旧位置已停止同步。`--name` 单技能安装或有跳过项时不新增整套同步登记。
 
 ### 2. 初始化本地 profile
 
@@ -770,7 +786,7 @@ contract-cli contract search --help
 通常是 CLI 没有安装成功，或安装目录不在 PATH 中。先安装或升级 CLI：
 
 ```text
-npm install -g @qfeius/contract-cli@latest --registry https://registry.npmjs.org
+npm install -g @qfeius/contract-cli@latest --registry https://registry.npmjs.org --foreground-scripts
 ```
 
 随后检查实际执行路径：macOS / Linux 使用 `command -v contract-cli`，Windows PowerShell 使用 `Get-Command contract-cli -All`。若找不到命令或仍指向旧版本，先修正 PATH 并重新打开终端，再检查：
@@ -828,7 +844,7 @@ contract-cli auth login --profile contract --as app --app-id <app_id> --app-secr
 
 ### Agent 不会使用 `contract-cli` 怎么办？
 
-可能是 skills 未安装、版本未同步、安装目录不正确，或当前会话尚未加载新版。请先确认当前客户端实际读取的 skills 目录，再使用当前新版 CLI 更新：
+可能是 skills 未安装、自动同步失败、当前客户端目录未被覆盖，或当前会话尚未加载新版。先查看安装输出、确认实际读取目录和文件版本；仅在该目录需要完整安装或更新时，核实备份后使用当前新版 CLI 执行：
 
 ```text
 contract-cli --version
@@ -857,12 +873,12 @@ contract-cli contract search --help
 | 类型 | 信息 |
 | --- | --- |
 | npm 包 | `@qfeius/contract-cli` |
-| Agent skills | 随当前 CLI 内置分发，使用 `contract-cli skills install` 指定客户端实际技能目录并加 `--force` 同步更新 |
+| Agent skills | 随当前 CLI 内置分发；全局升级时同步有效的已记录位置，首次或当前目录未覆盖时，使用 `contract-cli skills install --target "<当前客户端实际读取的 skills 目录>" --force` 完整安装。 |
 | GitHub 仓库 | [qfeius/contract-cli](https://github.com/qfeius/contract-cli)，用于查看源码和历史版本 |
 | 命令帮助 | `contract-cli --help` |
 | 命令文档 | 已安装 skills 中的 `SKILL.md` 和 `references/`；在线文档请选择与 CLI 版本对应的发布标签 |
 
-安装目录请填写当前客户端实际读取的 skills 目录。CLI 升级后需同步更新 skills，并刷新或新建会话，确认客户端已加载新版。
+安装目录以当前客户端实际读取位置为准。CLI 升级时先检查自动同步结果；未覆盖该位置时再指定目录完整安装，并刷新或新建会话验证加载。同步失败须保留原始结果，不能将后续手工补装说成自动同步成功。
 
 ## 版本记录
 
