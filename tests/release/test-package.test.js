@@ -7,6 +7,19 @@ const { resolvePackageTargets } = require("../../scripts/build-local-test-packag
 const { runPackageVerification, assertIncreasingTestVersions, assertConfirmationGuidance } = require("../../scripts/verify-skill-guidance-packages.js");
 const { assertInstallResultSummary } = require("../../scripts/verify-skill-guidance-packages.js");
 
+test("merged customer guide preserves upstream structure and safe Skill upgrade instructions", () => {
+  const guide = fs.readFileSync(path.join(__dirname, "../../README.md"), "utf8");
+  assert.doesNotMatch(guide, /^(<<<<<<<|=======|>>>>>>>)/m);
+  assert.match(guide, /### 1\. 安装 CLI 与 Agent skills/);
+  assert.doesNotMatch(guide, /## Quick Start \(AI Agent\)/);
+  const prompt = guide.slice(guide.indexOf("本次任务包含 CLI 升级"), guide.indexOf("也可以在终端中"));
+  assert.ok(prompt.indexOf("先备份") >= 0 && prompt.indexOf("先备份") < prompt.indexOf("npm install -g"));
+  assert.match(prompt, /全部有效的已记录/);
+  assert.match(prompt, /--foreground-scripts/);
+  assert.doesNotMatch(prompt, /--target "\$HOME\/\.workbuddy\/skills"/);
+  assert.match(prompt, /手工补装成功说成自动同步成功/);
+});
+
 test("result summary acceptance requires identity, exact target and registration state", () => {
   const base = "CLI 实际可执行文件：/test/bin/contract-cli\n已登记的 Skill 目录：1\n文件更新不代表客户端已加载\n";
   const output = base + "Skill 安装：成功\nSkill 安装位置：/test/skills\n本次目录登记：成功";

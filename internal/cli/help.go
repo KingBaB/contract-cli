@@ -297,6 +297,10 @@ func addEnvironmentHelp(registry map[string]helpTopic) {
 	}
 }
 
+/*
+addConfigHelp 注册 profile 配置命令帮助，只展示当前可用的 prod 预设。
+入参 registry（map[string]helpTopic）为帮助主题表；无返回值。
+*/
 func addConfigHelp(registry map[string]helpTopic) {
 	registry["config"] = helpTopic{
 		Name:  "config",
@@ -1893,11 +1897,11 @@ func addRuleHelp(registry map[string]helpTopic) {
 			{"contract-cli rule table row delete <row-id> [flags]", "删除规则表行"},
 		},
 	}
-	registry["rule table row create"] = ruleTableHelpTopic("rule table row create", "创建规则表行，请求体必须是 JSON。", "contract-cli rule table row create --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), jsonBodyFlags()), []string{"contract-cli rule table row create --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --input-file row.json"}, []string{"走 POST /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows。", "DEPARTMENT_COLLECTION 使用 open_department_id 字符串（od-...）；sys_department.id 数字会在本地拒绝。"})
+	registry["rule table row create"] = ruleTableHelpTopic("rule table row create", "创建规则表行，请求体必须是 JSON。", "contract-cli rule table row create --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), jsonBodyFlags()), []string{"contract-cli rule table row create --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --input-file row.json"}, []string{"走 POST /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows。", "contract/approve_matrix 默认使用 SaaS 搜索返回的人员、部门 id；DEPARTMENT_COLLECTION 传十进制字符串。"})
 	registry["rule table row get"] = ruleTableHelpTopic("rule table row get", "查询规则表单行信息。", "contract-cli rule table row get <row-id> --product-id <id> --group-id <id> --table-id <id> [flags]", tableIDHelpFlags(), []string{"contract-cli rule table row get <row-id> --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id>"}, []string{"走 GET /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/{table_row_id}。", "不接受 --input-file / --data。"})
 	registry["rule table row list"] = ruleTableHelpTopic("rule table row list", "分页查询规则表行。", "contract-cli rule table row list --product-id <id> --group-id <id> --table-id <id> [flags]", concatHelpFlags(tableIDHelpFlags(), pageFlags()), []string{"contract-cli rule table row list --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --page-size 10"}, []string{"走 GET /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows。", "不接受 --input-file / --data。"})
-	registry["rule table row search"] = ruleTableHelpTopic("rule table row search", "按筛选条件分页查询规则表行，请求体必须是 JSON。", "contract-cli rule table row search --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), pageFlags(), jsonBodyFlags()), []string{"contract-cli rule table row search --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --page-size 10 --input-file row-search.json"}, []string{"走 POST /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/search。", "--page-size 必填且范围为 1-100；--page-size / --page-token 作为 query 参数传递，请求体保持不变。", "DEPARTMENT_COLLECTION 使用 open_department_id 字符串（od-...）；sys_department.id 数字会在本地拒绝。"})
-	registry["rule table row update"] = ruleTableHelpTopic("rule table row update", "修改规则表行，请求体必须是 JSON。", "contract-cli rule table row update <row-id> --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), jsonBodyFlags()), []string{"contract-cli rule table row update <row-id> --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --input-file row.json"}, []string{"走 PUT /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/{table_row_id}。", "DEPARTMENT_COLLECTION 使用 open_department_id 字符串（od-...）；sys_department.id 数字会在本地拒绝。"})
+	registry["rule table row search"] = ruleTableHelpTopic("rule table row search", "按筛选条件分页查询规则表行，请求体必须是 JSON。", "contract-cli rule table row search --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), pageFlags(), jsonBodyFlags()), []string{"contract-cli rule table row search --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --page-size 10 --input-file row-search.json"}, []string{"走 POST /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/search。", "--page-size 必填且范围为 1-100；--page-size / --page-token 作为 query 参数传递，请求体保持不变。", "contract/approve_matrix 默认使用 SaaS 搜索返回的人员、部门 id；DEPARTMENT_COLLECTION 传十进制字符串。"})
+	registry["rule table row update"] = ruleTableHelpTopic("rule table row update", "修改规则表行，请求体必须是 JSON。", "contract-cli rule table row update <row-id> --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), jsonBodyFlags()), []string{"contract-cli rule table row update <row-id> --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --input-file row.json"}, []string{"走 PUT /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/{table_row_id}。", "contract/approve_matrix 默认使用 SaaS 搜索返回的人员、部门 id；DEPARTMENT_COLLECTION 传十进制字符串。"})
 	registry["rule table row delete"] = ruleTableHelpTopic("rule table row delete", "删除规则表行。", "contract-cli rule table row delete <row-id> --product-id <id> --group-id <id> --table-id <id> [flags]", tableIDHelpFlags(), []string{"contract-cli rule table row delete <row-id> --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id>"}, []string{"走 DELETE /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/{table_row_id}。", "不接受 --input-file / --data。"})
 	registry["rule table import"] = helpTopic{
 		Name:  "rule table import",
@@ -1933,6 +1937,9 @@ func addRuleHelp(registry map[string]helpTopic) {
 }
 
 func ruleTableHelpTopic(name string, summary string, usage string, extraFlags []helpFlag, examples []string, notes []string) helpTopic {
+	if strings.HasPrefix(name, "rule table row ") && name != "rule table row delete" {
+		extraFlags = append(extraFlags, helpFlag{"--department-id-type <type>", "contract/approve_matrix 默认 tenant_department_id；可显式选择兼容类型"})
+	}
 	return helpTopic{
 		Name:    name,
 		Summary: summary,
@@ -1955,6 +1962,8 @@ func ruleOpenPlatformCommonFlags() []helpFlag {
 	for index := range flags {
 		if flags[index].Name == "--user-id <id>" {
 			flags[index].Description = "兼容解析但不发送到矩阵路径；编辑人由当前用户令牌确定"
+		} else if flags[index].Name == "--user-id-type <type>" {
+			flags[index].Description = "contract/approve_matrix 目录、规则行默认 tenant_employee_id；其他路径沿用原默认值"
 		}
 	}
 	return flags
