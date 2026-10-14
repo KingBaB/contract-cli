@@ -38,13 +38,22 @@
 
 当前源码构建和正式构建都只支持 `prod`，默认 profile 为 `contract`；将 `--env` 指定为 `test`、`blue` 或 `dev` 会在发请求前拒绝，历史非 prod profile 也不会自动迁移或复用凭据。API 地址为 `https://open.qfei.cn`，账号地址为 `https://myaccount.qfei.cn`。
 
-若需验证 npm 包构建流程，仍可生成独立的本地预发布包；版本中的 `-test` 只是包标记，不开放 test 环境，也不发布到 npm：
+```bash
+contract-cli config add --env prod --name contract
+# 本地浏览器 OAuth 登录
+contract-cli auth login --profile contract --as user
+# 或使用 Device Grant，完成授权页面操作后执行 complete
+contract-cli auth init --profile contract --output json
+contract-cli auth complete --profile contract --output json
+```
+
+若需验证 npm 包构建流程，仍可生成独立的本地预发布包；版本中的 `-test` 只是包标记，运行时仅支持 `prod`，也不发布到 npm：
 
 ```bash
 VERSION=1.8.4-test.20260923.6 bash scripts/build-test-package.sh
 ```
 
-历史 `.5` 及更早联调包仍含旧环境能力，不能用它们判断当前分支的新构建行为。审批矩阵的 user/app 双身份和规则 OpenAPI 命令保持不变；真实环境验证仍需对应后端及网关配置，见 [双身份接入说明](docs/approval-matrix-user-app-auth.md)。不要在对话中发送 Token 或 App Secret。
+历史联调包可能仍含 test/blue 等旧环境能力，请通过新构建的 `config add --help` 核对当前能力。审批矩阵的 user/app 双身份和规则 OpenAPI 命令保持不变；真实环境验证仍需对应后端及网关配置，见 [双身份接入说明](docs/approval-matrix-user-app-auth.md)。不要在对话中发送 Token 或 App Secret。
 
 ### Requirements
 
