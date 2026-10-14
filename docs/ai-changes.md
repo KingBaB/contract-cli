@@ -1,5 +1,12 @@
 # AI 变更记录
 
+- 2026-10-14
+  变更摘要：在原文档分支合并 GitHub 最新 release，解决 PR #20 的 README 冲突。
+  涉及文件/模块：README.md、docs/ai-changes.md；相对 release 未修改 Go 代码、Skill 或发布配置。
+  关键逻辑/决策：保留客户使用指南，整合 prod 环境限制、本地预发布包及历史联调包说明；复用已有 OAuth 和 Device Grant 授权步骤。
+  验证：go test ./...、go build ./...、go vet ./...、11 项 Node 测试及打包/构建参数/功能基线检查通过。
+  已知基线：独立缓存 golangci-lint run --enable=exhaustive ./... 报 21 项存量问题；Go 文件和依赖与最新 release 完全一致。
+
 - 2026-10-13
   变更摘要：修复 README 完整替换导致的文档一致性回归失败。
   涉及文件/模块：README.md、docs/ai-changes.md；未修改测试或 Go 代码。

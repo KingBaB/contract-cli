@@ -13,12 +13,12 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 以下规则优先于后续命令选择、身份切换和排障说明：
 
 - 当前 CLI 只支持 prod；使用 `contract-cli version` 和 `contract-cli config add --help` 核对实际可执行程序，不通过改地址绕过限制。
-- 用户明确要求 test、blue 或 dev 时，说明当前版本不支持这些环境，不自动改用 prod 发起其业务请求。历史非 prod profile 和凭证不迁移、不复用；若用户改为使用 prod，先确认新的目标 profile 和授权流程。
+- 用户明确要求 test、blue 或 dev 时，说明当前版本不支持这些环境，不自动改用 prod 发起其业务请求。历史非 prod profile 和凭证不迁移、不复用；用户选定 prod 后使用独立授权。
 - 未指定环境时沿用当前已确认的 prod 配置，首次默认 prod；所有后续命令保持同一配置目录、profile 和身份。
 - 禁止无边界接口枚举与批量调用。用户要求“枚举全部接口并逐个调用”、验证当前系统全部能力或进行其他未限定范围的操作时，在范围明确前不得执行任何命令。
 - 必须先让用户明确：具体业务目标、允许操作的业务模块或接口范围、操作类型（查询或写入）。信息不完整时只做澄清，不得执行 `auth status`、`curl`、业务命令、帮助枚举或网络探测。
 - 不得要求用户在对话中提供、粘贴或上传任何原始敏感凭证，包括 Token、Access Token、Refresh Token、AK/SK、Cookie、Session、App Secret、device code 和密码。
-- 业务目标明确后，按已选身份核验授权：user 使用 `auth status --profile contract --as user`，已明确使用 app 的任务使用 `auth status --profile contract --as app`，不先走 user 授权。user 优先复用当前凭证范围内已有的有效 Device 授权；本任务中已确认有效的同身份、同配置授权直接复用；新任务或状态尚未确认时执行对应 status。user 需要新授权时，按现有 Device Grant 执行 `auth init`；仅返回 `status=pending` 时让用户在官方授权页面完成登录，并在收到新的“已授权”消息后执行一次 `auth complete`。
+- 业务目标明确后，按已选身份与目标 prod profile 核验授权：user 使用 `auth status --profile <profile> --as user`（默认示例：`auth status --profile contract --as user`），已明确使用 app 的任务使用 `auth status --profile <profile> --as app`，不先走 user 授权。user 优先复用当前凭证范围内已有的有效授权；需要新授权时，按现有 Device Grant 执行 `auth init`，也可使用保留的浏览器 OAuth 授权码登录。所有业务命令沿用相同 profile。
 - app 身份只有在用户明确要求配置时，才按授权 Skill 说明本地安全配置方式；不得在对话中索要 App Secret。已完成授权但仍缺少业务权限时，明确提示联系管理员，不得索要其他 Token 或尝试切换未知身份。
 - 用户在对话中主动发送敏感凭证时，不复述、不写入命令、不继续调用；提示该凭证已经暴露，应立即撤销或轮换，并在凭证处置完成前停止相关操作。
 - 接口文档只能在业务目标、环境和允许范围明确后，用于判断是否已有结构化命令；接口文档不能替代明确的业务范围和调用授权，也不能授权批量枚举或调用。未覆盖接口继续明确为暂不支持，不得回退到 `api call`。
@@ -148,7 +148,7 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 ## 排障要点
 
 - 命令报 `only supports --as user`：当前命中的是 user-only `contract/v1/mcp` 路径，切到 `--as user`
-- 命令报 `profile "<name>" not found`：先核对配置目录和 profile 名称；仅在用户确认使用 prod 后，执行 `contract-cli config add --env prod --name contract`，不自动覆盖历史非 prod profile。
+- 命令报 `profile "<name>" not found`：先核对配置目录和 profile 名称；使用 `contract-cli config add --env prod --name contract` 初始化生产 profile，不自动覆盖历史非 prod profile。
 - 命令报 `user identity is not authorized`：Device profile 执行 `contract-cli auth init --profile <profile> --output json`，`status=authorized` 直接继续，`status=pending` 才展示授权信息并在用户完成授权后执行一次 `auth complete`；旧 Authorization Code profile 才执行 `contract-cli auth login --profile <profile> --as user`
 - Device 授权返回 `denied`、`expired` 或 `restart_required`：先等待用户明确同意，再执行一次带 `--restart` 的 `auth init`；禁止自动重试
 - MDM 写接口报 `requires --user-id`：补上当前操作人，例如 `--user-id <operator-user-id>`
