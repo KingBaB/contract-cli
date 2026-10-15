@@ -42,7 +42,7 @@ contract-cli contract summary query --profile contract --as user --contract-name
 - 合同不存在：请用户核对编号或完整名称。
 - 同名合同不唯一：请用户改用合同编号；不要猜选。
 - `status=2`：展示服务端返回的总结和结构化摘要。
-- `status=1`：说明仍在生成，本轮不重试。
+- `status=1`：只说明“摘要正在生成中，请稍后再试”，不展示响应中可能残留的 `overview`、`summary` 或 `structuredSummary`，本轮不重试。
 - `status=3`：展示 `errorCode` / `errorMsg`，不自动重新生成。
 
 ## 本地文件生成
@@ -60,7 +60,7 @@ contract-cli contract summary generate --profile contract --as user --file '<本
 按 [摘要响应与展示规则](references/summary-and-card.md) 解释字段，按 [展示与交互规则](references/display-and-interaction.md) 输出：
 
 - 合同查询优先展示 `contractName`、`contractNumber`、状态和是否命中缓存。
-- 分别保留 `overview`、`summary` 与 `structuredSummary` 的原文和顺序，不自行补写合同正文或法律结论。
+- 合同查询仅在 `status=2` 时展示摘要；文件直出成功时按实际返回字段展示。分别保留 `overview`、`summary` 与 `structuredSummary` 的原文和顺序，不自行补写合同正文或法律结论。
 - 部分字段缺失时交付已有内容并准确说明，不把 `summaryId` 或 `summaryVersionId` 当成正文版本证明。
 - 文件直出接口没有合同 ID、编号或名称时是正常契约，不推断关联合同。
 

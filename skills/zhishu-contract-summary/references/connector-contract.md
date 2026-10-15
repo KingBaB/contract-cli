@@ -36,4 +36,6 @@ CLI 同时保留 `--input-file` / `--data` 输入，但会解析并校验 JSON o
 
 `data` 可能包含：`contractId`、`contractNumber`、`contractName`、`summaryId`、`summaryVersionId`、`status`、`errorCode`、`errorMsg`、`overview`、`summary`、`structuredSummary`、`traceId`、`fileType`、`cacheData`、`generated`。
 
+查询返回 `status=1` 时，CLI 输出提示“摘要正在生成中，请稍后再试”，保留 `data.status`；即使服务端同时返回旧的摘要字段，也不会输出。`--raw` 同样遵循此规则。
+
 文件直出响应中的合同 ID、编号、名称和摘要快照 ID 可以为空；不能据此回填或猜测合同关系。

@@ -549,6 +549,7 @@ contract-cli contract summary query --profile contract --as user --data '{"contr
 - `--contract-number` 与 `--contract-name` 必须二选一，分别映射 JSON `contractNumber` 与 `contractName`；接口执行精确匹配。
 - 也可用 `--input-file` / `--data` 提供 JSON object，接受 camelCase 或 snake_case 别名；JSON body 与两个 selector flag 不得混用。
 - 查询可能触发生成，按写请求处理网络不确定性；超时、断网、5xx 或生成中时不得自动重试。
+- `status=1` 表示生成中；输出提示“摘要正在生成中，请稍后再试”，保留 `data.status`，隐藏 `data` 中的摘要内容等其他字段，`--raw` 也遵循此规则。`status=2` 继续展示完整摘要。
 - `--output` 仅支持 `json`、`yaml`、`table`；非法格式会在发送查询请求前被拒绝。
 
 #### `contract-cli contract summary generate`

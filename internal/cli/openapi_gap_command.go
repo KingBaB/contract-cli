@@ -74,6 +74,29 @@ func (a *App) runContractSummaryQuery(ctx context.Context, args []string) (err e
 	})
 }
 
+func summaryQueryVisibleBody(body []byte) ([]byte, bool) {
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(body, &envelope) != nil || strings.TrimSpace(string(envelope["code"])) != "0" || strings.TrimSpace(string(envelope["success"])) == "false" {
+		return body, false
+	}
+	var data map[string]json.RawMessage
+	if json.Unmarshal(envelope["data"], &data) != nil || strings.TrimSpace(string(data["status"])) != "1" {
+		return body, false
+	}
+	visible := map[string]json.RawMessage{"data": json.RawMessage(`{"status":1}`)}
+	for _, key := range []string{"code", "success"} {
+		if value, exists := envelope[key]; exists {
+			visible[key] = value
+		}
+	}
+	visible["msg"] = json.RawMessage(`"摘要正在生成中，请稍后再试"`)
+	filtered, err := json.Marshal(visible)
+	if err != nil {
+		return body, false
+	}
+	return filtered, true
+}
+
 func resolveContractSummaryQueryBody(parsed parsedArgs, options commandOptions) ([]byte, error) {
 	contractNumber := strings.TrimSpace(parsed.String("--contract-number"))
 	contractName := strings.TrimSpace(parsed.String("--contract-name"))

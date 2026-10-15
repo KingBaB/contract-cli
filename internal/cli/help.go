@@ -605,6 +605,7 @@ func addContractHelp(registry map[string]helpTopic) {
 			"走 POST /open-apis/contract/v1/summary/query。",
 			"contractNumber 与 contractName 必须二选一；同时也接受 snake_case JSON 别名。",
 			"接口可能触发生成；超时、断网、5xx 或状态为生成中时不要自动重复调用。",
+			"status=1 表示生成中；输出提示“摘要正在生成中，请稍后再试”和状态，不展示此时返回的摘要字段（包括 --raw）。",
 			"--output 仅支持 json、yaml、table；非法格式会在请求前被拒绝。",
 		},
 	}
