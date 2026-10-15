@@ -19,7 +19,7 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 	for _, required := range []string{
 		"禁止无边界接口枚举与批量调用",
 		"具体业务目标",
-		"当前 CLI 仅支持 prod",
+		"当前 CLI 只支持 prod",
 		"用户明确要求非生产环境时",
 		"历史非生产 profile 和凭证不迁移、不复用",
 		"允许操作的业务模块或接口范围",
@@ -34,8 +34,9 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 		"App Secret",
 		"device code",
 		"密码",
-		"优先复用当前凭证范围内已有的有效 Device 授权",
+		"优先复用当前凭证范围内已有的有效授权",
 		"需要新授权时，按现有 Device Grant 执行 `auth init`",
+		"保留的浏览器 OAuth 授权码登录",
 		"明确提示联系管理员",
 		"不得索要其他 Token",
 		"不复述、不写入命令、不继续调用",
@@ -51,7 +52,8 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 
 	for _, required := range []string{
 		"不得主动询问或接收原始凭证",
-		"正式包仅支持 `prod` 环境",
+		"当前构建只支持 `prod`",
+		"默认 profile 名为 `contract`",
 		"历史非生产 profile",
 		"不将旧环境的 Token 或 App Secret 迁入 prod",
 		"Skill 更新后必须完全退出并新建任务",

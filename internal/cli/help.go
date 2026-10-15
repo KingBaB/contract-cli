@@ -210,6 +210,7 @@ func helpRegistry() map[string]helpTopic {
 		{"contract-cli contract <subcommand> [flags]", "合同结构化命令"},
 		{"contract-cli employee list [flags]", "按姓名或部门查询人员"},
 		{"contract-cli department list [flags]", "查询部门候选与部门 ID"},
+		{"contract-cli review <subcommand> [flags]", "合同智能审查命令"},
 		{"contract-cli payment <subcommand> [flags]", "付款结构化命令"},
 		{"contract-cli mdm vendor <subcommand> [flags]", "交易方主数据命令"},
 		{"contract-cli mdm legal <subcommand> [flags]", "法人主体主数据命令"},
@@ -258,6 +259,7 @@ func helpRegistry() map[string]helpTopic {
 	addMDMHelp(registry)
 	addEventHelp(registry)
 	addRuleHelp(registry)
+	addReviewHelp(registry)
 	addRuleStructureHelp(registry)
 	return registry
 }
@@ -295,6 +297,10 @@ func addEnvironmentHelp(registry map[string]helpTopic) {
 	}
 }
 
+/*
+addConfigHelp 注册 profile 配置命令帮助，只展示当前可用的 prod 预设。
+入参 registry（map[string]helpTopic）为帮助主题表；无返回值。
+*/
 func addConfigHelp(registry map[string]helpTopic) {
 	registry["config"] = helpTopic{
 		Name:  "config",
@@ -436,7 +442,9 @@ func addSkillsHelp(registry map[string]helpTopic) {
 			{"contract-cli skills install [flags]", "安装内置 Agent skills"},
 		},
 		Notes: []string{
-			"推荐跨平台安装方式：npx skills add qfeius/contract-cli -y -g。",
+			"配套 Skill 使用当前 CLI 内置内容；先核实当前客户端实际读取的用户 Skill 目录，再完整安装并登记。",
+			"首次安装或未识别的历史位置：未找到可自动同步的位置时，先提示用户确认真实目录，或提供经过核实的推荐目录；确认前不自动安装所有候选。",
+			"历史通用安装入口仍可使用，但不能用 GitHub 默认分支的 Skill 代替当前 CLI 配套版本同步。",
 		},
 	}
 	registry["skills list"] = helpTopic{
@@ -449,18 +457,24 @@ func addSkillsHelp(registry map[string]helpTopic) {
 	}
 	registry["skills install"] = helpTopic{
 		Name:    "skills install",
-		Summary: "把当前二进制内置 skills 安装到本机 Codex skills 目录。",
+		Summary: "把当前 CLI 内置的配套 Skill 安装到指定目录；请先核实当前客户端实际读取的用户 Skill 目录。",
 		Usage:   []string{"contract-cli skills install [flags]"},
 		Flags: []helpFlag{
-			{"--target <dir>", "安装目标目录；默认 $CODEX_HOME/skills 或 ~/.codex/skills"},
+			{"--target <dir>", "已确认的用户 Skill 安装目录；省略 --target 时默认使用 Codex：$CODEX_HOME/skills 或 ~/.codex/skills"},
 			{"--name <skill>", "只安装指定的内置 skill；默认安装全部"},
 			{"--force", "覆盖已存在的同名 skill；默认跳过"},
 		},
 		Examples: []string{
+			"contract-cli skills install --target \"<已确认的当前客户端用户 Skill 目录>\" --force",
 			"contract-cli skills install",
 			"contract-cli skills install --target ~/.codex/skills",
 			"contract-cli skills install --name contract-cli-rule --force",
 			"contract-cli skills install --force",
+		},
+		Notes: []string{
+			"不会自动识别当前客户端；其他客户端必须指定其实际读取且允许安装的用户 Skill 目录，不能省略 --target 来代替目录核实。",
+			"首次安装或未识别的历史位置需要先确认目录和覆盖范围；用户不知道路径时，可由 AI 核实后推荐并等待用户确认，再代为完整安装。",
+			"完整安装且无跳过项才新增整套 Skill 自动同步登记；后续全局升级处理全部已登记位置，不只更新当前客户端。",
 		},
 	}
 }
@@ -1935,11 +1949,11 @@ func addRuleHelp(registry map[string]helpTopic) {
 			{"contract-cli rule table row delete <row-id> [flags]", "删除规则表行"},
 		},
 	}
-	registry["rule table row create"] = ruleTableHelpTopic("rule table row create", "创建规则表行，请求体必须是 JSON。", "contract-cli rule table row create --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), jsonBodyFlags()), []string{"contract-cli rule table row create --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --input-file row.json"}, []string{"走 POST /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows。", "DEPARTMENT_COLLECTION 使用 open_department_id 字符串（od-...）；sys_department.id 数字会在本地拒绝。"})
+	registry["rule table row create"] = ruleTableHelpTopic("rule table row create", "创建规则表行，请求体必须是 JSON。", "contract-cli rule table row create --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), jsonBodyFlags()), []string{"contract-cli rule table row create --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --input-file row.json"}, []string{"走 POST /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows。", "contract/approve_matrix 默认使用 SaaS 搜索返回的人员、部门 id；DEPARTMENT_COLLECTION 传十进制字符串。"})
 	registry["rule table row get"] = ruleTableHelpTopic("rule table row get", "查询规则表单行信息。", "contract-cli rule table row get <row-id> --product-id <id> --group-id <id> --table-id <id> [flags]", tableIDHelpFlags(), []string{"contract-cli rule table row get <row-id> --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id>"}, []string{"走 GET /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/{table_row_id}。", "不接受 --input-file / --data。"})
 	registry["rule table row list"] = ruleTableHelpTopic("rule table row list", "分页查询规则表行。", "contract-cli rule table row list --product-id <id> --group-id <id> --table-id <id> [flags]", concatHelpFlags(tableIDHelpFlags(), pageFlags()), []string{"contract-cli rule table row list --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --page-size 10"}, []string{"走 GET /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows。", "不接受 --input-file / --data。"})
-	registry["rule table row search"] = ruleTableHelpTopic("rule table row search", "按筛选条件分页查询规则表行，请求体必须是 JSON。", "contract-cli rule table row search --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), pageFlags(), jsonBodyFlags()), []string{"contract-cli rule table row search --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --page-size 10 --input-file row-search.json"}, []string{"走 POST /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/search。", "--page-size 必填且范围为 1-100；--page-size / --page-token 作为 query 参数传递，请求体保持不变。", "DEPARTMENT_COLLECTION 使用 open_department_id 字符串（od-...）；sys_department.id 数字会在本地拒绝。"})
-	registry["rule table row update"] = ruleTableHelpTopic("rule table row update", "修改规则表行，请求体必须是 JSON。", "contract-cli rule table row update <row-id> --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), jsonBodyFlags()), []string{"contract-cli rule table row update <row-id> --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --input-file row.json"}, []string{"走 PUT /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/{table_row_id}。", "DEPARTMENT_COLLECTION 使用 open_department_id 字符串（od-...）；sys_department.id 数字会在本地拒绝。"})
+	registry["rule table row search"] = ruleTableHelpTopic("rule table row search", "按筛选条件分页查询规则表行，请求体必须是 JSON。", "contract-cli rule table row search --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), pageFlags(), jsonBodyFlags()), []string{"contract-cli rule table row search --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --page-size 10 --input-file row-search.json"}, []string{"走 POST /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/search。", "--page-size 必填且范围为 1-100；--page-size / --page-token 作为 query 参数传递，请求体保持不变。", "contract/approve_matrix 默认使用 SaaS 搜索返回的人员、部门 id；DEPARTMENT_COLLECTION 传十进制字符串。"})
+	registry["rule table row update"] = ruleTableHelpTopic("rule table row update", "修改规则表行，请求体必须是 JSON。", "contract-cli rule table row update <row-id> --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]", concatHelpFlags(tableIDHelpFlags(), jsonBodyFlags()), []string{"contract-cli rule table row update <row-id> --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id> --input-file row.json"}, []string{"走 PUT /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/{table_row_id}。", "contract/approve_matrix 默认使用 SaaS 搜索返回的人员、部门 id；DEPARTMENT_COLLECTION 传十进制字符串。"})
 	registry["rule table row delete"] = ruleTableHelpTopic("rule table row delete", "删除规则表行。", "contract-cli rule table row delete <row-id> --product-id <id> --group-id <id> --table-id <id> [flags]", tableIDHelpFlags(), []string{"contract-cli rule table row delete <row-id> --profile contract --as app --product-id <product-id> --group-id <group-id> --table-id <table-id>"}, []string{"走 DELETE /open-apis/rule_engine/v1/products/{product_id}/groups/{group_id}/rule_tables/{rule_table_id}/table_rows/{table_row_id}。", "不接受 --input-file / --data。"})
 	registry["rule table import"] = helpTopic{
 		Name:  "rule table import",
@@ -1975,6 +1989,9 @@ func addRuleHelp(registry map[string]helpTopic) {
 }
 
 func ruleTableHelpTopic(name string, summary string, usage string, extraFlags []helpFlag, examples []string, notes []string) helpTopic {
+	if strings.HasPrefix(name, "rule table row ") && name != "rule table row delete" {
+		extraFlags = append(extraFlags, helpFlag{"--department-id-type <type>", "contract/approve_matrix 默认 tenant_department_id；可显式选择兼容类型"})
+	}
 	return helpTopic{
 		Name:    name,
 		Summary: summary,
@@ -1997,6 +2014,8 @@ func ruleOpenPlatformCommonFlags() []helpFlag {
 	for index := range flags {
 		if flags[index].Name == "--user-id <id>" {
 			flags[index].Description = "兼容解析但不发送到矩阵路径；编辑人由当前用户令牌确定"
+		} else if flags[index].Name == "--user-id-type <type>" {
+			flags[index].Description = "contract/approve_matrix 目录、规则行默认 tenant_employee_id；其他路径沿用原默认值"
 		}
 	}
 	return flags

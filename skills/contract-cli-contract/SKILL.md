@@ -1,6 +1,6 @@
 ---
 name: contract-cli-contract
-description: "contract-cli 合同命令技能：支持 user/app 双身份下的合同详情、创建、文本、分类、模板、上传、下载和审批详情；支持 user 身份查询或生成合同摘要、查询/创建审批评论、查询个人任务、通过/拒绝任务；并支持 app 身份下的合同与审批管理。当用户要读取已知合同、查询摘要、创建、更新、下载或办理合同时触发；搜索和筛选合同使用 contract-cli-contract-search。"
+description: "contract-cli 合同命令技能：支持 user/app 双身份下的合同详情、创建、文本、分类、模板、上传、下载和审批详情；支持 user 身份查询或生成合同摘要、查询/创建审批评论、查询个人任务、通过/拒绝任务；并支持 app 身份下的合同与审批管理。当用户要读取已知合同、查询摘要、创建、更新、下载或办理合同时触发；搜索和筛选合同使用 contract-cli-contract-search，智能审查及审查配置请求分派至独立审查 Skill。"
 ---
 
 # contract-cli Contract
@@ -51,6 +51,8 @@ CRITICAL — 开始前 MUST 先读取 [../contract-cli-shared/SKILL.md](../contr
 
 ## 快速决策
 
+- 想审查外部文件、系统内已有合同或继续 AI 审查任务：读 [../contract-cli-review/SKILL.md](../contract-cli-review/SKILL.md)。
+- 想查询/维护审查清单、规则或规则分组：读 [../contract-cli-review-rule/SKILL.md](../contract-cli-review-rule/SKILL.md)；仅选择已有清单仍属于审查流程。
 - 想直接拿合同详情：用 `contract get`
 - 想搜索或筛选合同（包括合同文本关键词）：读 [合同搜索 Skill](../contract-cli-contract-search/SKILL.md)，由它选择 user、app V1 或 app V2。
 - 想按合同编号/完整名称查询摘要，或为本地文件生成摘要：读 [智书合同摘要 Skill](../zhishu-contract-summary/SKILL.md)
@@ -73,6 +75,18 @@ CRITICAL — 开始前 MUST 先读取 [../contract-cli-shared/SKILL.md](../contr
 - 若需求是付款：读 [../contract-cli-payment/SKILL.md](../contract-cli-payment/SKILL.md)
 
 ## 字段文档导航
+
+### 智能审查入口边界
+
+审查使用 `contract-cli review`，清单/规则/分组分别使用 `review checklist`、`review rule`、`review rule group`；历史 `rule table` 审批矩阵不变。审查仅复用个人 user 上下文，以下历史合同命令的身份矩阵及引用保持不变；不以 app-only 协商能力补个人审查缺口。
+
+外部独立文件为预审，无须先创建合同或协商，结果由 Agent 展示，不返回详情 URL。系统内合同可先复用个人搜索、详情及分类查询；必须核实真实当前正文、业务场景、状态、成员权限和文件映射，缺失时停在对应步骤，不擅自上传普通附件代替。
+
+所有按合同 ID 发起的审查（协商及任务中心各阶段）统一在引用上传后执行 `review subject extract`，让用户从同一文件提取的名称/角色候选选择立场；不使用合同登记交易方或我方/对方替代。旧交易方选择的恢复、候选异常和已有任务查询边界按审查 Skill 处理；6+16 状态及例外也见该 Skill。清单默认按真实分类筛选，显式跨类型选择仍需可见权限，不自动改配置。审批实例、审批任务实例与 AI 审查任务不能混用。
+
+系统合同审查成功后，由审查 Skill 从本次合同详情 `multi_url.pc_url` 设置 `targetType=ai-review`，返回“查看审查”链接，保留原业务定位，退出参数按审查 Skill 的协商/任务中心导航规则处理。审查详情的 URL 字段为空或尚未验证网页展示，都不阻断返回链接；合同地址缺失/无效时按审查 Skill 重查或报告缺口，不编造地址。审查请求不授权创建合同、修改正文、办理审批或接受修订。
+
+### 历史合同字段参考
 
 - 合同搜索统一入口：[合同搜索 Skill](../contract-cli-contract-search/SKILL.md)，包含文本搜索配方、user/app 参数和分页规则。
 - 合同详情和搜索响应字段：读 [references/contract-response-fields.md](references/contract-response-fields.md)

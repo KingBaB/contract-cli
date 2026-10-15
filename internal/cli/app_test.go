@@ -1063,6 +1063,10 @@ func TestConfigAddUsesProdPresetByDefault(t *testing.T) {
 	}
 }
 
+/*
+TestConfigAddRejectsDevPresetBeforeNetworkRequest 验证 dev 仍在发请求前被拒绝。
+入参 t（*testing.T）为测试上下文；无返回值，失败时报告测试错误。
+*/
 func TestConfigAddRejectsTestPresetBeforeHTTP(t *testing.T) {
 	t.Parallel()
 

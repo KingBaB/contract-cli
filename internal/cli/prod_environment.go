@@ -31,6 +31,7 @@ func environmentOrigins(environment string) (string, string, bool) {
 	return "", "", false
 }
 
+// 已移除的 dev/test/blue 域名继续拦截，避免历史配置或重定向重新启用旧环境。
 var blockedProductionBuildHosts = map[string]struct{}{
 	"test-open.qtech.cn":      {},
 	"test-myaccount.qtech.cn": {},
@@ -171,6 +172,10 @@ func productionProfileError(profileName string) error {
 	)
 }
 
+/*
+withProductionNetworkGuard 在传输层拦截非生产域名，包括直接请求和 HTTP 重定向。
+入参 client（*http.Client）为原始客户端，logger（*slog.Logger）为日志记录器；返回受保护的 *http.Client。
+*/
 func withProductionNetworkGuard(client *http.Client, logger *slog.Logger) *http.Client {
 	guarded := *client
 	transport := client.Transport

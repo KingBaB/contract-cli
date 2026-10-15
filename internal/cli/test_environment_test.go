@@ -89,7 +89,19 @@ func TestExistingNonProductionProfilesRejectedBeforeHTTPRequest(t *testing.T) {
 				})},
 			})
 			for _, args := range [][]string{
+				{"auth", "login", "--profile", profile.Name, "--as", "user", "--no-open-browser"},
+				{"auth", "login", "--profile", profile.Name, "--as", "app", "--app-id", "fixture-app", "--app-secret", "fixture-secret"},
+				{"auth", "init", "--profile", profile.Name},
+				{"auth", "complete", "--profile", profile.Name},
 				{"auth", "status", "--profile", profile.Name, "--as", "user"},
+				{"auth", "status", "--profile", profile.Name, "--as", "app"},
+				{"auth", "logout", "--profile", profile.Name, "--as", "user"},
+				{"auth", "logout", "--profile", profile.Name, "--as", "app"},
+				{"auth", "use", "--profile", profile.Name, "--as", "app"},
+				{"contract", "get", "fixture-contract", "--profile", profile.Name, "--as", "user"},
+				{"contract", "get", "fixture-contract", "--profile", profile.Name, "--as", "app"},
+				{"mdm", "fields", "list", "--biz-line", "vendor", "--profile", profile.Name, "--as", "app"},
+				{"payment", "get", "fixture-payment", "--contract", "fixture-contract", "--profile", profile.Name, "--as", "app"},
 				{"rule", "table", "get", "--profile", profile.Name, "--as", "app", "--product-id", "contract", "--group-id", "approve_matrix", "--table-id", "table-1"},
 			} {
 				err := app.Run(context.Background(), args)
@@ -139,7 +151,111 @@ func TestConfigHelpShowsSupportedEnvironments(t *testing.T) {
 		!strings.Contains(output.String(), "仅支持 prod，默认 prod") ||
 		strings.Contains(output.String(), "--env test") ||
 		strings.Contains(output.String(), "--env dev") ||
-		strings.Contains(output.String(), "--env blue") {
+		strings.Contains(output.String(), "--env blue") ||
+		strings.Contains(output.String(), "--env <prod|") {
 		t.Fatalf("unexpected environment help: %s", output.String())
+	}
+}
+
+/*
+TestHistoricalBlueDeviceStateRejected 验证旧蓝环境快照与待授权状态在现有 prod 配置和配置恢复时均被拒绝。
+入参 t（*testing.T）为测试上下文；无返回值，失败时报告测试错误。
+*/
+func TestHistoricalBlueDeviceStateRejected(t *testing.T) {
+	blueProfile := legacyNonProductionProfile(t, "blue", "https://open-b.qfei.cn", "https://myaccount-b.qfei.cn")
+	blueProfile.Name = "contract"
+	prodProfile := validProductionProfile()
+	tests := []struct {
+		name   string
+		stored credential.DeviceCredential
+	}{
+		{name: "snapshot", stored: credential.DeviceCredential{DeviceProfile: snapshotDeviceProfile(blueProfile)}},
+		{name: "pending token endpoint", stored: credential.DeviceCredential{
+			DeviceProfile: snapshotDeviceProfile(prodProfile),
+			Pending: &credential.PendingTransaction{
+				Status: credential.PendingStatusPending, DeviceCode: "fixture-device",
+				TokenEndpoint: "https://myaccount-b.qfei.cn/api/public/oauth/token/contract",
+				ClientID:      "zscli_892efdadc11a3f53", ExpiresAt: time.Now().Add(time.Minute),
+			},
+		}},
+		{name: "pending verification uri", stored: credential.DeviceCredential{
+			DeviceProfile: snapshotDeviceProfile(prodProfile),
+			Pending: &credential.PendingTransaction{
+				Status: credential.PendingStatusPending, DeviceCode: "fixture-device",
+				TokenEndpoint:           "https://myaccount.qfei.cn/api/public/oauth/token/contract",
+				VerificationURIComplete: "https://myaccount-b.qfei.cn/device?user_code=fixture",
+				ClientID:                "zscli_892efdadc11a3f53", ExpiresAt: time.Now().Add(time.Minute),
+			},
+		}},
+	}
+	for _, test := range tests {
+		for _, withProfile := range []bool{false, true} {
+			mode := "recovery"
+			if withProfile {
+				mode = "existing prod profile"
+			}
+			t.Run(test.name+"/"+mode, func(t *testing.T) {
+				store := config.NewStore(t.TempDir())
+				if withProfile {
+					if err := store.UpsertProfile(prodProfile, true); err != nil {
+						t.Fatal(err)
+					}
+				}
+				// 两种配置来源共享相同的历史凭据，校验失败不得写回快照或发送业务请求。
+				workspace := t.TempDir()
+				requests := 0
+				app := New(Options{
+					Store: store, Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{},
+					CredentialStore: &deviceMemoryCredentialStore{values: map[string]credential.DeviceCredential{"contract": test.stored}},
+					LookupEnv: func(name string) (string, bool) {
+						return workspace, name == "SKILL_SESSION_WORKSPACE"
+					},
+					HTTPClient: &http.Client{Transport: productionRoundTripFunc(func(*http.Request) (*http.Response, error) {
+						requests++
+						return productionResponse(http.StatusOK, "{}"), nil
+					})},
+				})
+				for _, args := range [][]string{
+					{"auth", "init", "--profile", "contract"},
+					{"auth", "complete", "--profile", "contract"},
+					{"auth", "status", "--profile", "contract", "--as", "user"},
+					{"auth", "logout", "--profile", "contract", "--as", "user"},
+					{"contract", "template", "list", "--profile", "contract", "--as", "user"},
+				} {
+					err := app.Run(context.Background(), args)
+					if err == nil || err.Error() != productionProfileErrorMessage("contract") || requests != 0 {
+						t.Fatalf("command %v error=%v requests=%d", args, err, requests)
+					}
+				}
+				if _, found, err := store.LookupProfile("contract"); err != nil || found != withProfile {
+					t.Fatalf("rejected snapshot changed profile presence: found=%v error=%v", found, err)
+				}
+			})
+		}
+	}
+}
+
+/*
+TestProductionRedirectToBlueBlocked 验证生产请求跳转到蓝环境时不会向目标域名发送请求。
+入参 t（*testing.T）为测试上下文；无返回值，失败时报告测试错误。
+*/
+func TestProductionRedirectToBlueBlocked(t *testing.T) {
+	for _, origin := range []string{"https://open-b.qfei.cn", "https://myaccount-b.qfei.cn"} {
+		t.Run(origin, func(t *testing.T) {
+			requests := 0
+			app := New(Options{Store: config.NewStore(t.TempDir()), HTTPClient: &http.Client{Transport: productionRoundTripFunc(func(*http.Request) (*http.Response, error) {
+				requests++
+				response := productionResponse(http.StatusTemporaryRedirect, "")
+				response.Header.Set("Location", origin+"/finish")
+				return response, nil
+			})}})
+			response, err := app.httpClient.Get(productionOpenPlatformOrigin + "/start")
+			if response != nil {
+				response.Body.Close()
+			}
+			if err == nil || !strings.Contains(err.Error(), "blocks non-production host") || requests != 1 {
+				t.Fatalf("redirect error=%v requests=%d", err, requests)
+			}
+		})
 	}
 }

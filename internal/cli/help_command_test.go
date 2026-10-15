@@ -374,7 +374,7 @@ func TestHelpRequestsRenderExpectedTopics(t *testing.T) {
 				"默认 contract",
 				"contract-cli config add --env prod --name contract",
 			},
-			notContains: []string{"--env <dev|prod>", "--env <prod|dev>", "--env <prod|test>", "--env test"},
+			notContains: []string{"--env <dev|prod>", "--env <prod|dev>", "--env <prod|test>", "--env test", "blue"},
 		},
 		{
 			name: "update check production example",

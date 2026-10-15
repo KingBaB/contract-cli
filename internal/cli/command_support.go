@@ -260,11 +260,32 @@ func (a *App) openPlatformClientAndContextForOptions(options commandOptions, pat
 		return nil, openplatform.RequestContext{}, err
 	}
 	requestContext.CommonQuery = commandCommonQuery(options)
+	if isContractApprovalMatrixDataPath(path) {
+		// 仅矩阵目录、规则行和结果列默认值使用 SaaS 搜索的 id；显式旧类型仍按原有契约发送。
+		if strings.TrimSpace(options.userIDType) == "" {
+			requestContext.CommonQuery.Set("user_id_type", "tenant_employee_id")
+		}
+		if strings.TrimSpace(options.departmentIDType) == "" {
+			requestContext.CommonQuery.Set("department_id_type", "tenant_department_id")
+		}
+	}
 	if isRuleOpenPlatformPath(path) {
 		// 矩阵接口的编辑人由 Bearer 用户身份在开平服务端解析；移除可人为指定的 user_id，避免把审批人或其他人员 ID 当成编辑人。
 		requestContext.CommonQuery.Del("user_id")
 	}
 	return client, requestContext, nil
+}
+
+/*
+isContractApprovalMatrixDataPath 识别需要原生人员、部门 ID 的矩阵数据接口。
+入参 path（string）为开平路径；返回 bool 表示是否为 contract/approve_matrix 的目录、规则行或列配置。
+*/
+func isContractApprovalMatrixDataPath(path string) bool {
+	const prefix = "/open-apis/rule_engine/v1/products/contract/groups/approve_matrix/"
+	if !strings.HasPrefix(path, prefix) {
+		return false
+	}
+	return strings.Contains(path, "/employees/") || strings.Contains(path, "/departments/") || strings.Contains(path, "/table_rows") || strings.Contains(path, "/table_columns/")
 }
 
 /* isRuleOpenPlatformPath 判断请求是否属于审批矩阵开放平台路径；path 为相对接口路径，返回是否需要用户身份语义。 */

@@ -912,7 +912,7 @@ runRuleTableRowCreate 校验审批矩阵参数并以所选 user/app 身份调用
 返回 error 为参数校验、身份解析、调用或输出错误。
 */
 func (a *App) runRuleTableRowCreate(ctx context.Context, args []string) error {
-	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id"), commonBoolFlags())
+	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id", "--department-id-type"), commonBoolFlags())
 	if err != nil {
 		return err
 	}
@@ -924,7 +924,7 @@ func (a *App) runRuleTableRowCreate(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := validateApprovalMatrixDepartmentIDs(body); err != nil {
+	if err := validateApprovalMatrixDepartmentIDs(body, options.departmentIDType); err != nil {
 		return err
 	}
 	productID, groupID, tableID, err := requiredRuleTable(parsed)
@@ -940,7 +940,7 @@ runRuleTableRowGet 校验审批矩阵参数并以所选 user/app 身份调用既
 返回 error 为参数校验、身份解析、调用或输出错误。
 */
 func (a *App) runRuleTableRowGet(ctx context.Context, args []string) error {
-	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id"), commonBoolFlags())
+	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id", "--department-id-type"), commonBoolFlags())
 	if err != nil {
 		return err
 	}
@@ -965,7 +965,7 @@ runRuleTableRowList 校验审批矩阵参数并以所选 user/app 身份调用�
 返回 error 为参数校验、身份解析、调用或输出错误。
 */
 func (a *App) runRuleTableRowList(ctx context.Context, args []string) error {
-	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id", "--page-size", "--page-token"), commonBoolFlags())
+	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id", "--page-size", "--page-token", "--department-id-type"), commonBoolFlags())
 	if err != nil {
 		return err
 	}
@@ -993,7 +993,7 @@ runRuleTableRowSearch 校验审批矩阵参数并以所选 user/app 身份调用
 返回 error 为参数校验、身份解析、调用或输出错误。
 */
 func (a *App) runRuleTableRowSearch(ctx context.Context, args []string) error {
-	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id", "--page-size", "--page-token"), commonBoolFlags())
+	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id", "--page-size", "--page-token", "--department-id-type"), commonBoolFlags())
 	if err != nil {
 		return err
 	}
@@ -1005,7 +1005,7 @@ func (a *App) runRuleTableRowSearch(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := validateApprovalMatrixDepartmentIDs(body); err != nil {
+	if err := validateApprovalMatrixDepartmentIDs(body, options.departmentIDType); err != nil {
 		return err
 	}
 	productID, groupID, tableID, err := requiredRuleTable(parsed)
@@ -1025,7 +1025,7 @@ runRuleTableRowUpdate 校验审批矩阵参数并以所选 user/app 身份调用
 返回 error 为参数校验、身份解析、调用或输出错误。
 */
 func (a *App) runRuleTableRowUpdate(ctx context.Context, args []string) error {
-	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id"), commonBoolFlags())
+	parsed, err := parseArgs(args, structuredValueFlags("--product-id", "--group-id", "--table-id", "--department-id-type"), commonBoolFlags())
 	if err != nil {
 		return err
 	}
@@ -1037,7 +1037,7 @@ func (a *App) runRuleTableRowUpdate(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := validateApprovalMatrixDepartmentIDs(body); err != nil {
+	if err := validateApprovalMatrixDepartmentIDs(body, options.departmentIDType); err != nil {
 		return err
 	}
 	productID, groupID, tableID, err := requiredRuleTable(parsed)

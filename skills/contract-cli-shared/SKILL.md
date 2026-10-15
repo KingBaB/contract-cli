@@ -1,7 +1,7 @@
 ---
 name: contract-cli-shared
 version: 1.0.1
-description: "contract-cli 开放平台共享约定技能：在 `contract`、`employee`、`department`、`payment`、`mdm`、`event` 和 `rule` 模块间做选择，并遵守 `contract/v1/mcp` user-only 限制、`--input-file` 请求体输入、输出格式和 profile 选择规则。当用户要操作开放平台 CLI 但尚未明确命令模块、需要更新 contract-cli，或看到 JSON 输出中的 `_notice` / `_notice.update` 时触发。"
+description: "contract-cli 开放平台共享约定技能：在 `contract`、`employee`、`department`、`review`、`payment`、`mdm`、`event` 和审批矩阵 `rule` 模块间做选择，并遵守 `contract/v1/mcp` user-only 限制、`--input-file` 请求体输入、输出格式和 profile 选择规则。当用户要操作开放平台 CLI 但尚未明确命令模块、需要更新 contract-cli，或看到 JSON 输出中的 `_notice` / `_notice.update` 时触发。"
 ---
 
 # contract-cli Shared
@@ -12,13 +12,13 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 以下规则优先于后续命令选择、身份切换和排障说明：
 
-- 当前 CLI 仅支持 prod；使用 `contract-cli version` 和 `contract-cli config add --help` 核对实际可执行程序，不通过改地址绕过限制。
-- 用户明确要求非生产环境时，说明当前版本不支持，不自动改用 prod 发起其业务请求。历史非生产 profile 和凭证不迁移、不复用；若用户改为使用 prod，先确认新的目标 profile 和授权流程。
+- 当前 CLI 只支持 prod；使用 `contract-cli version` 和 `contract-cli config add --help` 核对实际可执行程序，不通过改地址绕过限制。
+- 用户明确要求非生产环境时（如 test、blue 或 dev），说明当前版本不支持，不自动改用 prod 发起其业务请求。历史非生产 profile 和凭证不迁移、不复用；若用户改为使用 prod，先确认新的目标 profile 和授权流程。
 - 未指定环境时沿用当前已确认的 prod 配置，首次默认 prod。所有后续命令保持同一配置目录、profile、环境和身份。
 - 禁止无边界接口枚举与批量调用。用户要求“枚举全部接口并逐个调用”、验证当前系统全部能力或进行其他未限定范围的操作时，在范围明确前不得执行任何命令。
 - 必须先让用户明确：具体业务目标、允许操作的业务模块或接口范围、操作类型（查询或写入）。信息不完整时只做澄清，不得执行 `auth status`、`curl`、业务命令、帮助枚举或网络探测。
 - 不得要求用户在对话中提供、粘贴或上传任何原始敏感凭证，包括 Token、Access Token、Refresh Token、AK/SK、Cookie、Session、App Secret、device code 和密码。
-- 业务目标明确后，按已选身份核验授权：user 使用 `auth status --profile contract --as user`，已明确使用 app 的任务使用 `auth status --profile contract --as app`，不先走 user 授权。user 优先复用当前凭证范围内已有的有效 Device 授权；本任务中已确认有效的同身份、同配置授权直接复用；新任务或状态尚未确认时执行对应 status。user 需要新授权时，按现有 Device Grant 执行 `auth init`；仅返回 `status=pending` 时让用户在官方授权页面完成登录，并在收到新的“已授权”消息后执行一次 `auth complete`。
+- 业务目标明确后，按已选身份与目标 prod profile 核验授权：user 使用 `auth status --profile <profile> --as user`（默认示例：`auth status --profile contract --as user`），已明确使用 app 的任务使用 `auth status --profile <profile> --as app`，不先走 user 授权。user 优先复用当前凭证范围内已有的有效授权；需要新授权时，按现有 Device Grant 执行 `auth init`，也可使用保留的浏览器 OAuth 授权码登录。所有业务命令沿用相同 profile。
 - app 身份只有在用户明确要求配置时，才按授权 Skill 说明本地安全配置方式；不得在对话中索要 App Secret。已完成授权但仍缺少业务权限时，明确提示联系管理员，不得索要其他 Token 或尝试切换未知身份。
 - 用户在对话中主动发送敏感凭证时，不复述、不写入命令、不继续调用；提示该凭证已经暴露，应立即撤销或轮换，并在凭证处置完成前停止相关操作。
 - 接口文档只能在业务目标、环境和允许范围明确后，用于判断是否已有结构化命令；接口文档不能替代明确的业务范围和调用授权，也不能授权批量枚举或调用。未覆盖接口继续明确为暂不支持，不得回退到 `api call`。
@@ -36,6 +36,8 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 - 按合同编号/完整名称查询摘要，或为本地合同文件生成摘要：读 [../zhishu-contract-summary/SKILL.md](../zhishu-contract-summary/SKILL.md)
 - 合同详情、创建、已知合同正文读取、模板、分类、枚举、字段更新、签署链接、合同授权、电子签、分享、协商、审批：读 [../contract-cli-contract/SKILL.md](../contract-cli-contract/SKILL.md)
   这里现在采用“主文档 + 字段树附录 + 枚举附录”的结构
+- 单份文件智能审查、系统内合同审查入口或继续审查任务：读 [../contract-cli-review/SKILL.md](../contract-cli-review/SKILL.md)，按实际能力检查系统当前正文与场景关联；不能用审批任务代替 AI 审查任务。
+- 审查清单、审查规则及规则分组查询/维护：读 [../contract-cli-review-rule/SKILL.md](../contract-cli-review-rule/SKILL.md)。仅在审查中选择已有清单仍由审查 Skill 处理；不要路由到审批矩阵。
 - 付款申请、付款计划、付款记录：读 [../contract-cli-payment/SKILL.md](../contract-cli-payment/SKILL.md)
   这里采用“主规则 + 命令示例附录”的结构
 - 交易方查询：读 [../contract-cli-mdm-vendor/SKILL.md](../contract-cli-mdm-vendor/SKILL.md)
@@ -56,6 +58,8 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 - `contract get/search/search-fields/search-v2/create/sync-user-groups/text`
 - `contract summary query/generate`
+- `review file upload/upload-url`、`review subject extract`、`review task start/status/info/result`、`review run`
+- `review checklist`、`review rule`、`review rule group`（审查配置，与顶层审批矩阵 `rule table` 分离）
 - `contract upload-file`
 - `contract field update`
 - `contract sign switch-to-paper`
@@ -88,6 +92,8 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 ## 共享约束
 
+- `review` 下远端命令仅支持 user。两个审查 Skill 复用已建立的个人上下文，不在业务步骤内编排安装授权或自行切换身份/环境；缺口交回公共能力，历史非审查 app 能力保持不变。
+- 审查覆盖外部独立预审、协商和任务中心的业务意图；系统当前正文映射、可信场景未闭合时按审查 Skill 报告缺口，不借用 app-only 入口或裸请求替代。系统合同审查链接由合同 `multi_url.pc_url` 设置 `targetType=ai-review` 生成，不依赖审查详情的 URL 字段；仅合同地址缺失/无效时按审查 Skill 处理链接缺口。外部独立预审不返回详情链接，不将未验证的网页展示声称为已验收。
 - Skill 更新后必须完全退出并新建任务。已有任务不会热加载新 Skill，不得用旧任务判断当前正式包的环境行为。
 - Device 模式按 [../auth/SKILL.md](../auth/SKILL.md) 判断凭证范围：确认本地桌面执行时跨任务复用当前系统用户 + profile 的安全存储凭证；云端、沙箱或识别不明确时保持任务隔离，不因使用本地操作系统或存在任务 ID 就推断可以共享。
 - Device 模式业务命令提示未授权时，按授权 Skill 执行 `auth init`；返回 `status=authorized` 时直接继续原业务请求，不展示缺失的授权链接或二维码，不执行 `auth complete`。返回 `status=pending` 后，用户明确完成授权时只执行一次 `auth complete`。
