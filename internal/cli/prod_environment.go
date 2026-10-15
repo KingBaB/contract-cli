@@ -17,9 +17,6 @@ const (
 	productionOpenPlatformURL    = "https://open.qfei.cn"
 	productionAccountOrigin      = "https://myaccount.qfei.cn"
 	productionOpenPlatformOrigin = "https://open.qfei.cn"
-	testEnvironment              = "test"
-	testOpenPlatformURL          = "https://test-open.qtech.cn"
-	testAccountOrigin            = "https://test-myaccount.qtech.cn"
 )
 
 /*
@@ -30,17 +27,17 @@ func environmentOrigins(environment string) (string, string, bool) {
 	switch environment {
 	case productionEnvironment:
 		return productionOpenPlatformOrigin, productionAccountOrigin, true
-	case testEnvironment:
-		return testOpenPlatformURL, testAccountOrigin, true
 	}
 	return "", "", false
 }
 
 var blockedProductionBuildHosts = map[string]struct{}{
-	"dev-open.qtech.cn":      {},
-	"dev-myaccount.qtech.cn": {},
-	"open-b.qfei.cn":         {},
-	"myaccount-b.qfei.cn":    {},
+	"test-open.qtech.cn":      {},
+	"test-myaccount.qtech.cn": {},
+	"dev-open.qtech.cn":       {},
+	"dev-myaccount.qtech.cn":  {},
+	"open-b.qfei.cn":          {},
+	"myaccount-b.qfei.cn":     {},
 }
 
 /*
@@ -169,7 +166,7 @@ productionProfileError 返回环境配置不合法的统一错误，提示重新
 */
 func productionProfileError(profileName string) error {
 	return fmt.Errorf(
-		"profile %q has unsupported or mismatched environment endpoints; run `contract-cli config add --env prod --name contract` or `contract-cli config add --env test --name contract` and authorize again",
+		"profile %q has unsupported or mismatched environment endpoints; run `contract-cli config add --env prod --name contract` and authorize again",
 		profileName,
 	)
 }

@@ -1,6 +1,6 @@
 # 连接器与命令契约
 
-本文件记录当前 `contract-cli` 对两个合同摘要开放接口的稳定映射。两个命令均只支持 user OAuth，当前构建支持 prod/test，默认 prod。
+本文件记录当前 `contract-cli` 对两个合同摘要开放接口的稳定映射。两个命令均只支持 user OAuth，当前构建仅支持 prod。
 
 ## 合同摘要查询
 

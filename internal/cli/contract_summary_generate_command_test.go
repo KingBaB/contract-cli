@@ -72,6 +72,46 @@ func TestContractSummaryGenerateDirectlyUploadsFileToGenerate(t *testing.T) {
 	}
 }
 
+func TestContractSummaryGenerateRejectsUnsupportedOutputBeforeHTTP(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	uploadPath := filepath.Join(dir, "SMOKE-001.docx")
+	if err := os.WriteFile(uploadPath, []byte("docx bytes"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	store := config.NewStore(dir)
+	if err := store.UpsertProfile(uploadProfile(config.IdentityUser), true); err != nil {
+		t.Fatalf("UpsertProfile() error = %v", err)
+	}
+	stdout := &bytes.Buffer{}
+	app := cli.New(cli.Options{
+		Stdout: stdout,
+		Stderr: &bytes.Buffer{},
+		Store:  store,
+		HTTPClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}),
+		},
+	})
+
+	err := app.Run(context.Background(), []string{
+		"contract", "summary", "generate",
+		"--profile", "contract",
+		"--as", "user",
+		"--file", uploadPath,
+		"--output", "unsupported-format",
+	})
+	if err == nil || !strings.Contains(err.Error(), `unsupported output format "unsupported-format"`) {
+		t.Fatalf("Run() error = %v, want unsupported output rejection", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+}
+
 func TestContractSummaryGenerateSupportsFileName(t *testing.T) {
 	t.Parallel()
 

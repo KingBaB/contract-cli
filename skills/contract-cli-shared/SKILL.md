@@ -12,9 +12,9 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 
 以下规则优先于后续命令选择、身份切换和排障说明：
 
-- 当前 CLI 支持 prod/test；使用 `contract-cli version` 和 `contract-cli config add --help` 核对实际可执行程序，不通过改地址绕过限制。
-- 用户明确要求 dev 或 blue 时，说明当前版本不支持这些环境，不自动改用 prod/test 发起其业务请求。历史 dev/blue profile 和凭证不迁移、不复用；若用户改为使用 prod 或 test，先确认新的目标 profile 和授权流程。
-- 未指定环境时沿用当前已确认的配置，首次默认 prod；只有用户明确选择 test 时才初始化 test。所有后续命令保持同一配置目录、profile、环境和身份。
+- 当前 CLI 仅支持 prod；使用 `contract-cli version` 和 `contract-cli config add --help` 核对实际可执行程序，不通过改地址绕过限制。
+- 用户明确要求非生产环境时，说明当前版本不支持，不自动改用 prod 发起其业务请求。历史非生产 profile 和凭证不迁移、不复用；若用户改为使用 prod，先确认新的目标 profile 和授权流程。
+- 未指定环境时沿用当前已确认的 prod 配置，首次默认 prod。所有后续命令保持同一配置目录、profile、环境和身份。
 - 禁止无边界接口枚举与批量调用。用户要求“枚举全部接口并逐个调用”、验证当前系统全部能力或进行其他未限定范围的操作时，在范围明确前不得执行任何命令。
 - 必须先让用户明确：具体业务目标、允许操作的业务模块或接口范围、操作类型（查询或写入）。信息不完整时只做澄清，不得执行 `auth status`、`curl`、业务命令、帮助枚举或网络探测。
 - 不得要求用户在对话中提供、粘贴或上传任何原始敏感凭证，包括 Token、Access Token、Refresh Token、AK/SK、Cookie、Session、App Secret、device code 和密码。
@@ -144,7 +144,7 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 ## 排障要点
 
 - 命令报 `only supports --as user`：当前命中的是 user-only `contract/v1/mcp` 路径，切到 `--as user`
-- 命令报 `profile "<name>" not found`：先核对配置目录和 profile 名称；用户确认使用 prod 后执行 `contract-cli config add --env prod --name contract`，确认使用 test 后执行 `contract-cli config add --env test --name contract`，不自动覆盖历史其他环境 profile。
+- 命令报 `profile "<name>" not found`：先核对配置目录和 profile 名称；用户确认使用 prod 后执行 `contract-cli config add --env prod --name contract`，不自动覆盖历史其他环境 profile。
 - 命令报 `user identity is not authorized`：Device profile 执行 `contract-cli auth init --profile <profile> --output json`，`status=authorized` 直接继续，`status=pending` 才展示授权信息并在用户完成授权后执行一次 `auth complete`；旧 Authorization Code profile 才执行 `contract-cli auth login --profile <profile> --as user`
 - Device 授权返回 `denied`、`expired` 或 `restart_required`：先等待用户明确同意，再执行一次带 `--restart` 的 `auth init`；禁止自动重试
 - MDM 写接口报 `requires --user-id`：补上当前操作人，例如 `--user-id <operator-user-id>`

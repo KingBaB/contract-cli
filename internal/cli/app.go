@@ -636,22 +636,8 @@ func resolveEnvironment(name string) (environmentPreset, error) {
 			DeviceClientID:                 "zscli_892efdadc11a3f53",
 			DeviceScope:                    "contract:full contract-review:full",
 		}, nil
-	case testEnvironment:
-		return environmentPreset{
-			OpenPlatformBaseURL:            "https://test-open.qtech.cn",
-			AppTokenEndpoint:               "https://test-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal",
-			ProtectedResourceMetadataURL:   "",
-			AuthorizationServerMetadataURL: "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
-			Resource:                       "https://test-open.qtech.cn",
-			RedirectURL:                    "http://127.0.0.1:8000/callback",
-			Scopes:                         []string{"cli:tools", "cli:resources"},
-			BusinessType:                   "contract",
-			ClientName:                     "contract-cli",
-			DeviceClientID:                 "zscli_892efdadc11a3f53",
-			DeviceScope:                    "contract:full contract-review:full",
-		}, nil
 	default:
-		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod, test", name)
+		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod", name)
 	}
 }
 

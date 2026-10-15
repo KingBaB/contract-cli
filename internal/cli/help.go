@@ -308,7 +308,7 @@ func addConfigHelp(registry map[string]helpTopic) {
 		Summary: "初始化或更新 profile，并写入开放平台、user OAuth 和 app token endpoint 配置。",
 		Usage:   []string{"contract-cli config add [flags]"},
 		Flags: []helpFlag{
-			{"--env <prod|test>", "环境预设；支持 prod/test，默认 prod"},
+			{"--env <prod>", "环境预设；仅支持 prod，默认 prod"},
 			{"--name <profile>", "profile 名称，默认 contract"},
 			{"--resource-metadata-url <url>", "覆盖 protected resource metadata 地址"},
 			{"--redirect-url <url>", "覆盖 OAuth callback 地址"},
@@ -316,7 +316,6 @@ func addConfigHelp(registry map[string]helpTopic) {
 		},
 		Examples: []string{
 			"contract-cli config add --env prod --name contract",
-			"contract-cli config add --env test --name contract",
 		},
 	}
 }
@@ -606,6 +605,7 @@ func addContractHelp(registry map[string]helpTopic) {
 			"走 POST /open-apis/contract/v1/summary/query。",
 			"contractNumber 与 contractName 必须二选一；同时也接受 snake_case JSON 别名。",
 			"接口可能触发生成；超时、断网、5xx 或状态为生成中时不要自动重复调用。",
+			"--output 仅支持 json、yaml、table；非法格式会在请求前被拒绝。",
 		},
 	}
 	registry["contract summary generate"] = helpTopic{
@@ -625,6 +625,7 @@ func addContractHelp(registry map[string]helpTopic) {
 			"直接走 POST /open-apis/contract/v1/summary/generate，不经过独立 upload 接口。",
 			"请求体使用 multipart/form-data，只发送字段名为 file 的文件；仅支持 doc、docx、pdf，最大 200MB。",
 			"不接受 --input-file / --data；结果不确定时不要自动重试。",
+			"--output 仅支持 json、yaml、table；非法格式会在请求前被拒绝。",
 		},
 	}
 	registry["contract get"] = helpTopic{

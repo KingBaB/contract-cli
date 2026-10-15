@@ -18,7 +18,7 @@ func TestZhishuContractSummarySkillMatchesCurrentCLIContract(t *testing.T) {
 	skill := readTextFile(t, filepath.Join(root, "SKILL.md"))
 	for _, required := range []string{
 		"CRITICAL — 开始前 MUST 先读取 [../contract-cli-shared/SKILL.md]",
-		"当前 CLI 支持 `prod` / `test`",
+		"当前 CLI 仅支持 `prod`",
 		"contract-cli contract summary query --profile contract --as user --contract-number",
 		"contract-cli contract summary query --profile contract --as user --contract-name",
 		"contract-cli contract summary generate --profile contract --as user --file",

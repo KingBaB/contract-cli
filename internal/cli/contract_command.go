@@ -343,8 +343,8 @@ func (a *App) runContractDownloadFile(ctx context.Context, args []string) error 
 	}
 
 	format := output.Format(parsed.String("--output"))
-	if format != "" && format != output.FormatJSON && format != output.FormatYAML && format != output.FormatTable {
-		return fmt.Errorf("unsupported output format %q", format)
+	if err := output.ValidateFormat(format); err != nil {
+		return err
 	}
 	if options.raw && parsed.HasValue("--output") {
 		return fmt.Errorf("--raw cannot be combined with --output for file downloads")

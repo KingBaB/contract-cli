@@ -28,7 +28,6 @@ func TestCommandReferenceDocumentCoversCurrentSupportedCommands(t *testing.T) {
 		"contract-cli help contract upload-file",
 		"contract-cli contract search --help",
 		"contract-cli config add --env prod --name contract",
-		"contract-cli config add --env test --name contract",
 		"contract-cli config add",
 		"contract-cli auth login",
 		"contract-cli auth status",

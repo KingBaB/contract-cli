@@ -51,6 +51,41 @@ func TestContractSummaryQueryUsesUserIdentityAndContractNumber(t *testing.T) {
 	}
 }
 
+func TestContractSummaryQueryRejectsUnsupportedOutputBeforeHTTP(t *testing.T) {
+	t.Parallel()
+
+	store := config.NewStore(t.TempDir())
+	if err := store.UpsertProfile(uploadProfile(config.IdentityUser), true); err != nil {
+		t.Fatalf("UpsertProfile() error = %v", err)
+	}
+	stdout := &bytes.Buffer{}
+	app := cli.New(cli.Options{
+		Stdout: stdout,
+		Stderr: &bytes.Buffer{},
+		Store:  store,
+		HTTPClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}),
+		},
+	})
+
+	err := app.Run(context.Background(), []string{
+		"contract", "summary", "query",
+		"--profile", "contract",
+		"--as", "user",
+		"--contract-number", "CN-001",
+		"--output", "unsupported-format",
+	})
+	if err == nil || !strings.Contains(err.Error(), `unsupported output format "unsupported-format"`) {
+		t.Fatalf("Run() error = %v, want unsupported output rejection", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+}
+
 func TestContractSummaryQuerySupportsExactContractName(t *testing.T) {
 	t.Parallel()
 

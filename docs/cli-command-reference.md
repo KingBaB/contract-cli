@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-- 当前内置 `prod` 和 `test` 环境预设，默认 `prod`；历史 dev/blue profile 和对应网络端点会在请求前被拒绝，不自动迁移凭据。首次配置：`contract-cli config add --env prod --name contract`，test 联调使用 `contract-cli config add --env test --name contract`
+- 当前仅内置 `prod` 环境预设；历史非生产 profile 和对应网络端点会在请求前被拒绝，不自动迁移凭据。首次配置：`contract-cli config add --env prod --name contract`
 - `contract get`、`contract search`、`contract create`、`contract sync-user-groups`、`contract text`、`contract category list`、`contract template list`、`contract template get`、`contract template instantiate`、`contract upload-file`、`contract download-file`、`contract approval get`、`mdm vendor list`、`mdm vendor get`、`mdm legal list`、`mdm legal get`、`mdm fields list` 是当前同时支持 `user` 与 `app` 的结构化业务命令
 - `rule *`（包括 `approval-matrix` 别名）支持 `--as user` / `--as app`；user 当前限 contract 产品且需要合同规则管理权限。
 - `contract search-v2`、`contract field update`、`contract sign switch-to-paper`、`contract sign-url get`、`contract form attribute list`、`contract authorization grant`、`contract esign *`、`contract submit/resubmit/patch/delete/print-file`、`contract share get/batch-create`、`contract cooperation link/record/search/file`、`contract approval start`、`payment *`、`mdm vendor create/update/list-all/query-by-cert`、`mdm legal get --code/create/update`、`mdm fixed-exchange-rate get/update`、`mdm file download`、`event outbound-ip list` 当前仅支持 `--as app`
@@ -164,13 +164,11 @@ contract-cli contract get <contract-id> --help
 
 ```bash
 contract-cli config add --env prod --name contract
-# test 环境：
-contract-cli config add --env test --name contract
 ```
 
 支持参数：
 
-- `--env`：环境预设，支持 `prod` / `test`，默认 `prod`
+- `--env`：环境预设，仅支持 `prod`，默认 `prod`
 - `--name`：profile 名称，默认 `contract`
 - `--resource-metadata-url`：覆盖 protected resource metadata 地址
 - `--redirect-url`：覆盖 OAuth callback 地址
@@ -551,6 +549,7 @@ contract-cli contract summary query --profile contract --as user --data '{"contr
 - `--contract-number` 与 `--contract-name` 必须二选一，分别映射 JSON `contractNumber` 与 `contractName`；接口执行精确匹配。
 - 也可用 `--input-file` / `--data` 提供 JSON object，接受 camelCase 或 snake_case 别名；JSON body 与两个 selector flag 不得混用。
 - 查询可能触发生成，按写请求处理网络不确定性；超时、断网、5xx 或生成中时不得自动重试。
+- `--output` 仅支持 `json`、`yaml`、`table`；非法格式会在发送查询请求前被拒绝。
 
 #### `contract-cli contract summary generate`
 
@@ -569,6 +568,7 @@ contract-cli contract summary generate --profile contract --as user --file ./合
 - 直接走 `POST /open-apis/contract/v1/summary/generate`，不经过独立 upload 接口。
 - 请求体使用 `multipart/form-data`，只发送字段名为 `file` 的文件；本地校验单个非空 doc、docx 或 pdf，最大 200MB。
 - 不接受 `--input-file` / `--data`；生成结果不确定时不得自动重试。
+- `--output` 仅支持 `json`、`yaml`、`table`；非法格式会在发送生成请求前被拒绝。
 
 #### `contract-cli contract get`
 

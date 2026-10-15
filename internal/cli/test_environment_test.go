@@ -38,11 +38,11 @@ func legacyNonProductionProfile(t *testing.T, environment, openOrigin, accountOr
 }
 
 /*
-TestConfigAddRejectsDevAndBlueBeforeHTTPRequest 验证不支持预设在配置发现前被拒绝且不落盘。
+TestConfigAddRejectsNonProductionBeforeHTTPRequest 验证非生产预设在配置发现前被拒绝且不落盘。
 入参 t（*testing.T）为测试上下文；返回值为空，失败时报告测试错误。
 */
-func TestConfigAddRejectsDevAndBlueBeforeHTTPRequest(t *testing.T) {
-	for _, environment := range []string{"dev", "blue"} {
+func TestConfigAddRejectsNonProductionBeforeHTTPRequest(t *testing.T) {
+	for _, environment := range []string{"test", "dev", "blue"} {
 		t.Run(environment, func(t *testing.T) {
 			store := config.NewStore(t.TempDir())
 			requests := 0
@@ -52,7 +52,7 @@ func TestConfigAddRejectsDevAndBlueBeforeHTTPRequest(t *testing.T) {
 			})}})
 			profileName := "contract-" + environment
 			err := app.Run(context.Background(), []string{"config", "add", "--env", environment, "--name", profileName})
-			if err == nil || !strings.Contains(err.Error(), "supported environments: prod, test") || requests != 0 {
+			if err == nil || !strings.Contains(err.Error(), "supported environments: prod") || requests != 0 {
 				t.Fatalf("config error=%v requests=%d", err, requests)
 			}
 			_, found, lookupErr := store.LookupProfile(profileName)
@@ -64,11 +64,12 @@ func TestConfigAddRejectsDevAndBlueBeforeHTTPRequest(t *testing.T) {
 }
 
 /*
-TestExistingDevAndBlueProfilesRejectedBeforeHTTPRequest 验证旧不支持配置在授权和矩阵查询前被阻断。
+TestExistingNonProductionProfilesRejectedBeforeHTTPRequest 验证旧非生产配置在授权和矩阵查询前被阻断。
 入参 t（*testing.T）为测试上下文；返回值为空，失败时报告测试错误。
 */
-func TestExistingDevAndBlueProfilesRejectedBeforeHTTPRequest(t *testing.T) {
+func TestExistingNonProductionProfilesRejectedBeforeHTTPRequest(t *testing.T) {
 	for _, item := range []struct{ environment, openOrigin, accountOrigin string }{
+		{"test", "https://test-open.qtech.cn", "https://test-myaccount.qtech.cn"},
 		{"dev", "https://dev-open.qtech.cn", "https://dev-myaccount.qtech.cn"},
 		{"blue", "https://open-b.qfei.cn", "https://myaccount-b.qfei.cn"},
 	} {
@@ -101,16 +102,16 @@ func TestExistingDevAndBlueProfilesRejectedBeforeHTTPRequest(t *testing.T) {
 }
 
 /*
-TestKnownDevAndBlueHostsBlocked 验证传输层不会把旧环境请求交给底层 HTTP 客户端。
+TestKnownNonProductionHostsBlocked 验证传输层不会把非生产请求交给底层 HTTP 客户端。
 入参 t（*testing.T）为测试上下文；返回值为空，失败时报告测试错误。
 */
-func TestKnownDevAndBlueHostsBlocked(t *testing.T) {
+func TestKnownNonProductionHostsBlocked(t *testing.T) {
 	requests := 0
 	app := New(Options{Store: config.NewStore(t.TempDir()), HTTPClient: &http.Client{Transport: productionRoundTripFunc(func(*http.Request) (*http.Response, error) {
 		requests++
 		return productionResponse(http.StatusOK, `{}`), nil
 	})}})
-	for _, origin := range []string{"https://dev-open.qtech.cn", "https://dev-myaccount.qtech.cn", "https://open-b.qfei.cn", "https://myaccount-b.qfei.cn"} {
+	for _, origin := range []string{"https://test-open.qtech.cn", "https://test-myaccount.qtech.cn", "https://dev-open.qtech.cn", "https://dev-myaccount.qtech.cn", "https://open-b.qfei.cn", "https://myaccount-b.qfei.cn"} {
 		response, err := app.httpClient.Get(origin)
 		if response != nil {
 			response.Body.Close()
@@ -125,7 +126,7 @@ func TestKnownDevAndBlueHostsBlocked(t *testing.T) {
 }
 
 /*
-TestConfigHelpShowsSupportedEnvironments 验证帮助只向用户展示可用的 prod/test 预设。
+TestConfigHelpShowsSupportedEnvironments 验证帮助只向用户展示 prod 预设。
 入参 t（*testing.T）为测试上下文；返回值为空，失败时报告测试错误。
 */
 func TestConfigHelpShowsSupportedEnvironments(t *testing.T) {
@@ -134,8 +135,9 @@ func TestConfigHelpShowsSupportedEnvironments(t *testing.T) {
 	if err := app.Run(context.Background(), []string{"config", "add", "--help"}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "--env <prod|test>") ||
-		!strings.Contains(output.String(), "支持 prod/test，默认 prod") ||
+	if !strings.Contains(output.String(), "--env <prod>") ||
+		!strings.Contains(output.String(), "仅支持 prod，默认 prod") ||
+		strings.Contains(output.String(), "--env test") ||
 		strings.Contains(output.String(), "--env dev") ||
 		strings.Contains(output.String(), "--env blue") {
 		t.Fatalf("unexpected environment help: %s", output.String())

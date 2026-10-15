@@ -73,6 +73,9 @@ func parseArgs(args []string, valueFlags map[string]struct{}, boolFlags map[stri
 		}
 		return parsedArgs{}, fmt.Errorf("unknown flag %q", name)
 	}
+	if err := output.ValidateFormat(output.Format(parsed.String("--output"))); err != nil {
+		return parsedArgs{}, err
+	}
 
 	return parsed, nil
 }

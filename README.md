@@ -36,9 +36,9 @@
 
 ### 环境与本地预发布包
 
-当前源码构建支持 `prod` 和 `test`，默认 profile 为 `contract`、默认环境为 `prod`；将 `--env` 指定为 `dev` 或 `blue` 会在发请求前拒绝，跨环境重配同名 profile 会清理旧认证，避免复用凭据。prod API 地址为 `https://open.qfei.cn`、账号地址为 `https://myaccount.qfei.cn`；test API 地址为 `https://test-open.qtech.cn`、账号地址为 `https://test-myaccount.qtech.cn`。
+当前源码构建仅支持 `prod`，默认 profile 为 `contract`；其他环境会在发请求前被拒绝，旧环境的同名 profile 重新配置时会清理旧认证，避免复用凭据。prod API 地址为 `https://open.qfei.cn`、账号地址为 `https://myaccount.qfei.cn`。
 
-若需验证 npm 包构建流程，仍可生成独立的本地预发布包；版本中的 `-test` 只是包标记，不开放 test 环境，也不发布到 npm：
+若需验证 npm 包构建流程，仍可生成独立的本地预发布包；版本中的 `-test` 只是包标记，不改变受支持环境，也不发布到 npm：
 
 ```bash
 VERSION=1.8.4-test.20260923.6 bash scripts/build-test-package.sh
@@ -96,8 +96,6 @@ contract-cli --version
 ```bash
 # 1. 初始化或更新 profile
 contract-cli config add --env prod --name contract
-# 如需联调 test 环境：
-# contract-cli config add --env test --name contract
 
 # 2. 本地环境可继续使用旧 user 授权码模式
 contract-cli auth login --profile contract --as user
@@ -154,8 +152,6 @@ contract-cli skills list
 
 ```bash
 contract-cli config add --env prod --name contract
-# test 环境使用：
-# contract-cli config add --env test --name contract
 ```
 
 **Step 4：登录并验证**
@@ -173,7 +169,7 @@ contract-cli auth status --profile contract --as user
 
 CLI 确认当前进程来自本地桌面客户端时，豆包、WorkBuddy、Codex 按当前系统用户 + profile 使用系统安全存储，Device 登录态可跨任务复用；macOS 使用 Keychain，Windows 使用 Credential Manager，Linux 使用 Secret Service。云端、沙箱或识别不明确时保持任务隔离，不能仅凭操作系统类型或 `SESSION_ID` 开启共享。不自动迁移旧任务凭证，升级后首次可能需要重新授权；本地共享模式退出登录后，同一 profile 的所有本地任务都会失去该登录态。
 
-正式包默认使用 `contract` profile 和 `prod` 环境；用户明确选择 test 时使用 `config add --env test` 初始化。CLI 不会使用历史 dev/blue profile 发起授权或业务请求，也不会跨 prod/test 复用旧凭据。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
+正式包默认使用 `contract` profile 和 `prod` 环境；CLI 不会使用历史非生产 profile 发起授权或业务请求，也不会把旧凭据迁入 prod。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
 
 需要新授权时，`auth init` 只发起一次请求；复用有效共享凭证时不创建新授权。`auth complete` 只查询一次，返回 `pending` 时不持续轮询；请用户完成授权后再主动查询。返回 `uncertain`、`denied`、`expired` 或 `restart_required` 时禁止自动重试；用户明确同意重新授权后，才执行 `auth init --profile contract --output json --restart`。
 
@@ -243,8 +239,6 @@ contract-cli skills install --name contract-cli-rule --force
 
 ```bash
 contract-cli config add --env prod --name contract
-# test 环境使用：
-# contract-cli config add --env test --name contract
 contract-cli auth init --profile contract --output json
 contract-cli auth complete --profile contract --output json
 contract-cli auth login --profile contract --as user

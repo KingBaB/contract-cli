@@ -14,19 +14,16 @@ import (
 	"cn.qfei/contract-cli/internal/openplatform"
 )
 
-func TestLoadDeviceAwareProfileAcceptsTestProfile(t *testing.T) {
+func TestLoadDeviceAwareProfileRejectsTestProfile(t *testing.T) {
 	store := config.NewStore(t.TempDir())
 	if err := store.UpsertProfile(validTestProfile(), true); err != nil {
 		t.Fatal(err)
 	}
 	app := New(Options{Store: store})
 
-	profile, err := app.loadDeviceAwareProfile("contract")
-	if err != nil {
+	_, err := app.loadDeviceAwareProfile("contract")
+	if err == nil || err.Error() != productionProfileErrorMessage("contract") {
 		t.Fatalf("load profile error = %v", err)
-	}
-	if profile.Environment != "test" || profile.OpenPlatformBaseURL != "https://test-open.qtech.cn" {
-		t.Fatalf("unexpected test profile: %+v", profile)
 	}
 }
 
@@ -78,7 +75,7 @@ func TestLoadDeviceAwareProfileRejectsUnsupportedProfileAndMismatchedEndpoints(t
 	}
 }
 
-func TestOpenPlatformContextUsesTestProfileBaseURL(t *testing.T) {
+func TestOpenPlatformContextRejectsTestProfile(t *testing.T) {
 	store := config.NewStore(t.TempDir())
 	profile := validTestProfile()
 	profile.DefaultIdentity = config.IdentityApp
@@ -88,21 +85,18 @@ func TestOpenPlatformContextUsesTestProfileBaseURL(t *testing.T) {
 	}
 	app := New(Options{Store: store, Secrets: config.NewSecretsStore(t.TempDir())})
 
-	_, requestContext, err := app.openPlatformClientAndContext(
+	_, _, err := app.openPlatformClientAndContext(
 		"contract",
 		"app",
 		"/open-apis/contract/v1/mcp/contracts/search",
 		openplatform.IdentityPolicyAny,
 	)
-	if err != nil {
+	if err == nil || err.Error() != productionProfileErrorMessage("contract") {
 		t.Fatalf("open platform context error = %v", err)
-	}
-	if requestContext.BaseURL != "https://test-open.qtech.cn" || requestContext.AccessToken != "test-app-token" {
-		t.Fatalf("unexpected request context: %+v", requestContext)
 	}
 }
 
-func TestDeviceProfileRecoveryAcceptsTestSnapshot(t *testing.T) {
+func TestDeviceProfileRecoveryRejectsTestSnapshot(t *testing.T) {
 	credentials := &deviceMemoryCredentialStore{values: map[string]credential.DeviceCredential{
 		"contract": {DeviceProfile: snapshotDeviceProfile(validTestProfile())},
 	}}
@@ -117,15 +111,12 @@ func TestDeviceProfileRecoveryAcceptsTestSnapshot(t *testing.T) {
 		},
 	})
 
-	profile, err := app.loadDeviceAwareProfile("contract")
-	if err != nil {
+	_, err := app.loadDeviceAwareProfile("contract")
+	if err == nil || err.Error() != productionProfileErrorMessage("contract") {
 		t.Fatalf("profile recovery error = %v", err)
 	}
-	if profile.Environment != "test" {
-		t.Fatalf("restored environment = %q", profile.Environment)
-	}
-	if _, found, lookupErr := store.LookupProfile("contract"); lookupErr != nil || !found {
-		t.Fatalf("test snapshot was not restored, found=%v err=%v", found, lookupErr)
+	if _, found, lookupErr := store.LookupProfile("contract"); lookupErr != nil || found {
+		t.Fatalf("test snapshot was restored, found=%v err=%v", found, lookupErr)
 	}
 }
 
@@ -330,7 +321,7 @@ func TestConfigAddRejectsNonProductionMetadataOverrideBeforeNetworkRequest(t *te
 	}
 }
 
-func TestHTTPClientAllowsKnownTestHosts(t *testing.T) {
+func TestHTTPClientRejectsKnownTestHosts(t *testing.T) {
 	requestCount := 0
 	app := New(Options{
 		Store: config.NewStore(t.TempDir()),
@@ -346,15 +337,15 @@ func TestHTTPClientAllowsKnownTestHosts(t *testing.T) {
 			t.Fatal(err)
 		}
 		response, err := app.httpClient.Do(request)
-		if err != nil {
-			t.Fatalf("request %s error = %v", rawURL, err)
-		}
 		if response != nil {
 			response.Body.Close()
 		}
+		if err == nil || !strings.Contains(err.Error(), "blocks non-production host") {
+			t.Fatalf("request %s error = %v", rawURL, err)
+		}
 	}
-	if requestCount != 2 {
-		t.Fatalf("request count = %d, want 2", requestCount)
+	if requestCount != 0 {
+		t.Fatalf("request count = %d, want 0", requestCount)
 	}
 }
 
@@ -402,7 +393,7 @@ func validTestProfile() config.Profile {
 
 func productionProfileErrorMessage(profileName string) string {
 	return `profile "` + profileName + `" has unsupported or mismatched environment endpoints; run ` +
-		"`contract-cli config add --env prod --name contract` or `contract-cli config add --env test --name contract` and authorize again"
+		"`contract-cli config add --env prod --name contract` and authorize again"
 }
 
 type productionRoundTripFunc func(*http.Request) (*http.Response, error)
