@@ -18,4 +18,10 @@ if [[ "$LEGACY_HELP_OUTPUT" != *"--env <prod>"* || "$LEGACY_HELP_OUTPUT" == *"--
   exit 1
 fi
 
+DEV_TAG_HELP_OUTPUT="$(cd "$ROOT_DIR" && go run -tags dev ./cmd/contract-cli config add --help)"
+if [[ "$DEV_TAG_HELP_OUTPUT" != *"--env <prod>"* || "$DEV_TAG_HELP_OUTPUT" == *"--env <prod|"* || "$DEV_TAG_HELP_OUTPUT" == *"--env blue"* || "$DEV_TAG_HELP_OUTPUT" == *"--env test"* || "$DEV_TAG_HELP_OUTPUT" == *"--env dev"* ]]; then
+  echo "dev build tag exposed a non-production environment" >&2
+  exit 1
+fi
+
 echo "build flags ok"

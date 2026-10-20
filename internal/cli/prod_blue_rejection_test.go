@@ -21,7 +21,7 @@ func TestConfigAddRejectsBluePresetBeforeNetworkRequest(t *testing.T) {
 	})
 
 	err := app.Run(context.Background(), []string{"config", "add", "--env", "blue"})
-	if err == nil || err.Error() != `unsupported environment "blue"; supported environments: `+supportedEnvironmentNames() {
+	if err == nil || err.Error() != `unsupported environment "blue"; supported environments: prod` {
 		t.Fatalf("config add Blue error = %v", err)
 	}
 	if requestCount != 0 {

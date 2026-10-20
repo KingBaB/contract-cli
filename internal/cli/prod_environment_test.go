@@ -396,10 +396,6 @@ productionProfileErrorMessage 返回测试断言用的环境端点错误文本�
 入参 profileName（string）为配置名；返回 string 错误文本。
 */
 func productionProfileErrorMessage(profileName string) string {
-	if developmentBuildEnabled {
-		return `profile "` + profileName + `" has an unsupported environment or mismatched endpoints; run ` +
-			"`contract-cli config add --env <prod|dev> --name " + profileName + "` and authorize again"
-	}
 	return `profile "` + profileName + `" has unsupported or mismatched environment endpoints; run ` +
 		"`contract-cli config add --env prod --name contract` and authorize again"
 }

@@ -1,21 +1,27 @@
-# 本地 dev 链路验证
+# 本地 dev 链路验证（历史记录）
 
-## 2026-10-19
+## 记录归属与当前交付边界
 
-- 需求：从 master 建立本地分支，支持使用 dev 验证现有 `traceparent` / `X-Log-Id` 链路。
-- 方案：仅显式带 `dev` 构建标签时增加 dev 预设；默认构建和正式安装入口继续仅支持 prod。
-- 环境约束：固定开发 API 与账号 HTTPS origin；继续拒绝 test/blue、尾点域名、额外端口、用户信息及混用环境的 profile / Device 凭据。
+本文保留 2026-10-19 至 2026-10-20 的本地只读验证证据，用于追溯 Trace 请求头、后端日志及 Span 的结论。完整原始文档和 dev 实现已保存在未推送的本地分支 `codex/local-dev-verification`（`6de2b57`）；该分支也包含当时的 Trace、debug 和取消实现。本文中的旧版本、profile、环境与测试结果均属于该历史验证范围。
+
+当前 MR !20 已剥离 dev 支持，源码所有构建和正式安装包均仅支持 prod，误传 `-tags dev` 也不会放行 dev。本记录不提供当前源码开启 dev 的入口，也不将历史 dev 验证作为当前 MR 的环境能力。当前交付保留命令级 Trace、调试日志与取消修复，见[技术方案](command-trace-technical-design.md)。
+
+## 2026-10-19 历史本地实现
+
+- 历史需求：从 master 建立本地分支，支持使用 dev 验证现有 `traceparent` / `X-Log-Id` 链路。
+- 历史方案：当时的本地验证分支通过构建标签增加 dev 预设；这部分环境实现已从当前 MR 移除。
+- 当时环境约束：固定开发 API 与账号 HTTPS origin；继续拒绝 test/blue、尾点域名、额外端口、用户信息及混用环境的 profile / Device 凭据。
 - 调用链：复用原有配置发现、认证、HTTP Transport 和业务客户端；Trace 生成、请求重试和业务行为不变，不新增锁。
-- 登录：dev 通过浏览器 OAuth 授权码流程动态注册，不复用 prod Device Client ID。
+- 当时登录：dev 通过浏览器 OAuth 授权码流程动态注册，不复用 prod Device Client ID。
 - TDD：先补 dev 配置、只读请求及 Trace 头测试并确认失败，再增加最小实现；默认构建单独验证 dev 仍被阻断。
-- 验证：`make test`、`go test -tags dev ./...`、默认 / dev 的 `go vet` 均通过；补测同环境保留登录、OAuth 退出及凭据不可读时停止重配；CLI 默认 / dev 合并语句覆盖率 80.05%，新增开发环境辅助逻辑合并覆盖率 100%。
+- 当时验证：默认/dev 构建的全量测试与 go vet 均通过；补测同环境保留登录、OAuth 退出及凭据不可读时停止重配；CLI 默认 / dev 合并语句覆盖率 80.05%，新增开发环境辅助逻辑合并覆盖率 100%。
 
 ## 本地安装与真实 dev 验证
 
-- 分支：`codex/dev-trace-verification`，基于 master `e7bb2bc`；未提交或推送。
-- 本地安装：`GOBIN=$HOME/.local/bin GOFLAGS='-tags=dev' make install VERSION=1.9.2-beta.1-local.dev`；原 prod 二进制已保存在用户本地备份目录。
-- 配置：`contract-cli config add --env dev --name trace-dev` 成功；通过 `auth login --profile trace-dev --as user` 完成浏览器 OAuth 登录，不记录任何凭证。
-- 2026-10-19 14:11:31 至 14:11:33（北京时间）执行 `contract-cli contract search --profile trace-dev --as user --page-size 1 --output json`，退出码 0、业务 code=0，返回 1 条结果。
+- 当时分支：`codex/dev-trace-verification`，基于 master `e7bb2bc`；该节记录的是当时尚未提交或推送的本地状态。完整历史现由 `codex/local-dev-verification`（`6de2b57`）保留。
+- 历史本地安装版本为 `1.9.2-beta.1-local.dev`；原 prod 二进制保存在用户本地备份目录。安装与构建命令仅保留在上述本地分支的完整历史中。
+- 当时使用独立 dev profile `trace-dev` 完成配置及浏览器 OAuth 用户登录，不记录任何凭证；该配置流程不属于当前 MR。
+- 2026-10-19 14:11:31 至 14:11:33（北京时间）完成一次只读 `contract search`（历史 profile `trace-dev`、user 身份、page-size=1、JSON 输出），退出码 0、业务 code=0，返回 1 条结果。
 - CLI Trace ID：`6758775a7e738053d169d84e6a8b5702`。dev 的 open-platform 请求日志包含同一 traceparent；clm-openapi 日志 MDC 的 X-Log-Id 与该值一致。
 - OpenObserve 已检索到同一 Trace ID 的 Span，覆盖 open-gateway、open-platform、clm-openapi、Higress、组织、鉴权、MDM 等服务；本次无需修改后端即可证明已测只读路径可关联。
 - 验证范围：仅此只读合同查询成功路径；未据此宣称全部命令、异常、重试及异步场景均已完成验收。未修改后端和现有请求级 Trace 语义。
@@ -64,21 +70,21 @@
 
 ## 2026-10-20 import plan 多接口验证的授权阻塞
 
-- 目标：使用现有 dev CLI 执行一次只读 `rule table import plan`，比较列头查询与规则行查询的实际 Trace ID；未实施命令级 Trace 改造。
+- 当时目标：使用本地历史 dev CLI 执行一次只读 `rule table import plan`，比较列头查询与规则行查询的实际 Trace ID；当时尚未实施命令级 Trace 改造。
 - 已确认本地版本仍为 `1.9.2-beta.1-local.dev`，commit `e7bb2bc`，分支为 `codex/dev-trace-verification`。
-- 09:36:10 至 09:36:11（北京时间）先执行 `rule table list --profile trace-dev --as user --product-id contract --group-id approve_matrix --page-size 10 --output json`，在发现可读矩阵阶段返回 HTTP 403、退出码 1。
+- 09:36:10 至 09:36:11（北京时间）先执行只读 `rule table list`（历史 profile `trace-dev`、user 身份、contract/approve_matrix、page-size=10、JSON 输出），在发现可读矩阵阶段返回 HTTP 403、退出码 1。
 - 后端错误明确为当前 OAuth 用户令牌不允许访问 `/open-apis/rule_engine/v1/...`；此次请求 Trace ID 为 `23dae4d837aa40d67792dc2f5ab71da4`，不能将其当作 import plan 的执行证据。
 - 本地 trace-dev 当时只有 OAuth 授权码身份，App ID/Secret/Token 及 Device Client 均未配置，CLI 默认识别的 App 凭据环境变量也未设置；后续已按用户提供的自定义变量名完成 dev App 登录，阻塞在下节解除。
-- 当前尚未执行目标 import plan，也未取得同一命令多接口的实际 ID 对比结果；仅静态代码确认列头与分页读行分别调用 Client.Do，不能替代 dev 实测结论。
+- 该阶段尚未执行目标 import plan，也未取得同一命令多接口的实际 ID 对比结果；仅静态代码确认列头与分页读行分别调用 Client.Do，不能替代当时的 dev 实测结论。
 - 未执行 apply、发布或业务写操作。脱敏阻塞摘要位于本机 `/tmp/contract-cli-import-plan-trace-verification-20261020/blocked.summary.json`。
 
 ## 2026-10-20 import plan 多接口成功复测
 
 - 按用户提供的变量名在本地读取 `clm_dev_app_id` / `clm_dev_app_secret`，仅在子进程中映射给 CLI 的标准 App 凭据变量，未输出任何凭据值；建立独立 dev App profile `trace-dev-app`，保留原 trace-dev 用户配置并恢复其默认选中状态。
-- 09:42:34.652 至 09:42:38.054（北京时间），使用未改 Trace 逻辑的 `1.9.2-beta.1-local.dev`（commit e7bb2bc）执行一次 `rule table import plan --profile trace-dev-app --as app --product-id contract --group-id approve_matrix --table-id 1178332302485226101 --input-file <本地测试输入> --output json`。
+- 09:42:34.652 至 09:42:38.054（北京时间），使用未改 Trace 逻辑的 `1.9.2-beta.1-local.dev`（commit e7bb2bc）执行一次只读 `rule table import plan`（历史 profile `trace-dev-app`、app 身份、contract/approve_matrix、矩阵 `1178332302485226101`、本地 JSON 测试输入）。
 - 使用已有矩阵及一个空值单元格作为纯本地计划输入；命令退出码 0，生成 `status=needs_confirmation` 的计划，未向矩阵写数据。列头读取和规则行读取均返回 HTTP 200。
 - 同一次命令的列头查询 `/table_columns/column_headers` 使用 Trace ID `db99f5f3526ba88dccdac87a437b22e4`，规则行查询 `/table_rows` 使用 `bbcce9bd4c6c20a407ee8d951d1d3bb8`；两个业务请求对应两个不同 ID，发现矩阵和预读列头的独立命令不计入此次请求数。
-- 客户端日志已证明当前仍按每次 Client.Do 生成请求级 Trace ID，命令级共用 ID 尚未实施。首次 OpenObserve 精确查询 UTC 01:42:30 至 01:42:50 的 default/open_platform 日志及入口 Span 时均未命中；下节后续复查已在同一窗口查到两个 ID 的后端 Server Span。
+- 客户端日志证明该历史版本仍按每次 Client.Do 生成请求级 Trace ID，当时尚未实施命令级共用 ID。首次 OpenObserve 精确查询 UTC 01:42:30 至 01:42:50 的 default/open_platform 日志及入口 Span 时均未命中；下节后续复查已在同一窗口查到两个 ID 的后端 Server Span。
 - 测试计划 `713bbab07bdb336d4af0eba89faf5ab1` 已用本地 import cancel 标记为 cancelled；取消过程业务请求数为 0，未执行 apply、发布或其他业务写操作。
 - 第一张候选矩阵的两个接口虽均为 HTTP 200，但现有行缺少单元格类型，导致本地快照校验失败；未改代码或业务数据，换用数据结构完整的既有矩阵取得上述成功复测，不将失败样本当作计划生成成功证据。
 - 客户端安全摘要、清理结果和独立后端证据保存在本机 `/tmp/contract-cli-import-plan-trace-verification-20261020/`；原始响应及认证日志仅存本地受限文件，不写入仓库。
@@ -94,10 +100,10 @@
 - 本次后端确认依据是 Server Span；open_platform 日志同时匹配 body/body_str 仍未命中，default 日志扩大窗口查询超时，均不用于断言 HTTP 头或日志 MDC 未透传。复查未发业务请求、未改任何配置。
 - 脱敏复查证据保存为本机 `/tmp/contract-cli-import-plan-trace-verification-20261020/recheck-backend-evidence.json`，保留此前未命中记录作为历史，不覆盖或伪装原查询结果。
 
-## 后续命令级 Trace 方案
+## 当时的后续命令级 Trace 方案
 
 - 已整理[命令级 Trace 修改计划与技术方案](command-trace-technical-design.md)，包含两阶段状态、上下文生命周期、上传下载、错误脱敏、后端兼容、测试验收及回退范围。
-- 命令级 ID 复用尚未实施；后续使用每次 App.Run 的上下文管理 ID，保留每次 CLI 显式发送尝试独立 parent-id 及底层 Client 的请求级兼容处理，维持底层自动重定向和透明重试行为。
+- 该节编写时命令级 ID 复用尚未实施；当时计划使用每次 App.Run 的上下文管理 ID，保留每次 CLI 显式发送尝试独立 parent-id 及底层 Client 的请求级兼容处理，维持底层自动重定向和透明重试行为。当前 MR 已实现命令级 Trace，最新交付边界以技术方案和对应变更记录为准。
 - 已按最新范围以当前用户身份创建[飞书技术方案](https://ysi13ckdb9.feishu.cn/docx/ExrBdFJLGoFNTjxIeBCcsMKan7e)，明确本次仅修改 contract-cli，不安排后端改造；已回读核对范围、验证基线、实施计划、测试验收和回退章节。
 - 已在飞书方案开头新增“改造后的数据流”画板，展示命令 T1 的创建与复用、显式发送尝试 Sn 的生成、请求头注入及后端日志 / Span 关联；蓝色为 CLI 改造，灰色为现有后端。已回读确认画板源码及 17 个节点，导出 SVG，并对本地 PNG 做视觉检查；图源保存在 `docs/diagrams/command-trace-data-flow.mmd`，本地方案同步补充流程图。
 - 已按用户要求在[飞书方案的请求头组合验证对比](https://ysi13ckdb9.feishu.cn/docx/ExrBdFJLGoFNTjxIeBCcsMKan7e#doxcnbmTotG17cJD45r7DLp9cSf)新增五种组合的对比表、实际时间与 ID 明细及结论边界，并同步本地技术方案；回读确认版本 9，两个原生表格分别为 6 行 × 6 列和 6 行 × 4 列（均含表头），原有内容完整保留，命令级方案及不改后端的范围不变。同值组 HTTP 头补充回查的脱敏证据保存在本机 `/tmp/contract-cli-feishu-header-comparison-20261019/same-id-header-evidence.json`。

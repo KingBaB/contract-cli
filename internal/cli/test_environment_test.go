@@ -46,9 +46,6 @@ TestConfigAddRejectsNonProductionBeforeHTTPRequest 验证非生产预设在配�
 func TestConfigAddRejectsNonProductionBeforeHTTPRequest(t *testing.T) {
 	for _, environment := range []string{"test", "dev", "blue"} {
 		t.Run(environment, func(t *testing.T) {
-			if developmentBuildEnabled && environment == developmentEnvironment {
-				t.Skip("dev preset is covered by development-build tests")
-			}
 			store := config.NewStore(t.TempDir())
 			requests := 0
 			app := New(Options{Store: store, Stdout: &bytes.Buffer{}, HTTPClient: &http.Client{Transport: productionRoundTripFunc(func(*http.Request) (*http.Response, error) {
@@ -79,9 +76,6 @@ func TestExistingNonProductionProfilesRejectedBeforeHTTPRequest(t *testing.T) {
 		{"blue", "https://open-b.qfei.cn", "https://myaccount-b.qfei.cn"},
 	} {
 		t.Run(item.environment, func(t *testing.T) {
-			if developmentBuildEnabled && item.environment == developmentEnvironment {
-				t.Skip("dev profile is covered by development-build tests")
-			}
 			profile := legacyNonProductionProfile(t, item.environment, item.openOrigin, item.accountOrigin)
 			store := config.NewStore(t.TempDir())
 			if err := store.UpsertProfile(profile, true); err != nil {
@@ -140,9 +134,6 @@ func TestKnownNonProductionHostsBlocked(t *testing.T) {
 		return productionResponse(http.StatusOK, `{}`), nil
 	})}})
 	for _, origin := range []string{"https://test-open.qtech.cn", "https://test-myaccount.qtech.cn", "https://dev-open.qtech.cn", "https://dev-myaccount.qtech.cn", "https://open-b.qfei.cn", "https://myaccount-b.qfei.cn"} {
-		if developmentBuildEnabled && (origin == developmentOpenPlatformOrigin || origin == developmentAccountOrigin) {
-			continue
-		}
 		response, err := app.httpClient.Get(origin)
 		if response != nil {
 			response.Body.Close()
@@ -166,12 +157,13 @@ func TestConfigHelpShowsSupportedEnvironments(t *testing.T) {
 	if err := app.Run(context.Background(), []string{"config", "add", "--help"}); err != nil {
 		t.Fatal(err)
 	}
-	expected := "--env <prod>"
-	if developmentBuildEnabled {
-		expected = "--env <prod|dev>"
-	}
-	if !strings.Contains(output.String(), expected) || strings.Contains(output.String(), "--env test") || strings.Contains(output.String(), "--env blue") {
-		t.Fatalf("unexpected build environment help: %s", output.String())
+	if !strings.Contains(output.String(), "--env <prod>") ||
+		!strings.Contains(output.String(), "仅支持 prod，默认 prod") ||
+		strings.Contains(output.String(), "--env test") ||
+		strings.Contains(output.String(), "--env dev") ||
+		strings.Contains(output.String(), "--env blue") ||
+		strings.Contains(output.String(), "--env <prod|") {
+		t.Fatalf("unexpected environment help: %s", output.String())
 	}
 }
 

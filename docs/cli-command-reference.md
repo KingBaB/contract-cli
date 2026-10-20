@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-- 默认构建仅内置 `prod` 环境预设；历史 test/blue/dev profile 和对应网络端点会在请求前被拒绝，不自动迁移凭据。首次配置：`contract-cli config add --env prod --name contract`。本地显式使用 `go build -tags dev` 时额外启用 dev，使用独立的 `trace-dev` profile 和浏览器 OAuth 登录。
+- 当前源码的所有构建和正式安装包均仅内置 `prod` 环境预设；误传 `-tags dev` 也不会启用开发环境。历史 test/blue/dev profile 和对应网络端点会在请求前被拒绝，不自动迁移凭据。首次配置：`contract-cli config add --env prod --name contract`。
 - `contract get`、`contract search`、`contract create`、`contract sync-user-groups`、`contract text`、`contract category list`、`contract template list`、`contract template get`、`contract template instantiate`、`contract upload-file`、`contract download-file`、`contract approval get`、`mdm vendor list`、`mdm vendor get`、`mdm legal list`、`mdm legal get`、`mdm fields list` 是当前同时支持 `user` 与 `app` 的结构化业务命令
 - `rule *`（包括 `approval-matrix` 别名）支持 `--as user` / `--as app`；user 当前限 contract 产品且需要合同规则管理权限。
 - `contract search-v2`、`contract field update`、`contract sign switch-to-paper`、`contract sign-url get`、`contract form attribute list`、`contract authorization grant`、`contract esign *`、`contract submit/resubmit/patch/delete/print-file`、`contract share get/batch-create`、`contract cooperation link/record/search/file`、`contract approval start`、`payment *`、`mdm vendor create/update/list-all/query-by-cert`、`mdm legal get --code/create/update`、`mdm fixed-exchange-rate get/update`、`mdm file download`、`event outbound-ip list` 当前仅支持 `--as app`
@@ -124,7 +124,7 @@ contract-cli contract get <contract-id> --help
 全局 `--debug` 默认关闭，支持放在命令前或子命令参数中；`--debug=false` 可显式关闭，重复时最后一个值生效。开启后，命令和请求调试日志写入 stderr，显式 `--output json` 或更新检查的 `--json` 使每条日志使用单行 JSON；未显式指定时使用文本。业务结果仍写 stdout，Trace 请求头不受调试开关影响。
 
 ```bash
-contract-cli rule table import plan --profile trace-dev-app --as app --product-id contract --group-id approve_matrix --table-id <table-id> --input-file import.json --debug --output json >result.json 2>debug.jsonl
+contract-cli rule table import plan --profile contract --as app --product-id contract --group-id approve_matrix --table-id <table-id> --input-file import.json --debug --output json >result.json 2>debug.jsonl
 ```
 
 只有显式 `--output json` 或 `--output=json` 时，失败或取消结果才在 stderr 输出单行 JSON：`{"ok":false,"error":{"type":"...","message":"...","trace_id":"..."},"_notice":{...}}`；其他模式保留 `error: ...` 文本摘要，有本次已有的更新通知时，在摘要后追加一行升级提示和命令。业务结果默认是 JSON 不等于错误也默认 JSON，`--json` 单独不切换错误格式。普通失败与超时退出 1，取消退出 130，成功退出 0。
@@ -180,7 +180,7 @@ contract-cli config add --env prod --name contract
 
 支持参数：
 
-- `--env`：默认构建仅支持 `prod`；带 `dev` 标签的本地构建支持 `prod|dev`，默认仍为 `prod`
+- `--env`：所有构建仅支持 `prod`，默认 `prod`；构建标签不会放行其他环境
 - `--name`：profile 名称，默认 `contract`
 - `--resource-metadata-url`：覆盖 protected resource metadata 地址
 - `--redirect-url`：覆盖 OAuth callback 地址
@@ -236,7 +236,7 @@ contract-cli update check --channel latest --json
 - 普通命令会先同步读取当前配置目录的 `update-check.json`；成功的 JSON object 输出通过 `_notice.update` 提示；失败或取消时，显式 JSON 错误携带 `_notice.update`，文本错误在 stderr 追加已有通知的升级提示
 - 命中 fresh cache 时不访问 npm registry，因此不会立即发现刚发布的新包
 - cache 缺失、channel 不匹配或过期时，当前命令会在短超时内同步刷新远端版本；成功结果会写入当前配置目录的 `update-check.json`
-- 网络失败、registry 失败或当前是 dev 构建时不会阻断原命令；刷新失败不会写入失败缓存
+- 网络失败、registry 失败或版本字符串为 `dev`、`unknown` 等不可检查版本时，不会阻断原命令；刷新失败不会写入失败缓存
 - `--raw`、yaml、table、纯文本命令不注入 `_notice.update`
 - CI 环境会跳过自动远端检查
 - 设置 `CONTRACT_CLI_NO_UPDATE_CHECK=1` 可以关闭自动检查

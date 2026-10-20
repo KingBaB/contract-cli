@@ -661,10 +661,6 @@ func (a *App) providerFor(identity config.IdentityKind) authProvider {
 	}
 }
 
-/*
-resolveEnvironment 默认仅提供 prod；带 dev 标签的本地构建额外提供开发环境预设。
-入参 name（string）为环境名；返回 environmentPreset 和 error。
-*/
 func resolveEnvironment(name string) (environmentPreset, error) {
 	switch name {
 	case productionEnvironment:
@@ -682,10 +678,7 @@ func resolveEnvironment(name string) (environmentPreset, error) {
 			DeviceScope:                    "contract:full contract-review:full",
 		}, nil
 	default:
-		if preset, supported := developmentEnvironmentPreset(name); supported {
-			return preset, nil
-		}
-		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: %s", name, supportedEnvironmentNames())
+		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod", name)
 	}
 }
 

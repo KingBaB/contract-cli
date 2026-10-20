@@ -107,17 +107,7 @@ contract-cli --version
 
 ### 2. 初始化本地 profile
 
-默认源码构建和正式构建仅支持 `prod`，默认 profile 为 `contract`；其他环境会在发请求前被拒绝，旧环境的同名 profile 重新配置时会清理旧认证，避免复用凭据。prod API 地址为 `https://open.qfei.cn`、账号地址为 `https://myaccount.qfei.cn`。
-
-本地 dev 链路验证可显式启用 `dev` 构建标签，增加固定的 `https://dev-open.qtech.cn` 和 `https://dev-myaccount.qtech.cn` 预设；默认环境仍为 prod，test/blue 仍被拒绝。dev profile 和认证端点必须属于同一环境，跨环境切换仍清理旧认证状态。
-
-```bash
-go build -tags dev -o /tmp/contract-cli-dev ./cmd/contract-cli
-/tmp/contract-cli-dev config add --env dev --name trace-dev
-/tmp/contract-cli-dev auth login --profile trace-dev --as user
-```
-
-dev 使用浏览器 OAuth 授权码登录；本地预设不复用 prod 的 Device Client ID。该构建仅供本地验证，不改变正式包和 npm 构建入口；Trace 行为与默认构建一致。
+当前源码的所有构建和正式安装包均仅支持 `prod`，即使误传 `-tags dev` 也不会启用开发环境。默认 profile 为 `contract`；test/blue/dev 等非生产环境及对应端点会在发请求前被拒绝，旧环境的同名 profile 重新配置时会清理旧认证，避免复用凭据。prod API 地址为 `https://open.qfei.cn`、账号地址为 `https://myaccount.qfei.cn`。
 
 若需验证 npm 包构建流程，可生成独立的本地预发布包；版本中的 `-test` 只是包标记，运行时仅支持 `prod`，也不发布到 npm：
 
