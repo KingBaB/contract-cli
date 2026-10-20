@@ -1,61 +1,37 @@
-# 合同定位与普通合同详情
+# 合同定位、搜索衔接与详情
 
-已有可信内部合同 ID 时直接读取详情；只有编号或名称时先做有条件搜索。参数表约定见 [调用参数约定](transport.md)。
+## 复用已有搜索能力
 
-## 按编号或名称定位合同
+用户刚完成查询并选择了合同，随后要求“把这几份交给某人”时，复用这些候选和原查询语义，不重新搜一遍。只有候选缺失、来源不明、环境/身份不一致或信息已变化时才重新定位。
 
-`POST /open-web/web/clm/es/search/contractList`
+需要新查询时读取已有 [合同搜索 Skill](../../contract-cli-contract-search/SKILL.md)，由它解析名称、编号、人员/部门、自定义字段、关键词与分页。固定使用与交接相同的 user 身份及环境，不因结果为空、权限错误或搜索能力不足而切到 app。该 Skill 不可用或其要求与当前环境不兼容时，说明缺少的能力并停止定位，不自行调用另一套搜索接口。
 
-| 参数 | 位置 | 类型 | 本流程要求 | 值、来源与限制 |
-|---|---|---|---|---|
-| `pageIndex` | body | integer | 必须传 | 固定 `0`。 |
-| `pageSize` | body | integer | 必须传 | 固定 `100`。 |
-| `searchTabCode` | body | integer | 必须传 | 全部合同为 0，我的合同为 1；沿用用户指定范围。 |
-| `conditionUnits` | body | array&lt;object&gt; | 有名称/编号时必须传 | 名称字段 CONTRACT_NAME_FIELD，编号字段 CONTRACT_NUMBER_FIELD；searchValue 为原始字符串，unionType 固定 SHOULD；有关键词时不得省略。 |
-| `filterUnits` | body | array&lt;object&gt; | 本流程省略 | 服务端存在此字段，但本 Skill 没有已核实的子字段结构，故请求中省略；用户要求额外筛选时说明缺少配方，不发无条件替代查询。 |
-| `allConditionUnits` | body | boolean | 必须传 | 固定 `false`，使用明确的名称/编号字段条件，不切到综合全部关键词模式。 |
-| `searchAfter` | body | array（不透明游标） | 首轮省略；续页必须传 | 首轮省略；续页原样传前页数组，保留每项类型和整数精度。 |
-| `sortType` | body | string | 必须传 | 固定 `"SUBMITTED_TIME"`。 |
-| `order` | body | string | 必须传 | 固定 `"DESC"`。 |
-| `withStatistics` | body | boolean | 必须传 | 固定 `false`，不请求额外统计；仍按实际返回的分页数据核对范围。 |
+已选集合以用户确认的合同为准。搜索按组返回/展开的成员不一定都满足原筛选条件，必须核对每条实际对象。分页、总数和查询是否完整沿用搜索 Skill 的判断；“列出了几份”不等于查全。用户要求全部结果时先完成搜索与范围核对，再让用户确认固定清单，不向交接接口提交动态查询条件。
 
-### conditionUnits 子字段
+## 候选交接约定
 
-| 子字段 | 类型 | 本流程要求 | 取值、来源与限制 |
-|---|---|---|---|
-| searchField | string | 必须传 | 编号用 CONTRACT_NUMBER_FIELD，名称用 CONTRACT_NAME_FIELD；本流程不使用其他枚举 |
-| searchValue | string | 必须传 | 用户原始编号或名称，非空；不拆成对象，不用内部 ID 代替 |
-| unionType | string | 必须传 | 固定 SHOULD；不能改为 MUST 或自行组合布尔语义 |
+下面是 Agent 在本轮任务中保留的业务上下文，不是需要发送到任何接口的新 JSON 字段，也不要求用户填写：
 
-一次定位请求用一个明确条件。用户同时给编号与名称时优先用编号定位，再用名称核对，不擅自把两个条件合成 OR 扩大范围。用户未指定 mine/all 范围且上下文不能确定时先澄清，不猜 searchTabCode。没有名称或编号条件的整租户枚举不是本流程的默认操作。
+| 信息 | 来源与要求 |
+|---|---|
+| 环境与配置 | 已确认的环境、实际服务来源、配置目录和 profile；同名 profile 或同一合同编号不能证明环境相同 |
+| 租户与身份 | 当前已授权 user 上下文及可核实的租户；不能把 app 搜索结果直接交给 user 写入，也不借用其他账号 |
+| 原查询与选择 | 保留用户条件、排除项、候选来源、分页是否完整以及用户选中的具体对象 |
+| 标识与展示 | 原样保留候选 contract_id、contract_number、contract_name、business_type_code 及其来源；缺失字段不推算、不伪造映射 |
+| ID 语义 | 记录该搜索通道是否明确返回内部合同实体 ID；未知时保持不确定，不因为是数字字符串就判为内部 ID |
 
-关键响应字段（路径相对完整响应）：
+跨 Skill 传递这些必要信息即可，不传 Token、Cookie 或完整人员数据。上下文缺失且不能从本轮已授权配置核实时，停止交接，不靠重新询问同一姓名或编号掩盖身份差异。
 
-| 含义 | 路径 | 类型 | 可为空 |
-|---|---|---|---|
-| 聚合组 | `$.data.content` | array | 是 |
-| 合同入口 | `$.data.content[*].searchContractListItems[*]` | array | 是 |
-| 合同 ID | `$.data.content[*].searchContractListItems[*].contractId` | string | 是 |
-| 合同编号 | `$.data.content[*].searchContractListItems[*].contractNumber` | string | 是 |
-| 合同名称 | `$.data.content[*].searchContractListItems[*].contractName` | string | 是 |
-| 业务类型码 | `$.data.content[*].searchContractListItems[*].businessTypeCode` | integer | 是 |
-| 所属父组 ID | `$.data.content[*].searchContractListItems[*].assemblyId` | string | 是 |
-| 聚合组总数 | `$.data.filteredTotalElements` | integer | 是 |
-| 续页游标 | `$.data.searchAfter` | array | 是 |
-| 分页能力 | `$.data.paginationCapability` | object | 是 |
-| 各 tab 统计 | `$.data.totalElements` | array | 是 |
+## ID 映射与详情回读
 
-编号搜索请求示例（替换示例编号，并按用户范围选择 searchTabCode）：
+1. 来源已明确返回内部合同 ID，且环境、租户和 user 上下文一致时，候选 ID 才能作为 contract/info 的 contractId 查询值。snake_case 与 camelCase 只是字段名称差异，本身不是 ID 等价证明。
+2. 来源返回开放 ID、编码或不明语义的 contract_id 时，只把它作为候选标识。必须通过已有且已确认的映射能力取得内部 ID；本 Skill 不提供猜测、解码或数字转换映射。无可靠映射时说明无法继续，不让用户手抄内部 ID，不回退到另一环境搜索。
+3. 回读后核对 data.contractId 与内部候选 ID，并核对可用的合同编号/名称、真实 businessTypeCode、groupId、assemblyId、当前角色与状态。不一致或必需字段缺失时暂停该对象；搜索返回的旧角色不用于直接构造写请求。
+4. 写入 businessId、businessTypeCode、parentId 只从本次交接详情或父组详情构造。不能把搜索 group_id 直接重命名为 parentId，也不能把 business_type_code 当作后端已批准交接的证据。
 
-```json
-{"pageIndex":0,"pageSize":100,"searchTabCode":1,"conditionUnits":[{"searchField":"CONTRACT_NUMBER_FIELD","searchValue":"用户指定编号","unionType":"SHOULD"}],"allConditionUnits":false,"sortType":"SUBMITTED_TIME","order":"DESC","withStatistics":false}
-```
+已有来源明确的内部 ID 可直接进入详情回读，无需先调用搜索。普通合同的 contractId 与父组 contractAssemblyId 不互换；识别出真实组成员后按 [合同组](assemblies.md) 确认父组与完整成员。
 
-搜索是候选定位，不保证精确匹配；逐条比较 contractNumber 或名称，重名时让用户选择。零结果只能说明本搜索范围未命中，不能证明草稿或协商记录不存在。没有已验证替代查询时说明范围限制。
-
-结果按组聚合，从 `searchContractListItems` 提取入口。`filteredTotalElements` 是聚合组数，不能当合同数；`totalElements` 是各 tab 统计。续页固定 pageIndex=0、排序不变，原样传 searchAfter，直到终止页并核对组数；重复游标、数量漂移或窗口限制而无有效游标时不能宣称查全。后续页 paginationCapability 为空，不抹掉已有游标。
-
-用户给了条件就不能退化为全租户搜索。名称、编号和综合关键词不互换。当前配方只确认名称、编号字段；未知筛选条件不能自行构造。完整搜索全选的业务执行目前不开放。
+参数表约定见 [调用参数约定](transport.md)。
 
 ## 普通合同详情与回查
 
@@ -103,7 +79,7 @@ GET /open-web/web/clm/contract/info?contractId=20001&tianyancha=false&generateCo
 
 - 写前和写后使用同一接口与参数，记录当前归属人、申请人、类型、状态、groupId、assemblyId 和交接历史。创建人不等于当前归属人。
 - `assemblyId` 为真实父组 ID 时读取 [合同组](assemblies.md)，不直接把该成员当独立入口。type=0 也可能属于组，不能只凭类型判断。
-- 普通指定合同测试要求 assemblyId 明确为 null 或 0；缺失或类型关系不明时停止该写入。groupId 与 assemblyId 不能互换；前后链为空也不能证明没有同组关联记录。
+- 普通独立入口要求 assemblyId 明确为 null 或 0；缺失或类型关系不明时停止该写入。groupId 与 assemblyId 不能互换；前后链为空也不能证明没有同组关联记录。
 - 普通交接的角色规则见 [交接与结果核对](handover.md)。状态码 1 为已取消，不交接；已知普通准入范围为 2～17、另含 23，但状态落入范围不独自构成交接资格。草稿、协商等依赖未核实配置的分支不猜测放行，仍由服务端最终判定。
 - 查询历史时分别显示交接前人员、接收人、操作人和时间，不用当前归属人补齐历史；空记录只表示接口未返回记录。时间单位或时区未知时保留原值。
 - 不改用会更新交易方状态的聚合详情接口，也不通过猜参数、换身份来绕过详情异常。

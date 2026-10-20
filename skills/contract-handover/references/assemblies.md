@@ -1,6 +1,6 @@
-# 合同组：识别、完整读取与受控验证
+# 合同组：识别、完整读取与交接
 
-合同组属于扩展场景，不能因普通合同通过就自动开放。当前只保留 test 下具体清单、完整成员可读取且无后继父组的受控验证；有后继、未知关联组、未知灰度准入或缺失回读路径时不写入。type17 的网关／权限表现未完成运行验证，不按 type10 的样本放行。日常请求可先只读识别并说明范围。
+合同组须完整读取父组与有效成员，并满足当前权限、状态和影响范围条件，不能套用普通合同角色规则。有后继、未知关联组、未知灰度准入或缺失回读路径时不写入。父组类型与当前通道权限不能可靠确认时停止，不能把其他组类型的成功结果作为本次可执行依据。
 
 参数表约定见 [调用参数约定](transport.md)；业务类型码与 ID 选择见 [资源类型](resource-types.md)。
 
@@ -88,7 +88,7 @@ GET /open-web/web/clm/contractAssembly/childrenInfo?contractAssemblyId=30001&bat
 
 ## 参数与分页边界
 
-两个接口的 contractAssemblyId 都是正十进制父组 ID；batchContractChildrenPageIndex 为非负整数，batchContractChildrenPageSize 为正整数，本流程固定 100。父组 info 只传 pageIndex=0；childrenInfo 才逐页加 1，不使用搜索接口的 searchAfter。
+两个接口的 contractAssemblyId 都是正十进制父组 ID；batchContractChildrenPageIndex 为非负整数，batchContractChildrenPageSize 为正整数，本流程固定 100。父组 info 只传 pageIndex=0；childrenInfo 才逐页加 1，不使用合同搜索的分页令牌。
 
 needChildrenInfo=false 表示不请求内嵌完整成员，不保证响应中 contracts 一定为空；成员完整性以 childrenInfo 全分页加父组 childrenCount 核对。needApproveRecord=false 表示不要求成员审批记录，不是关闭当前角色回读。
 

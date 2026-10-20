@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -103,41 +104,38 @@ func TestHandoverParameterReferencesHaveTypedRequiredness(t *testing.T) {
 	}
 }
 
-func TestHandoverSearchExampleUsesExplicitTypedConditions(t *testing.T) {
+func TestHandoverRuntimeReusesSearchWithoutDevelopmentInstructions(t *testing.T) {
+	development := regexp.MustCompile(`(?i)\btest\b|测试|验收|样本`)
+	err := fs.WalkDir(contractskills.FS, "contract-handover", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		raw, err := contractskills.FS.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if development.Match(raw) {
+			t.Errorf("runtime resource contains development-stage instructions: %s", path)
+		}
+		if bytes.Contains(raw, []byte("/es/search/contractList")) || bytes.Contains(raw, []byte("searchAfter")) {
+			t.Errorf("handover must delegate search instead of duplicating its wire protocol: %s", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	raw, err := contractskills.FS.ReadFile("contract-handover/references/contracts.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	blocks := regexp.MustCompile("(?s)```json\\s*\\n(.*?)\\n```").FindAllSubmatch(raw, -1)
-	if len(blocks) == 0 {
-		t.Fatal("missing complete search request")
+	if !bytes.Contains(raw, []byte("../../contract-cli-contract-search/SKILL.md")) {
+		t.Fatal("search delegation reference missing")
 	}
-	for _, block := range blocks {
-		var request struct {
-			Page       int `json:"pageIndex"`
-			Size       int `json:"pageSize"`
-			Tab        int `json:"searchTabCode"`
-			Conditions []struct {
-				Field string `json:"searchField"`
-				Value string `json:"searchValue"`
-				Union string `json:"unionType"`
-			} `json:"conditionUnits"`
-			All        bool   `json:"allConditionUnits"`
-			Sort       string `json:"sortType"`
-			Order      string `json:"order"`
-			Statistics bool   `json:"withStatistics"`
-		}
-		decoder := json.NewDecoder(bytes.NewReader(block[1]))
-		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&request); err != nil {
-			t.Fatal(err)
-		}
-		if request.Page != 0 || request.Size != 100 || (request.Tab != 0 && request.Tab != 1) || request.All || request.Statistics || request.Sort != "SUBMITTED_TIME" || request.Order != "DESC" || len(request.Conditions) != 1 {
-			t.Fatalf("unsafe or incomplete search example: %+v", request)
-		}
-		unit := request.Conditions[0]
-		if (unit.Field != "CONTRACT_NUMBER_FIELD" && unit.Field != "CONTRACT_NAME_FIELD") || unit.Value == "" || unit.Union != "SHOULD" {
-			t.Fatalf("invalid search condition: %+v", unit)
-		}
+	if _, err := contractskills.FS.ReadFile("contract-cli-contract-search/SKILL.md"); err != nil {
+		t.Fatal(err)
 	}
 }
