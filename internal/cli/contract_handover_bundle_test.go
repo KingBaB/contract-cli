@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"cn.qfei/contract-cli/internal/cli"
@@ -68,6 +69,75 @@ func TestHandoverDocumentedWriteRequestPreservesIdentityAndResourceTypes(t *test
 	for _, forbidden := range []string{"handoverByAdmin", "onlyOwner", "onlySubmitter", "operatorId", "token"} {
 		if _, ok := fields[forbidden]; ok {
 			t.Errorf("write example must not invent %s", forbidden)
+		}
+	}
+}
+
+func TestHandoverParameterReferencesHaveTypedRequiredness(t *testing.T) {
+	for _, name := range []string{"identity.md", "contracts.md", "handover.md", "assemblies.md"} {
+		raw, err := contractskills.FS.ReadFile("contract-handover/references/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(raw)
+		if strings.Contains(text, "| 参数 | 位置 | 必填 |") {
+			t.Errorf("%s conflates API requiredness with recipe policy and omits types", name)
+		}
+		if !strings.Contains(text, "| 参数 | 位置 | 类型 | 本流程要求 | 值、来源与限制 |") {
+			t.Errorf("%s has no complete parameter definition", name)
+		}
+	}
+	raw, err := contractskills.FS.ReadFile("contract-handover/references/resource-types.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := regexp.MustCompile(`(?m)^\| ([0-9]+) \|`).FindAllSubmatch(raw, -1)
+	codes := map[string]bool{}
+	for _, row := range rows {
+		codes[string(row[1])] = true
+	}
+	for _, code := range []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "99"} {
+		if !codes[code] {
+			t.Errorf("missing business enum %s", code)
+		}
+	}
+}
+
+func TestHandoverSearchExampleUsesExplicitTypedConditions(t *testing.T) {
+	raw, err := contractskills.FS.ReadFile("contract-handover/references/contracts.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocks := regexp.MustCompile("(?s)```json\\s*\\n(.*?)\\n```").FindAllSubmatch(raw, -1)
+	if len(blocks) == 0 {
+		t.Fatal("missing complete search request")
+	}
+	for _, block := range blocks {
+		var request struct {
+			Page       int `json:"pageIndex"`
+			Size       int `json:"pageSize"`
+			Tab        int `json:"searchTabCode"`
+			Conditions []struct {
+				Field string `json:"searchField"`
+				Value string `json:"searchValue"`
+				Union string `json:"unionType"`
+			} `json:"conditionUnits"`
+			All        bool   `json:"allConditionUnits"`
+			Sort       string `json:"sortType"`
+			Order      string `json:"order"`
+			Statistics bool   `json:"withStatistics"`
+		}
+		decoder := json.NewDecoder(bytes.NewReader(block[1]))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request.Page != 0 || request.Size != 100 || (request.Tab != 0 && request.Tab != 1) || request.All || request.Statistics || request.Sort != "SUBMITTED_TIME" || request.Order != "DESC" || len(request.Conditions) != 1 {
+			t.Fatalf("unsafe or incomplete search example: %+v", request)
+		}
+		unit := request.Conditions[0]
+		if (unit.Field != "CONTRACT_NUMBER_FIELD" && unit.Field != "CONTRACT_NAME_FIELD") || unit.Value == "" || unit.Union != "SHOULD" {
+			t.Fatalf("invalid search condition: %+v", unit)
 		}
 	}
 }

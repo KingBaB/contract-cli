@@ -2,16 +2,23 @@
 
 合同组属于扩展场景，不能因普通合同通过就自动开放。当前只保留 test 下具体清单、完整成员可读取且无后继父组的受控验证；有后继、未知关联组、未知灰度准入或缺失回读路径时不写入。type17 的网关／权限表现未完成运行验证，不按 type10 的样本放行。日常请求可先只读识别并说明范围。
 
+参数表约定见 [调用参数约定](transport.md)；业务类型码与 ID 选择见 [资源类型](resource-types.md)。
+
 ## 父合同组详情与回查
 
 `GET /open-web/web/clm/contractAssembly/info`
 
-| 参数 | 位置 | 必填 | 值或来源 |
-|---|---|---|---|
-| `contractAssemblyId` | query | 是 | 已确认的父合同组 ID，不能填搜索结果外层 groupId。 |
-| `batchContractChildrenPageIndex` | query | 是 | 固定 `0`。 |
-| `batchContractChildrenPageSize` | query | 是 | 固定 `100`。 |
-| `needChildrenInfo` | query | 是 | 固定 `false`。 |
+请求形态示例（姓名和 ID 仅为占位，执行前按本次实际值替换）：
+
+```http
+GET /open-web/web/clm/contractAssembly/info?contractAssemblyId=30001&batchContractChildrenPageIndex=0&batchContractChildrenPageSize=100&needChildrenInfo=false
+```
+| 参数 | 位置 | 类型 | 本流程要求 | 值、来源与限制 |
+|---|---|---|---|---|
+| `contractAssemblyId` | query | string（内部 ID） | 必须传 | 已确认的父合同组 ID，不能填搜索结果外层 groupId。 |
+| `batchContractChildrenPageIndex` | query | integer | 必须传 | 父组详情固定 `0`，不把详情接口当成员翻页接口。 |
+| `batchContractChildrenPageSize` | query | integer | 必须传 | 固定 `100`。 |
+| `needChildrenInfo` | query | boolean | 必须传 | 固定 `false`，完整成员通过 childrenInfo 分页读取，不依赖内嵌 contracts。 |
 
 关键响应字段（路径相对完整响应）：
 
@@ -35,12 +42,17 @@
 
 `GET /open-web/web/clm/contractAssembly/childrenInfo`
 
-| 参数 | 位置 | 必填 | 值或来源 |
-|---|---|---|---|
-| `contractAssemblyId` | query | 是 | 已确认的父合同组 ID，不能填搜索结果外层 groupId。 |
-| `batchContractChildrenPageIndex` | query | 是 | 从 0 开始，每页加 1。 |
-| `batchContractChildrenPageSize` | query | 是 | 固定 `100`。 |
-| `needApproveRecord` | query | 是 | 固定 `false`。 |
+请求形态示例（姓名和 ID 仅为占位，执行前按本次实际值替换）：
+
+```http
+GET /open-web/web/clm/contractAssembly/childrenInfo?contractAssemblyId=30001&batchContractChildrenPageIndex=0&batchContractChildrenPageSize=100&needApproveRecord=false
+```
+| 参数 | 位置 | 类型 | 本流程要求 | 值、来源与限制 |
+|---|---|---|---|---|
+| `contractAssemblyId` | query | string（内部 ID） | 必须传 | 已确认的父合同组 ID，不能填搜索结果外层 groupId。 |
+| `batchContractChildrenPageIndex` | query | integer | 必须传 | 从 0 开始，每页加 1。 |
+| `batchContractChildrenPageSize` | query | integer | 必须传 | 固定 `100`。 |
+| `needApproveRecord` | query | boolean | 必须传 | 固定 `false`，不请求成员审批记录；仍读取当前角色。 |
 
 关键响应字段（路径相对完整响应）：
 
@@ -65,7 +77,7 @@
 
 ## 组范围与结果规则
 
-- 类型示例：10 为合同组申请，17 为模板批量合同，11 为组下主合同；这些不是全部类型白名单。核对真实详情与成员关系，不能用搜索外层 groupId 代替父组 ID。
+- 类型统一按 [资源类型表](resource-types.md) 解释。父组类型 10/17 与成员类型 11/0 不可互换；核对真实详情与成员关系，不能用搜索外层 groupId 代替父组 ID。
 - 成员从 pageIndex=0、pageSize=100 逐页读取到空页，按 contractId 去重，与父组前后 childrenCount 核对。父组 contracts 可能只有首批，不能直接当全部。数量不符或漂移时重新核实，不能宣布成员完整。
 - 只选择组内一份合同但用户明确其他成员不得改变时，说明整组影响并停止；不能静默把父组及其他成员加入已授权范围。
 - 写入以父组真实 ID、类型和 groupId 形成一个 resourceList 入口。组整体确认，不能拆成成员来规避范围限制。
@@ -73,3 +85,11 @@
 - 所有有效成员跟随父组的两个角色标记，不能按每个成员自身角色关系重新计算。父组有效交接后按接收人首部门更新，无部门保留。子合同部门由后端处理，不作为读取或结果判据，不用父组部门或员工部门补值。
 - 本次父组授权／新增历史 + 完整成员关系 + 每份成员角色和需求人回读，可以证明成员结果；不要求每份成员独立授权记录。成员缺失、角色不符或缺回读的对象待核实。
 - 流程归属、旧授权停用、通知发送与送达分别核验。没有通知证据不自动判角色交接失败，也不能声称副作用全通过。没有合法回查方法时明确保留未核实项，不能先假定它们已发生。
+
+## 参数与分页边界
+
+两个接口的 contractAssemblyId 都是正十进制父组 ID；batchContractChildrenPageIndex 为非负整数，batchContractChildrenPageSize 为正整数，本流程固定 100。父组 info 只传 pageIndex=0；childrenInfo 才逐页加 1，不使用搜索接口的 searchAfter。
+
+needChildrenInfo=false 表示不请求内嵌完整成员，不保证响应中 contracts 一定为空；成员完整性以 childrenInfo 全分页加父组 childrenCount 核对。needApproveRecord=false 表示不要求成员审批记录，不是关闭当前角色回读。
+
+childrenCount 应为非负整数；缺失、成员缺 ID、重复与计数不一致、前后总数变化都不能判断成员完整。nextId<=0/null 仅用于无后继父组条件，不是全部关联链已查全的证明。taskInstanceId、noticeId、mobile 等其他入口参数不在本流程中传入，也不借它们替换权限上下文。

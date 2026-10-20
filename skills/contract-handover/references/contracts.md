@@ -1,23 +1,33 @@
 # 合同定位与普通合同详情
 
-已有可信内部合同 ID 时直接读取详情；只有编号或名称时先做有条件搜索。
+已有可信内部合同 ID 时直接读取详情；只有编号或名称时先做有条件搜索。参数表约定见 [调用参数约定](transport.md)。
 
 ## 按编号或名称定位合同
 
 `POST /open-web/web/clm/es/search/contractList`
 
-| 参数 | 位置 | 必填 | 值或来源 |
+| 参数 | 位置 | 类型 | 本流程要求 | 值、来源与限制 |
+|---|---|---|---|---|
+| `pageIndex` | body | integer | 必须传 | 固定 `0`。 |
+| `pageSize` | body | integer | 必须传 | 固定 `100`。 |
+| `searchTabCode` | body | integer | 必须传 | 全部合同为 0，我的合同为 1；沿用用户指定范围。 |
+| `conditionUnits` | body | array&lt;object&gt; | 有名称/编号时必须传 | 名称字段 CONTRACT_NAME_FIELD，编号字段 CONTRACT_NUMBER_FIELD；searchValue 为原始字符串，unionType 固定 SHOULD；有关键词时不得省略。 |
+| `filterUnits` | body | array&lt;object&gt; | 本流程省略 | 服务端存在此字段，但本 Skill 没有已核实的子字段结构，故请求中省略；用户要求额外筛选时说明缺少配方，不发无条件替代查询。 |
+| `allConditionUnits` | body | boolean | 必须传 | 固定 `false`，使用明确的名称/编号字段条件，不切到综合全部关键词模式。 |
+| `searchAfter` | body | array（不透明游标） | 首轮省略；续页必须传 | 首轮省略；续页原样传前页数组，保留每项类型和整数精度。 |
+| `sortType` | body | string | 必须传 | 固定 `"SUBMITTED_TIME"`。 |
+| `order` | body | string | 必须传 | 固定 `"DESC"`。 |
+| `withStatistics` | body | boolean | 必须传 | 固定 `false`，不请求额外统计；仍按实际返回的分页数据核对范围。 |
+
+### conditionUnits 子字段
+
+| 子字段 | 类型 | 本流程要求 | 取值、来源与限制 |
 |---|---|---|---|
-| `pageIndex` | body | 是 | 固定 `0`。 |
-| `pageSize` | body | 是 | 固定 `100`。 |
-| `searchTabCode` | body | 是 | 全部合同为 0，我的合同为 1；沿用用户指定范围。 |
-| `conditionUnits` | body | 否 | 名称字段 CONTRACT_NAME_FIELD，编号字段 CONTRACT_NUMBER_FIELD；searchValue 为原始字符串，unionType 固定 SHOULD；有关键词时不得省略。 |
-| `filterUnits` | body | 否 | 仅传已核实字段与语义的筛选条件；没有相应字段配方时停止该筛选，不猜字段 code。 |
-| `allConditionUnits` | body | 是 | 固定 `false`。 |
-| `searchAfter` | body | 否 | 首轮省略；续页原样传前页数组，保留每项类型和整数精度。 |
-| `sortType` | body | 是 | 固定 `"SUBMITTED_TIME"`。 |
-| `order` | body | 是 | 固定 `"DESC"`。 |
-| `withStatistics` | body | 是 | 固定 `false`。 |
+| searchField | string | 必须传 | 编号用 CONTRACT_NUMBER_FIELD，名称用 CONTRACT_NAME_FIELD；本流程不使用其他枚举 |
+| searchValue | string | 必须传 | 用户原始编号或名称，非空；不拆成对象，不用内部 ID 代替 |
+| unionType | string | 必须传 | 固定 SHOULD；不能改为 MUST 或自行组合布尔语义 |
+
+一次定位请求用一个明确条件。用户同时给编号与名称时优先用编号定位，再用名称核对，不擅自把两个条件合成 OR 扩大范围。用户未指定 mine/all 范围且上下文不能确定时先澄清，不猜 searchTabCode。没有名称或编号条件的整租户枚举不是本流程的默认操作。
 
 关键响应字段（路径相对完整响应）：
 
@@ -51,11 +61,16 @@
 
 `GET /open-web/web/clm/contract/info`
 
-| 参数 | 位置 | 必填 | 值或来源 |
-|---|---|---|---|
-| `contractId` | query | 是 | 已定位的普通合同内部 ID；不能填合同编号、聚合组 ID 或父组 ID。 |
-| `tianyancha` | query | 是 | 固定 `false`。 |
-| `generateContractName` | query | 是 | 固定 `false`。 |
+请求形态示例（姓名和 ID 仅为占位，执行前按本次实际值替换）：
+
+```http
+GET /open-web/web/clm/contract/info?contractId=20001&tianyancha=false&generateContractName=false
+```
+| 参数 | 位置 | 类型 | 本流程要求 | 值、来源与限制 |
+|---|---|---|---|---|
+| `contractId` | query | string（内部 ID） | 必须传 | 已定位的普通合同内部 ID；不能填合同编号、聚合组 ID 或父组 ID。 |
+| `tianyancha` | query | boolean | 必须传 | 固定 `false`，不启用天眼查扩展。 |
+| `generateContractName` | query | boolean | 必须传 | 固定 `false`，不触发合同名称生成。 |
 
 关键响应字段（路径相对完整响应）：
 
@@ -92,3 +107,11 @@
 - 普通交接的角色规则见 [交接与结果核对](handover.md)。状态码 1 为已取消，不交接；已知普通准入范围为 2～17、另含 23，但状态落入范围不独自构成交接资格。草稿、协商等依赖未核实配置的分支不猜测放行，仍由服务端最终判定。
 - 查询历史时分别显示交接前人员、接收人、操作人和时间，不用当前归属人补齐历史；空记录只表示接口未返回记录。时间单位或时区未知时保留原值。
 - 不改用会更新交易方状态的聚合详情接口，也不通过猜参数、换身份来绕过详情异常。
+
+## ID 来源与缺失处理
+
+contractId、groupId、assemblyId、previousId、nextId 分别是合同实体、关联链、父合同组、前序、后继标识，不可互换。普通入口的 businessId 取 contractId，parentId 取该详情 groupId；父组入口按 [合同组](assemblies.md) 取值。搜索外层聚合 groupId 只能用于理解搜索结果，不用于构造 parentId。
+
+详情中的关键 ID、businessTypeCode 或当前角色缺失时，停止该对象写入，不用 0、空字符串或名称补齐。assemblyId=0/null 只表示未指向已知父组，不证明不存在同 groupId 的关联资源。业务类型码完整对照与提交边界见 [资源类型](resource-types.md)。
+
+交接历史的 authorizationSourceTypeCode 按接口原值保留，本流程没有完整来源枚举表，不用任意来源记录证明本次交接。姓名为空时可展示已核实的人员 ID，不以创建人或操作人补成当前归属人。

@@ -27,3 +27,12 @@ contract-cli api call --channel web --profile <已确认profile> --as user --inp
 - 内部 employeeId、contractId、groupId、assemblyId 与开放 user_id 含义不同，不混用；不发送 tenantId、employeeId 等额外身份覆盖字段，业务请求中的 targetTenantId 仅是已核实接收人的租户。
 - 所有接口预期下游 body 为 code=200 且 success=true，再读取 data。HTTP/通道失败与业务失败分别判断；CLI 只返回 body 时不编造外层 HTTP 状态。data 为空不是交接成功。
 - 只保存必要的本次对象、写前快照和核对结果，不记录凭证或无关个人信息。
+
+## 参数表统一口径
+
+- “类型”表示业务／JSON 类型；query 在 URL 中最终编码成文本，例如 boolean false 编码为 `false`、integer 0 编码为 `0`。body 中布尔、整数不能改成带引号字符串。
+- “本流程要求”是本 Skill 的请求约定，不等于后端 Controller/DTO 的必填注解。即使后端可省略或存在默认值，固定参数仍按表发送；未列出的可选参数不自行补传。
+- 内部 ID 统一以正十进制字符串保存和发送（后端 Long，最大 9223372036854775807），不含空格、符号或小数。不混用 contractNumber、开放 user_id 和内部 employeeId。仅查询响应中的 assemblyId、previousId、nextId 可出现 0/null 等无关联标记，不能把这些值当实际目标 ID。
+- 缺失、null、空数组和 0 分别判断，不靠真假值合并。必须形成确认清单／请求的 ID 或角色缺失时停止该对象写入；备注为“可为空”的响应字段仅表示可能缺失，不承诺有完整执行证据。
+- 响应表中 `[*]` 路径表示从集合投影的结果；表中 array 是投影后的集合类型。例如 data[*].status 是整数状态集合，data[*].employeeId 是内部 ID 字符串集合。实际单条字段按其对象和语义读取，不把集合当一个 ID。
+- 固定值只在文档确认的场景使用；未知枚举、未核实筛选结构或新的服务端校验错误不猜测补齐。文档列出所有本流程请求参数，不表示列出底层接口的全部可选参数。
