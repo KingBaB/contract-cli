@@ -1,0 +1,446 @@
+package cli
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+
+	"cn.qfei/contract-cli/internal/config"
+	"cn.qfei/contract-cli/internal/openplatform"
+	"cn.qfei/contract-cli/internal/output"
+)
+
+type commandOptions struct {
+	profileName      string
+	identity         string
+	output           output.Format
+	raw              bool
+	inputFile        string
+	data             string
+	userIDType       string
+	userID           string
+	departmentIDType string
+}
+
+type parsedArgs struct {
+	values      map[string][]string
+	bools       map[string]bool
+	positionals []string
+}
+
+func parseArgs(args []string, valueFlags map[string]struct{}, boolFlags map[string]struct{}) (parsedArgs, error) {
+	parsed := parsedArgs{
+		values:      map[string][]string{},
+		bools:       map[string]bool{},
+		positionals: []string{},
+	}
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if !strings.HasPrefix(arg, "--") {
+			parsed.positionals = append(parsed.positionals, arg)
+			continue
+		}
+
+		name, inlineValue, hasInlineValue := strings.Cut(arg, "=")
+		if _, ok := boolFlags[name]; ok {
+			if !hasInlineValue {
+				parsed.bools[name] = true
+				continue
+			}
+			value, err := strconv.ParseBool(inlineValue)
+			if err != nil {
+				return parsedArgs{}, fmt.Errorf("invalid boolean value for %s: %w", name, err)
+			}
+			parsed.bools[name] = value
+			continue
+		}
+		if _, ok := valueFlags[name]; ok {
+			value, err := argValue(args, &i, inlineValue, hasInlineValue)
+			if err != nil {
+				return parsedArgs{}, err
+			}
+			parsed.values[name] = append(parsed.values[name], value)
+			continue
+		}
+		return parsedArgs{}, fmt.Errorf("unknown flag %q", name)
+	}
+	if err := output.ValidateFormat(output.Format(parsed.String("--output"))); err != nil {
+		return parsedArgs{}, err
+	}
+
+	return parsed, nil
+}
+
+func argValue(args []string, index *int, inlineValue string, hasInlineValue bool) (string, error) {
+	if hasInlineValue {
+		return inlineValue, nil
+	}
+	if *index+1 >= len(args) {
+		return "", fmt.Errorf("missing value for %s", args[*index])
+	}
+	*index = *index + 1
+	return args[*index], nil
+}
+
+func (p parsedArgs) String(name string) string {
+	values := p.values[name]
+	if len(values) == 0 {
+		return ""
+	}
+	return values[len(values)-1]
+}
+
+func (p parsedArgs) Strings(name string) []string {
+	values := p.values[name]
+	if len(values) == 0 {
+		return nil
+	}
+	cloned := make([]string, len(values))
+	copy(cloned, values)
+	return cloned
+}
+
+func (p parsedArgs) Bool(name string) bool {
+	return p.bools[name]
+}
+
+func (p parsedArgs) HasBool(name string) bool {
+	_, ok := p.bools[name]
+	return ok
+}
+
+func (p parsedArgs) HasValue(name string) bool {
+	_, ok := p.values[name]
+	return ok
+}
+
+func (p parsedArgs) Int(name string) (int, error) {
+	value := p.String(name)
+	if strings.TrimSpace(value) == "" {
+		return 0, nil
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid value for %s: %w", name, err)
+	}
+	return parsed, nil
+}
+
+func parseCommandOptions(parsed parsedArgs) commandOptions {
+	return commandOptions{
+		profileName:      parsed.String("--profile"),
+		identity:         parsed.String("--as"),
+		output:           output.Format(parsed.String("--output")),
+		raw:              parsed.Bool("--raw"),
+		inputFile:        parsed.String("--input-file"),
+		data:             parsed.String("--data"),
+		userIDType:       parsed.String("--user-id-type"),
+		userID:           parsed.String("--user-id"),
+		departmentIDType: parsed.String("--department-id-type"),
+	}
+}
+
+func commonValueFlags(extra ...string) map[string]struct{} {
+	flags := map[string]struct{}{
+		"--profile":    {},
+		"--as":         {},
+		"--output":     {},
+		"--input-file": {},
+		"--data":       {},
+	}
+	for _, flagName := range extra {
+		flags[flagName] = struct{}{}
+	}
+	return flags
+}
+
+func structuredValueFlags(extra ...string) map[string]struct{} {
+	flags := commonValueFlags(extra...)
+	flags["--user-id-type"] = struct{}{}
+	flags["--user-id"] = struct{}{}
+	return flags
+}
+
+func commonBoolFlags(extra ...string) map[string]struct{} {
+	flags := map[string]struct{}{
+		"--raw": {},
+	}
+	for _, flagName := range extra {
+		flags[flagName] = struct{}{}
+	}
+	return flags
+}
+
+/*
+executeOpenPlatformCommand 调用结构化开放平台接口，并在输出后保留矩阵业务错误语义。
+入参 ctx（context.Context）为请求上下文，options（commandOptions）为输出和身份选项，request（openplatform.Request）为接口请求；返回 error 为调用、输出或业务错误。
+*/
+func (a *App) executeOpenPlatformCommand(ctx context.Context, options commandOptions, request openplatform.Request) error {
+	client, requestContext, err := a.openPlatformClientAndContextForOptions(options, request.Path, request.IdentityPolicy)
+	if err != nil {
+		return err
+	}
+
+	response, err := client.Do(ctx, requestContext, request)
+	if err != nil {
+		return err
+	}
+	// 规则行搜索只规范成功空结果；摘要查询生成中只保留状态和提示语（包括 --raw），其余响应保持原文。
+	if !options.raw && request.Method == http.MethodPost && isRuleOpenPlatformPath(request.Path) && strings.HasSuffix(request.Path, "/table_rows/search") {
+		response.Body = normalizeEmptyRuleTableRowSearchResponse(response.Body)
+	}
+	if request.Method == http.MethodPost && request.Path == contractOpenAPIPathPrefix+"/summary/query" {
+		visibleBody, generating := summaryQueryVisibleBody(response.Body)
+		if generating {
+			a.logger.Info("contract summary query is generating")
+			response.Body = visibleBody
+		}
+	}
+
+	// 先输出业务响应，便于调用方读取服务端错误详情；再把矩阵业务码转换为命令错误。
+	outputErr := a.renderOpenPlatformResponse(options, response)
+	if isRuleOpenPlatformPath(request.Path) && len(response.Body) > 0 {
+		var envelope struct {
+			Code *int64 `json:"code"`
+		}
+		if decodeErr := json.Unmarshal(response.Body, &envelope); decodeErr != nil || envelope.Code == nil {
+			return errors.Join(errors.New("invalid rule response envelope"), outputErr)
+		}
+		if *envelope.Code != 0 {
+			return errors.Join(fmt.Errorf("rule request failed with business code %d; see response output for details", *envelope.Code), outputErr)
+		}
+	}
+	return outputErr
+}
+
+/*
+normalizeEmptyRuleTableRowSearchResponse 将搜索成功时的空 data 对象转换为稳定的空行分页结构。
+入参 body（[]byte）为服务端响应；返回 []byte 为仅在 code=0 且 data={} 时规范化的响应，否则原样返回。
+*/
+func normalizeEmptyRuleTableRowSearchResponse(body []byte) []byte {
+	var envelope struct {
+		Code *int64          `json:"code"`
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil || envelope.Code == nil || *envelope.Code != 0 {
+		return body
+	}
+	dataText := strings.TrimSpace(string(envelope.Data))
+	if len(dataText) == 0 || dataText[0] != '{' {
+		return body
+	}
+	var data map[string]json.RawMessage
+	if err := json.Unmarshal(envelope.Data, &data); err != nil || len(data) != 0 {
+		return body
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(body, &fields); err != nil {
+		return body
+	}
+	fields["data"] = json.RawMessage(`{"table_rows":[],"has_more":false}`)
+	normalized, err := json.Marshal(fields)
+	if err != nil {
+		return body
+	}
+	return normalized
+}
+
+func (a *App) openPlatformClientAndContextForOptions(options commandOptions, path string, policy openplatform.IdentityPolicy) (*openplatform.Client, openplatform.RequestContext, error) {
+	client, requestContext, err := a.openPlatformClientAndContext(options.profileName, options.identity, path, policy)
+	if err != nil {
+		return nil, openplatform.RequestContext{}, err
+	}
+	requestContext.CommonQuery = commandCommonQuery(options)
+	if isContractApprovalMatrixDataPath(path) {
+		// 仅矩阵目录、规则行和结果列默认值使用 SaaS 搜索的 id；显式旧类型仍按原有契约发送。
+		if strings.TrimSpace(options.userIDType) == "" {
+			requestContext.CommonQuery.Set("user_id_type", "tenant_employee_id")
+		}
+		if strings.TrimSpace(options.departmentIDType) == "" {
+			requestContext.CommonQuery.Set("department_id_type", "tenant_department_id")
+		}
+	}
+	if isRuleOpenPlatformPath(path) {
+		// 矩阵接口的编辑人由 Bearer 用户身份在开平服务端解析；移除可人为指定的 user_id，避免把审批人或其他人员 ID 当成编辑人。
+		requestContext.CommonQuery.Del("user_id")
+	}
+	return client, requestContext, nil
+}
+
+/*
+isContractApprovalMatrixDataPath 识别需要原生人员、部门 ID 的矩阵数据接口。
+入参 path（string）为开平路径；返回 bool 表示是否为 contract/approve_matrix 的目录、规则行或列配置。
+*/
+func isContractApprovalMatrixDataPath(path string) bool {
+	const prefix = "/open-apis/rule_engine/v1/products/contract/groups/approve_matrix/"
+	if !strings.HasPrefix(path, prefix) {
+		return false
+	}
+	return strings.Contains(path, "/employees/") || strings.Contains(path, "/departments/") || strings.Contains(path, "/table_rows") || strings.Contains(path, "/table_columns/")
+}
+
+/* isRuleOpenPlatformPath 判断请求是否属于审批矩阵开放平台路径；path 为相对接口路径，返回是否需要用户身份语义。 */
+func isRuleOpenPlatformPath(path string) bool {
+	return strings.HasPrefix(strings.TrimSpace(path), "/open-apis/rule_engine/v1/")
+}
+
+func (a *App) openPlatformClientAndContext(profileName, identityArg, path string, policy openplatform.IdentityPolicy) (*openplatform.Client, openplatform.RequestContext, error) {
+	a.logger.Info("resolve open platform request context", "profile", emptyFallback(profileName, "<current>"), "path", path, "identity", emptyFallback(identityArg, "<default>"), "policy", policy)
+
+	profile, err := a.loadDeviceAwareProfile(profileName)
+	if err != nil {
+		a.logger.Error("load open platform profile failed", "profile", emptyFallback(profileName, "<current>"), "path", path, "error", err.Error())
+		return nil, openplatform.RequestContext{}, err
+	}
+
+	identity, err := resolveIdentity(profile, identityArg, path, policy)
+	if err != nil {
+		a.logger.Error("resolve open platform identity failed", "profile", profile.Name, "path", path, "identity", emptyFallback(identityArg, "<default>"), "error", err.Error())
+		return nil, openplatform.RequestContext{}, err
+	}
+
+	client := openplatform.New(openplatform.Options{
+		HTTPClient: a.httpClient,
+		Logger:     a.logger,
+		BeforeRequestHooks: []openplatform.BeforeRequestHook{
+			a.beforeOpenPlatformRequest,
+		},
+	})
+	var requestContext openplatform.RequestContext
+	if identity == config.IdentityUser && profile.Identities.User.AuthMode == config.UserAuthModeDevice {
+		requestContext, err = a.deviceRequestContext(profile)
+	} else {
+		requestContext, err = client.RequestContext(profile, identity)
+	}
+	if err != nil {
+		a.logger.Error("build open platform request context failed", "profile", profile.Name, "path", path, "identity", identity, "error", err.Error())
+		return nil, openplatform.RequestContext{}, err
+	}
+	return client, requestContext, nil
+}
+
+func (a *App) renderOpenPlatformResponse(options commandOptions, response openplatform.Response) error {
+	renderer := output.NewRenderer(a.stdout).WithNotice(a.updateNotice)
+	if options.raw {
+		return renderer.RenderRaw(response.Body)
+	}
+	if len(response.Body) == 0 {
+		return nil
+	}
+	return renderer.Render(options.output, response.Body)
+}
+
+func resolveIdentity(profile config.Profile, requested string, path string, policy openplatform.IdentityPolicy) (config.IdentityKind, error) {
+	if strings.TrimSpace(requested) == "" {
+		if policy == openplatform.IdentityPolicyUserOnly {
+			return config.IdentityUser, nil
+		}
+		identity := defaultIdentity(profile)
+		if policy == openplatform.IdentityPolicyAppOnly && identity != config.IdentityApp {
+			return "", fmt.Errorf("open platform path %q only supports --as app", path)
+		}
+		return identity, nil
+	}
+
+	identity, err := config.ParseIdentityKind(requested)
+	if err != nil {
+		return "", err
+	}
+	if policy == openplatform.IdentityPolicyUserOnly && identity != config.IdentityUser {
+		return "", fmt.Errorf("open platform path %q only supports --as user", path)
+	}
+	if policy == openplatform.IdentityPolicyAppOnly && identity != config.IdentityApp {
+		return "", fmt.Errorf("open platform path %q only supports --as app", path)
+	}
+	return identity, nil
+}
+
+func resolveRawBody(options commandOptions) ([]byte, error) {
+	switch {
+	case options.inputFile != "" && options.data != "":
+		return nil, fmt.Errorf("only one of --input-file or --data may be provided")
+	case options.inputFile != "":
+		body, err := os.ReadFile(options.inputFile)
+		if err != nil {
+			return nil, fmt.Errorf("read command input file: %w", err)
+		}
+		return body, nil
+	case options.data != "":
+		return []byte(options.data), nil
+	default:
+		return nil, nil
+	}
+}
+
+func resolveRequiredRawBody(options commandOptions) ([]byte, error) {
+	body, err := resolveRawBody(options)
+	if err != nil {
+		return nil, err
+	}
+	if len(body) == 0 {
+		return nil, fmt.Errorf("--input-file or --data is required")
+	}
+	return body, nil
+}
+
+func commandCommonQuery(options commandOptions) url.Values {
+	query := url.Values{"user_id_type": {"user_id"}}
+	if value := strings.TrimSpace(options.userIDType); value != "" {
+		query.Set("user_id_type", value)
+	}
+	if value := strings.TrimSpace(options.userID); value != "" {
+		query.Set("user_id", value)
+	}
+	if value := strings.TrimSpace(options.departmentIDType); value != "" {
+		query.Set("department_id_type", value)
+	}
+	return query
+}
+
+func resolveJSONObjectBody(options commandOptions, requireInput bool) (map[string]any, error) {
+	body, err := resolveRawBody(options)
+	if err != nil {
+		return nil, err
+	}
+	if len(body) == 0 {
+		if requireInput {
+			return nil, fmt.Errorf("one of --input-file or --data is required")
+		}
+		return map[string]any{}, nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+	var decoded any
+	if err := decoder.Decode(&decoded); err != nil {
+		return nil, fmt.Errorf("decode command input json: %w", err)
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		if err == nil {
+			return nil, fmt.Errorf("decode command input json: input must contain a single JSON object")
+		}
+		return nil, fmt.Errorf("decode command input json: %w", err)
+	}
+	object, ok := decoded.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("command input must be a JSON object")
+	}
+	return object, nil
+}
+
+func marshalJSONObject(value map[string]any) ([]byte, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("marshal command json body: %w", err)
+	}
+	return data, nil
+}

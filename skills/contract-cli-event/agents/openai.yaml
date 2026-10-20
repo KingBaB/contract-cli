@@ -1,0 +1,7 @@
+interface:
+  display_name: "Contract CLI Event"
+  short_description: "Query event outbound IPs"
+  default_prompt: "Use $contract-cli-event to query event outbound IP addresses with contract-cli."
+
+policy:
+  allow_implicit_invocation: true

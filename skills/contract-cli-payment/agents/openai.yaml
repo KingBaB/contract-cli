@@ -1,0 +1,7 @@
+interface:
+  display_name: "Contract CLI Payment"
+  short_description: "Create, inspect, and sync contract payments with app-only commands"
+  default_prompt: "Use $contract-cli-payment to run payment create/update/get/list, payment plan notify/search, and payment record commands with an app-authorized profile."
+
+policy:
+  allow_implicit_invocation: true

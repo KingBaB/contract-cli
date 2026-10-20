@@ -1,0 +1,7 @@
+interface:
+  display_name: "Contract CLI MDM Exchange"
+  short_description: "Query or update fixed exchange rates"
+  default_prompt: "Use $contract-cli-mdm-exchange to query or update fixed exchange rates with contract-cli."
+
+policy:
+  allow_implicit_invocation: true

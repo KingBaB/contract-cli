@@ -1,0 +1,134 @@
+package cli_test
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+func TestPackageJSONIncludesSkillsInNPMPackage(t *testing.T) {
+	t.Parallel()
+
+	content, err := os.ReadFile(filepath.Join("..", "..", "package.json"))
+	if err != nil {
+		t.Fatalf("ReadFile(package.json) error = %v", err)
+	}
+
+	var manifest struct {
+		Bin   map[string]string `json:"bin"`
+		Files []string          `json:"files"`
+	}
+	if err := json.Unmarshal(content, &manifest); err != nil {
+		t.Fatalf("Unmarshal(package.json) error = %v", err)
+	}
+
+	requiredPatterns := []string{
+		"skills/**/SKILL.md",
+		"skills/**/agents/**",
+		"skills/**/references/**",
+	}
+	for _, required := range requiredPatterns {
+		if !containsString(manifest.Files, required) {
+			t.Fatalf("package.json files must include %s, got %v", required, manifest.Files)
+		}
+	}
+	if got := manifest.Bin["contract-cli-setup"]; got != "scripts/setup.js" {
+		t.Fatalf("contract-cli-setup bin = %q, want scripts/setup.js", got)
+	}
+	if !containsString(manifest.Files, "scripts/setup.js") {
+		t.Fatalf("package.json files must include scripts/setup.js, got %v", manifest.Files)
+	}
+}
+
+func TestMakeTestRunsSetupInstallerTests(t *testing.T) {
+	t.Parallel()
+
+	content, err := os.ReadFile(filepath.Join("..", "..", "Makefile"))
+	if err != nil {
+		t.Fatalf("ReadFile(Makefile) error = %v", err)
+	}
+	if !strings.Contains(string(content), "node --test scripts/install.test.js scripts/setup.test.js") {
+		t.Fatal("make test must run both install.js and setup.js tests")
+	}
+}
+
+func TestAPICallSkillDescriptorIsNotPubliclyInstallable(t *testing.T) {
+	t.Parallel()
+
+	disabledSkillPath := filepath.Join("..", "..", "skills", "contract-cli-api-call", "SKILL.md")
+	if _, err := os.Stat(disabledSkillPath); !os.IsNotExist(err) {
+		t.Fatalf("api call skill descriptor should stay absent while api call is unavailable, stat error = %v", err)
+	}
+}
+
+func TestPackageJSONPublishingMetadata(t *testing.T) {
+	t.Parallel()
+
+	content, err := os.ReadFile(filepath.Join("..", "..", "package.json"))
+	if err != nil {
+		t.Fatalf("ReadFile(package.json) error = %v", err)
+	}
+
+	var manifest struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+		Config  struct {
+			BinaryName              string `json:"binaryName"`
+			DownloadBaseURLTemplate string `json:"downloadBaseURLTemplate"`
+		} `json:"config"`
+		PublishConfig struct {
+			Registry string `json:"registry"`
+			Access   string `json:"access"`
+		} `json:"publishConfig"`
+		Repository struct {
+			Type string `json:"type"`
+			URL  string `json:"url"`
+		} `json:"repository"`
+	}
+	if err := json.Unmarshal(content, &manifest); err != nil {
+		t.Fatalf("Unmarshal(package.json) error = %v", err)
+	}
+
+	if manifest.Name != "@qfeius/contract-cli" {
+		t.Fatalf("package name = %q, want @qfeius/contract-cli", manifest.Name)
+	}
+	if !validPackageVersion(manifest.Version) {
+		t.Fatalf("package version = %q, want valid semver", manifest.Version)
+	}
+	if manifest.PublishConfig.Registry != "https://registry.npmjs.org/" {
+		t.Fatalf("publish registry = %q, want https://registry.npmjs.org/", manifest.PublishConfig.Registry)
+	}
+	if manifest.PublishConfig.Access != "public" {
+		t.Fatalf("publish access = %q, want public", manifest.PublishConfig.Access)
+	}
+	if manifest.Config.BinaryName != "contract-cli" {
+		t.Fatalf("binary name = %q, want contract-cli", manifest.Config.BinaryName)
+	}
+	const wantDownloadBaseURL = "https://github.com/qfeius/contract-cli/releases/download/v{version}"
+	if manifest.Config.DownloadBaseURLTemplate != wantDownloadBaseURL {
+		t.Fatalf("download base URL template = %q, want %q", manifest.Config.DownloadBaseURLTemplate, wantDownloadBaseURL)
+	}
+	if manifest.Repository.Type != "git" {
+		t.Fatalf("repository type = %q, want git", manifest.Repository.Type)
+	}
+	const wantRepositoryURL = "git+https://github.com/qfeius/contract-cli.git"
+	if manifest.Repository.URL != wantRepositoryURL {
+		t.Fatalf("repository url = %q, want %q", manifest.Repository.URL, wantRepositoryURL)
+	}
+}
+
+func validPackageVersion(version string) bool {
+	return regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$`).MatchString(version)
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}

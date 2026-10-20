@@ -1,0 +1,7 @@
+interface:
+  display_name: "Contract CLI MDM File"
+  short_description: "Download MDM attachment files"
+  default_prompt: "Use $contract-cli-mdm-file to download MDM attachment files with contract-cli."
+
+policy:
+  allow_implicit_invocation: true
