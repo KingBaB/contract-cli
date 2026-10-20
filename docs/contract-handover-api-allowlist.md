@@ -1,6 +1,6 @@
 # 合同交接 Skill 接口白名单清单
 
-来源：`skills/contract-handover/references/api-contract.yaml` 的 recipes；按 HTTP 方法与 Open Web 路径去重，共 9 个端点。前后回查复用详情接口，无需重复放行。
+来源：`skills/contract-handover/references/` 下按场景拆分的接口说明；按 HTTP 方法与 Open Web 路径去重，共 9 个端点。前后回查复用详情接口，无需重复放行。
 
 | 方法 | Open Web 白名单路径 | 后端原始路径 | 用途 |
 |---|---|---|---|
