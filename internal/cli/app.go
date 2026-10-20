@@ -205,6 +205,9 @@ Run 执行完整 CLI 参数并兼容审批矩阵交互文档别名。
 */
 func (a *App) Run(ctx context.Context, args []string) error {
 	a.updateNotice = nil
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	args, logOptions, err := parseCommandLogOptions(args)
 	if err != nil {
 		return err
@@ -219,7 +222,7 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	a.commandContext = ctx
 	a.runtimeEvidence = nil
 	if len(args) > 0 && args[0] == "__internal" {
-		return a.runSkillSyncOnInstall(args[1:])
+		return withCommandCancellation(ctx, a.runSkillSyncOnInstall(args[1:]))
 	}
 	a.warnPendingSkillSync(logOptions.outputJSON)
 	if len(args) == 0 {
@@ -248,7 +251,7 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	if isBusinessCommand(args[0]) {
 		return a.runWithCommandTrace(ctx, args)
 	}
-	return a.runCommand(ctx, args)
+	return withCommandCancellation(ctx, a.runCommand(ctx, args))
 }
 
 func (a *App) runCommand(ctx context.Context, args []string) error {
@@ -258,6 +261,10 @@ func (a *App) runCommand(ctx context.Context, args []string) error {
 		return a.runEnvironment(ctx, args[1:])
 	}
 	a.maybePrepareUpdateNotice(ctx, args)
+	// 更新检查可失败降级；命令本身已取消时，不再开始后续认证或本地写入。
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	switch args[0] {
 	case "config":
