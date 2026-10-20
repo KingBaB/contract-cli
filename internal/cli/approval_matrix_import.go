@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	approvalMatrixImportPlanVersion = 3
+	approvalMatrixImportPlanVersion = 4
 	approvalMatrixRowCountLimit     = 2000
 )
 
@@ -165,6 +165,13 @@ func (a *App) runApprovalMatrixImportPlan(ctx context.Context, args []string) er
 	if err != nil {
 		return err
 	}
+	departmentIDType := "open_department_id"
+	if productID == "contract" && groupID == "approve_matrix" {
+		if err := validateApprovalMatrixImportIDType(options, productID, groupID); err != nil {
+			return err
+		}
+		departmentIDType = "tenant_department_id"
+	}
 	tableID := strings.TrimSpace(parsed.String("--table-id"))
 	if tableID == "" {
 		return a.renderApprovalMatrixTableCandidates(ctx, options, productID, groupID)
@@ -188,7 +195,7 @@ func (a *App) runApprovalMatrixImportPlan(ctx context.Context, args []string) er
 	if err != nil {
 		return err
 	}
-	operations, issues := buildApprovalMatrixImportOperations(input, columns)
+	operations, issues := buildApprovalMatrixImportOperations(input, columns, departmentIDType)
 	if len(issues) > 0 {
 		return a.renderApprovalMatrixImportValue(options, map[string]any{
 			"status":            "needs_input",
@@ -199,6 +206,12 @@ func (a *App) runApprovalMatrixImportPlan(ctx context.Context, args []string) er
 			"issues":            issues,
 			"available_columns": columns,
 		})
+	}
+	// 行接口使用目标规则组的 ID 模式，按实际回读值生成快照和计划指纹。
+	rowsPath := ruleTablePath(productID, groupID, tableID) + "/table_rows"
+	client, requestContext, err = a.openPlatformClientAndContextForOptions(options, rowsPath, openplatform.IdentityPolicyAny)
+	if err != nil {
+		return err
 	}
 	rows, err := readApprovalMatrixRows(ctx, client, requestContext, ruleTablePath(productID, groupID, tableID))
 	if err != nil {
@@ -348,6 +361,9 @@ func (a *App) runApprovalMatrixImportApply(ctx context.Context, args []string) e
 	}()
 	plan, err := a.loadApprovalMatrixImportPlan(planID)
 	if err != nil {
+		return err
+	}
+	if err := validateApprovalMatrixImportIDType(options, plan.ProductID, plan.GroupID); err != nil {
 		return err
 	}
 	selected, limit, err := approvalMatrixExecutionSelection(parsed.String("--rows"), parsed.String("--batch-size"), len(plan.Operations))
@@ -732,6 +748,9 @@ func (a *App) runApprovalMatrixPlanControl(ctx context.Context, action string, a
 	if err != nil {
 		return err
 	}
+	if err := validateApprovalMatrixImportIDType(options, plan.ProductID, plan.GroupID); err != nil {
+		return err
+	}
 	if options.profileName != "" && options.profileName != plan.Profile {
 		return fmt.Errorf("plan belongs to profile %q", plan.Profile)
 	}
@@ -919,10 +938,10 @@ func decodeApprovalMatrixColumns(body []byte) ([]approvalMatrixColumn, error) {
 
 /*
 buildApprovalMatrixImportOperations 将按列名或列 ID 表达的输入转换成开放平台逐行请求，并汇总所有可追问问题。
-入参 input（approvalMatrixImportInput）为用户确认前的批量输入，columns（[]approvalMatrixColumn）为目标矩阵当前列头。
+入参 input（approvalMatrixImportInput）为用户确认前的批量输入，columns（[]approvalMatrixColumn）为目标矩阵当前列头，departmentIDType 为部门模式。
 返回值为规范化操作列表和校验问题列表；存在问题时调用方不保存计划。
 */
-func buildApprovalMatrixImportOperations(input approvalMatrixImportInput, columns []approvalMatrixColumn) ([]approvalMatrixImportOperation, []approvalMatrixValidationIssue) {
+func buildApprovalMatrixImportOperations(input approvalMatrixImportInput, columns []approvalMatrixColumn, departmentIDType string) ([]approvalMatrixImportOperation, []approvalMatrixValidationIssue) {
 	columnsByID := make(map[string]approvalMatrixColumn, len(columns))
 	columnsByName := make(map[string][]approvalMatrixColumn, len(columns))
 	for _, column := range columns {
@@ -970,7 +989,7 @@ func buildApprovalMatrixImportOperations(input approvalMatrixImportInput, column
 				issues = append(issues, approvalMatrixValidationIssue{Row: rowIndex + 1, Column: columnKey, Code: code, Message: message, Candidates: candidates})
 				continue
 			}
-			cell, err := newApprovalMatrixTableCell(column, row.Cells[columnKey])
+			cell, err := newApprovalMatrixTableCellWithDepartmentIDType(column, row.Cells[columnKey], departmentIDType)
 			if err != nil {
 				issues = append(issues, approvalMatrixValidationIssue{Row: rowIndex + 1, Column: columnKey, Code: "type_mismatch", Message: err.Error(), ExpectedType: column.CellContentType})
 				continue
@@ -1018,6 +1037,14 @@ newApprovalMatrixTableCell 按列头声明的内容类型校验输入值，并�
 返回值为规范化单元格和类型不匹配错误。
 */
 func newApprovalMatrixTableCell(column approvalMatrixColumn, rawValue json.RawMessage) (approvalMatrixTableCell, error) {
+	return newApprovalMatrixTableCellWithDepartmentIDType(column, rawValue, "open_department_id")
+}
+
+/*
+newApprovalMatrixTableCellWithDepartmentIDType 按目标矩阵的部门 ID 模式校验单元格。
+入参 column 为列定义，rawValue 为原始 JSON 值，departmentIDType 为部门模式；返回规范化单元格和错误。
+*/
+func newApprovalMatrixTableCellWithDepartmentIDType(column approvalMatrixColumn, rawValue json.RawMessage, departmentIDType string) (approvalMatrixTableCell, error) {
 	contentType := strings.ToUpper(strings.TrimSpace(column.CellContentType))
 	cell := approvalMatrixTableCell{
 		TableCellContentType: contentType,
@@ -1058,7 +1085,7 @@ func newApprovalMatrixTableCell(column approvalMatrixColumn, rawValue json.RawMe
 		}
 		cell.TableCellContent.EmployeeCollection = &ids
 	case "DEPARTMENT_COLLECTION":
-		ids, err := approvalMatrixDepartmentIDs(rawValue)
+		ids, err := approvalMatrixDepartmentIDs(rawValue, departmentIDType)
 		if err != nil {
 			return cell, err
 		}
@@ -1481,30 +1508,42 @@ func approvalMatrixResourceIDs(raw json.RawMessage) ([]int64, error) {
 }
 
 /*
-approvalMatrixDepartmentIDs 校验并保留部门 open_department_id，避免把 sys_department.id 当成规则值。
-入参 raw（json.RawMessage）为 open_department_id 字符串数组；返回 []string 和校验 error。
+approvalMatrixDepartmentIDs 校验并保留部门 ID，默认使用 SaaS 搜索返回的原生 id。
+入参 raw（json.RawMessage）为部门 ID 字符串数组，departmentIDType（string）为请求模式；返回 []string 和校验 error。
 */
-func approvalMatrixDepartmentIDs(raw json.RawMessage) ([]string, error) {
+func approvalMatrixDepartmentIDs(raw json.RawMessage, departmentIDType string) ([]string, error) {
 	var items []json.RawMessage
 	if json.Unmarshal(raw, &items) != nil || items == nil {
-		return nil, fmt.Errorf("department ids must be an array of open_department_id strings such as \"od-...\"")
+		return nil, fmt.Errorf("department ids must be an array of strings")
 	}
 	ids := make([]string, 0, len(items))
 	for _, item := range items {
 		var id string
 		if err := json.Unmarshal(item, &id); err != nil {
-			return nil, fmt.Errorf("department ID %s must be an open_department_id such as \"od-...\"; sys_department.id is not accepted", strings.TrimSpace(string(item)))
+			return nil, fmt.Errorf("department ID %s must be a string", strings.TrimSpace(string(item)))
 		}
 		id = strings.TrimSpace(id)
 		if id == "" {
 			return nil, fmt.Errorf("department ID must not be empty")
 		}
-		if err := validateApprovalMatrixDepartmentID(id); err != nil {
+		if err := validateApprovalMatrixDepartmentID(id, departmentIDType); err != nil {
 			return nil, err
 		}
 		ids = append(ids, id)
 	}
 	return ids, nil
+}
+
+/*
+validateApprovalMatrixImportIDType 保证合同矩阵计划、执行和核验使用同一人员 ID 模式。
+入参 options 为 CLI 参数，productID 和 groupID 为目标范围；返回不匹配时的参数错误。
+*/
+func validateApprovalMatrixImportIDType(options commandOptions, productID, groupID string) error {
+	if productID == "contract" && groupID == "approve_matrix" &&
+		options.userIDType != "" && options.userIDType != "tenant_employee_id" {
+		return fmt.Errorf("contract approval matrix import requires --user-id-type tenant_employee_id")
+	}
+	return nil
 }
 
 /*

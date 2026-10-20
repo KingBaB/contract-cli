@@ -13,7 +13,7 @@ import (
 
 func isBusinessCommand(name string) bool {
 	switch name {
-	case "contract", "employee", "department", "payment", "mdm", "event", "rule":
+	case "contract", "employee", "department", "payment", "mdm", "event", "rule", "review":
 		return true
 	default:
 		return false

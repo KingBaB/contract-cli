@@ -27,6 +27,7 @@ const defaultProfileName = "contract"
 var errAPICommandUnavailable = errors.New("api call 暂未开放使用，请使用已开放的结构化命令")
 
 type Options struct {
+	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
 	// Logger 显式注入时由调用方控制格式和级别；CLI 默认日志由 --debug 管理。
@@ -49,6 +50,7 @@ type Options struct {
 }
 
 type App struct {
+	stdin              io.Reader
 	stdout             io.Writer
 	stderr             io.Writer
 	logger             *slog.Logger
@@ -107,6 +109,10 @@ func New(options Options) *App {
 		secrets = config.NewSecretsStore(dir)
 	}
 
+	stdin := options.Stdin
+	if stdin == nil {
+		stdin = os.Stdin
+	}
 	stdout := options.Stdout
 	if stdout == nil {
 		stdout = os.Stdout
@@ -155,6 +161,7 @@ func New(options Options) *App {
 	}
 
 	app := &App{
+		stdin:              stdin,
 		stdout:             stdout,
 		stderr:             stderr,
 		logger:             logger,
@@ -211,6 +218,10 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	defer func() { a.commandContext = previousContext }()
 	a.commandContext = ctx
 	a.runtimeEvidence = nil
+	if len(args) > 0 && args[0] == "__internal" {
+		return a.runSkillSyncOnInstall(args[1:])
+	}
+	a.warnPendingSkillSync(logOptions.outputJSON)
 	if len(args) == 0 {
 		a.printUsage()
 		return nil
@@ -263,6 +274,8 @@ func (a *App) runCommand(ctx context.Context, args []string) error {
 		return a.runContract(ctx, args[1:])
 	case "employee", "department":
 		return a.runDirectory(ctx, args[0], args[1:])
+	case "review":
+		return a.runReview(ctx, args[1:])
 	case "payment":
 		return a.runPayment(ctx, args[1:])
 	case "mdm":
@@ -647,7 +660,7 @@ resolveEnvironment 默认仅提供 prod；带 dev 标签的本地构建额外提
 */
 func resolveEnvironment(name string) (environmentPreset, error) {
 	switch name {
-	case "prod":
+	case productionEnvironment:
 		return environmentPreset{
 			OpenPlatformBaseURL:            "https://open.qfei.cn",
 			AppTokenEndpoint:               "https://open.qfei.cn/open-apis/auth/v3/tenant_access_token/internal",

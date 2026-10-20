@@ -1,5 +1,14 @@
 # 中断取消与结构化错误出口
 
+## 2026-10-20 创建 MR 前合入最新 master
+
+- 用户授权推送当前分支并创建目标为 master 的 MR；fetch 发现 origin/master 已更新至 `ef9c980`，本轮合入并解决 9 个冲突文件，保留摘要、智审、矩阵原生 ID 和 Skill 自动同步的上游逻辑，默认构建仍仅支持 prod。
+- 合并适配先补红例：review 纳入业务命令级 Trace，识别 stdin/dry-run/print-input/yes/enabled 布尔参数；新摘要和智审请求体继续沿 context 读取，智审 JSON/上传保留 2MiB/50MiB 上限及最多多读 1 字节，借用的 stdin 复制自有 fd 后取消，不关闭全局 stdin。
+- Skill pending 提示在显式 JSON 时使用 JSONL，安装参数错误不混入重复文本摘要；默认提示和成功 stdout 保持，损坏登记的提示不丢失。没有新增锁、写入重试、真实智审写入或矩阵 apply。
+- 合并后默认/dev 全量、Go/Node、vet、受影响模块 race、Linux/Windows 交叉编译及独立复核通过；CLI 语句覆盖率 81.7%。macOS 测试使用 canonical TMPDIR，避免 /var 与 /private/var 的路径断言和故障注入别名差异；Node 17 项通过、1 项按平台跳过。
+- 临时候选 `1.9.5-local.trace-debug-interrupt.dev` 的真实 dev import plan 三种模式均退出 0、needs_confirmation，计划随后已取消；debug 文本/JSON Trace 分别为 `d929deff820626b973fed1fc4533e188`、`b0500b5823dd2cd2f6503a1d8fc1ca69`。登录等待发送 SIGINT 退出 130，并打印已有模拟 99.0.0 升级提示，profile 不变；JSON/文本 stdin 取消同样保留通知。
+- 证据目录 `/tmp/contract-cli-mr-20261020/`。该候选未覆盖本机已安装的 `745a642` 版本；原中断前检查点与二进制备份保留。本轮只创建 MR，不执行合并或发布。
+
 ## 2026-10-20 补齐文本取消的升级提示
 
 - 用户复现 `auth login --profile trace-dev-app --as user` 中断后缺少升级提示；模拟缓存只准备通知，旧 Execute 文本错误分支未显示它。

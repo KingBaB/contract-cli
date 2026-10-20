@@ -4,10 +4,14 @@ package cli
 
 import (
 	"context"
-	"io"
+	"os"
 )
 
 func readCommandInput(ctx context.Context, path string) ([]byte, error) {
+	return readCommandInputLimited(ctx, path, 0)
+}
+
+func readCommandInputLimited(ctx context.Context, path string, limit int64) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -15,6 +19,21 @@ func readCommandInput(ctx context.Context, path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	return readOwnedCommandInputFile(ctx, file, limit)
+}
+
+func readCommandInputFile(ctx context.Context, file *os.File, limit int64) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	owned, err := duplicateCommandInputFile(file)
+	if err != nil {
+		return nil, err
+	}
+	return readOwnedCommandInputFile(ctx, owned, limit)
+}
+
+func readOwnedCommandInputFile(ctx context.Context, file *os.File, limit int64) ([]byte, error) {
 	closed := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { _ = file.Close(); close(closed) })
 	defer func() {
@@ -23,7 +42,7 @@ func readCommandInput(ctx context.Context, path string) ([]byte, error) {
 		}
 		_ = file.Close()
 	}()
-	body, err := io.ReadAll(file)
+	body, err := readCommandReaderBytes(ctx, file, limit)
 	if cancelled := ctx.Err(); cancelled != nil {
 		return nil, cancelled
 	}

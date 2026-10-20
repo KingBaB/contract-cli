@@ -28,6 +28,11 @@ func TestParseCommandLogOptionsPreservesCommandArguments(t *testing.T) {
 		{"update JSON", []string{"update", "check", "--json", "--debug"}, []string{"update", "check", "--json"}, true, true},
 		{"update JSON bool shorthand", []string{"update", "check", "--json=t", "--debug"}, []string{"update", "check", "--json=t"}, true, true},
 		{"update JSON false", []string{"update", "check", "--json=false", "--debug"}, []string{"update", "check", "--json=false"}, true, false},
+		{"review stdin debug", []string{"review", "file", "upload", "--stdin", "--debug"}, []string{"review", "file", "upload", "--stdin"}, true, false},
+		{"review dry run JSON", []string{"review", "run", "--dry-run", "--output", "json"}, []string{"review", "run", "--dry-run", "--output", "json"}, false, true},
+		{"review print input debug", []string{"review", "run", "--print-input", "--debug"}, []string{"review", "run", "--print-input"}, true, false},
+		{"review yes debug", []string{"review", "rule", "delete", "--yes", "--debug"}, []string{"review", "rule", "delete", "--yes"}, true, false},
+		{"review enabled debug", []string{"review", "rule", "list", "--enabled", "--debug"}, []string{"review", "rule", "list", "--enabled"}, true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			original := append([]string{}, tc.args...)
