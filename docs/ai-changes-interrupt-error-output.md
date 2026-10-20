@@ -1,5 +1,13 @@
 # 中断取消与结构化错误出口
 
+## 2026-10-20 补齐文本取消的升级提示
+
+- 用户复现 `auth login --profile trace-dev-app --as user` 中断后缺少升级提示；模拟缓存只准备通知，旧 Execute 文本错误分支未显示它。
+- TDD：先用真实 OAuth 回调等待取消链路、模拟 registration Transport 复现默认/debug 两个红例；修复仅在文本错误摘要后输出本次已有的非空 `notice.update.message`，没有新网络请求，也没有新增锁。
+- 无新版或关闭自动检查时不追加提示；JSON 错误继续只输出 JSON，成功输出、登录参数、取消退出码 130 与原错误链保持。
+- 同步 README 和命令参考说明；验证与安装证据保存到 `/tmp/contract-cli-text-update-notice-20261020/`，仍保留原回滚检查点。
+- 验证：默认/dev 全量、Go/Node、race、vet 均通过，CLI 覆盖率 80.3%。候选版真实 dev `auth login --profile trace-dev-app --as user --no-open-browser` 到授权等待后发送 SIGINT，退出 130，stderr 先取消摘要、后单条模拟 99.0.0 升级提示；配置文件保持不变，显式 JSON 仍可解析且保留 notice。99.0.0 仅为用户授权设置的测试缓存，不代表真实发布版本。
+
 ## 2026-10-20 回滚检查点与 master 同步
 
 - 用户授权先提交既有 dev、命令级 Trace、日志开关及验证文档；检查点提交为 `e2ab4ebb504ebd023bf7694fb5cc3478e06379df`，本地标记为 `codex/pre-interrupt-20261020`，不含本次统一中断处理。

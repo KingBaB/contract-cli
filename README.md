@@ -373,7 +373,7 @@ X-Log-Id: <与 traceparent 相同的 trace_id>
 
 默认不打印内部诊断或请求日志。添加全局 `--debug` 后将调试日志写到 stderr；显式指定 `--output json`（更新检查使用 `--json`）时，每条调试记录为独立一行 JSON，其他情况为文本。Trace 请求头始终正常发送，与日志开关无关。
 
-命令失败时，只有显式 `--output json`（或 `--output=json`）才将错误作为单行 JSON 写到 stderr：`{"ok":false,"error":{"type":"command","message":"...","trace_id":"..."},"_notice":{"update":{...}}}`。Trace ID 和更新通知仅在本次执行已有相应信息时出现；通知复用命令开始阶段的结果，错误出口不重新联网检查。其他模式保留 `error: ...` 文本摘要，`--json` 单独不会切换命令错误格式。成功的业务输出保持原样，普通失败与超时退出码为 1。
+命令失败时，只有显式 `--output json`（或 `--output=json`）才将错误作为单行 JSON 写到 stderr：`{"ok":false,"error":{"type":"command","message":"...","trace_id":"..."},"_notice":{"update":{...}}}`。Trace ID 和更新通知仅在本次执行已有相应信息时出现；通知复用命令开始阶段的结果，错误出口不重新联网检查。其他模式保留 `error: ...` 文本摘要；有本次已准备的更新通知时，在摘要后追加一行升级提示和命令。`--json` 单独不会切换命令错误格式。成功的业务输出保持原样，普通失败与超时退出码为 1。
 
 首次 Ctrl+C 取消当前操作、回收环境探测辅助进程并以 130 退出；再次 Ctrl+C 恢复系统默认强退行为。输入文件、stdin 管道及 Unix FIFO 等待支持取消。取消的写请求仍可能已经生效：保留 `uncertain_write` 或本地导入计划的 `uncertain/unverified` 状态，不自动重试后续写入。JSON 错误中此时可同时出现 `type=uncertain_write` 和 `cancelled=true`。
 
@@ -462,7 +462,7 @@ contract-cli update check --channel beta --json
 
 - 普通命令会同步读取本地 `update-check.json`，有可升级缓存时在 JSON object 输出中注入 `_notice.update`。
 - cache fresh 时不访问远端；cache 缺失、channel 不匹配或过期时，CLI 会在当前命令内用短超时刷新远端版本缓存。
-- 有新版本时，仅在 JSON object 输出中注入 `_notice.update`。
+- 成功的 JSON object 输出通过 `_notice.update` 提示；失败或取消时，显式 JSON 错误携带 `_notice.update`，文本错误在 stderr 追加已有通知的升级提示。
 - `--raw`、yaml、table、纯文本命令不注入 `_notice.update`。
 - 设置 `CONTRACT_CLI_NO_UPDATE_CHECK=1` 可以关闭自动检查。
 

@@ -126,7 +126,7 @@ contract-cli contract get <contract-id> --help
 contract-cli rule table import plan --profile trace-dev-app --as app --product-id contract --group-id approve_matrix --table-id <table-id> --input-file import.json --debug --output json >result.json 2>debug.jsonl
 ```
 
-只有显式 `--output json` 或 `--output=json` 时，失败或取消结果才在 stderr 输出单行 JSON：`{"ok":false,"error":{"type":"...","message":"...","trace_id":"..."},"_notice":{...}}`；其他模式保留 `error: ...` 文本摘要。业务结果默认是 JSON 不等于错误也默认 JSON，`--json` 单独不切换错误格式。普通失败与超时退出 1，取消退出 130，成功退出 0。
+只有显式 `--output json` 或 `--output=json` 时，失败或取消结果才在 stderr 输出单行 JSON：`{"ok":false,"error":{"type":"...","message":"...","trace_id":"..."},"_notice":{...}}`；其他模式保留 `error: ...` 文本摘要，有本次已有的更新通知时，在摘要后追加一行升级提示和命令。业务结果默认是 JSON 不等于错误也默认 JSON，`--json` 单独不切换错误格式。普通失败与超时退出 1，取消退出 130，成功退出 0。
 
 错误 JSON 的 `error.type` 区分 `command`、`http`、`timeout`、`cancelled`、`uncertain_write`；Trace ID、HTTP 状态及取消标志按实际错误链填写，更新通知复用本次执行已准备的 `_notice.update`，不会在取消后重新请求版本服务。HTTP 200 下的非零业务码是否保留 stdout 业务 JSON，沿用各命令原有行为，不额外包装成功或已有业务输出。
 
@@ -232,7 +232,7 @@ contract-cli update check --channel latest --json
 
 自动提示：
 
-- 普通命令会先同步读取当前配置目录的 `update-check.json`；缓存里有可升级版本时，仅在 JSON object 输出中注入 `_notice.update`
+- 普通命令会先同步读取当前配置目录的 `update-check.json`；成功的 JSON object 输出通过 `_notice.update` 提示；失败或取消时，显式 JSON 错误携带 `_notice.update`，文本错误在 stderr 追加已有通知的升级提示
 - 命中 fresh cache 时不访问 npm registry，因此不会立即发现刚发布的新包
 - cache 缺失、channel 不匹配或过期时，当前命令会在短超时内同步刷新远端版本；成功结果会写入当前配置目录的 `update-check.json`
 - 网络失败、registry 失败或当前是 dev 构建时不会阻断原命令；刷新失败不会写入失败缓存

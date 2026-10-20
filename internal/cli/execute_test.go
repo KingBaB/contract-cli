@@ -69,6 +69,73 @@ func TestExecuteCancelledJSONIncludesTraceAndCachedNoticeWithoutExtraNetwork(t *
 	}
 }
 
+func TestExecuteUserLoginCancellationPrintsExistingUpdateNoticeInText(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, latest                string
+		debug, disabled, wantNotice bool
+	}{
+		{name: "available", latest: "1.0.1", wantNotice: true},
+		{name: "available-debug", latest: "1.0.1", debug: true, wantNotice: true},
+		{name: "already-current", latest: "1.0.0"},
+		{name: "check-disabled", latest: "1.0.1", disabled: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := config.NewStore(t.TempDir())
+			profile := productionProfileFixture(config.Profile{
+				Name: "contract", Environment: "prod", ClientName: "contract-cli", BusinessType: "contract",
+				Identities: config.Identities{User: config.UserIdentity{
+					RegistrationEndpoint:  "https://myaccount.qfei.cn/oauth/register/contract",
+					AuthorizationEndpoint: "https://myaccount.qfei.cn/oauth/authorize/contract",
+					TokenEndpoint:         "https://myaccount.qfei.cn/oauth/token/contract",
+					RedirectURL:           "http://127.0.0.1:0/callback",
+				}},
+			})
+			if err := store.UpsertProfile(profile, true); err != nil {
+				t.Fatal(err)
+			}
+			now := time.Now()
+			cache := updatecheck.Cache{CheckedAt: now, Channel: "latest", CurrentVersion: "1.0.0", LatestVersion: tc.latest, UpdateAvailable: tc.wantNotice}
+			if err := updatecheck.SaveCache(filepath.Join(filepath.Dir(store.Path()), "update-check.json"), cache); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+			calls := 0
+			app := cli.New(cli.Options{Store: store, Stdout: stdout, Stderr: stderr,
+				UpdateCurrentVersion: "1.0.0", Now: func() time.Time { return now },
+				LookupEnv:   func(key string) (string, bool) { return "1", tc.disabled && key == "CONTRACT_CLI_NO_UPDATE_CHECK" },
+				OpenBrowser: func(string) error { cancel(); return nil },
+				HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+					calls++
+					if req.URL.Path != "/oauth/register/contract" {
+						t.Fatalf("unexpected network request: %s", req.URL)
+					}
+					return jsonResponse(`{"client_id":"test-client"}`), nil
+				})},
+			})
+			args := []string{"auth", "login", "--profile", "contract", "--as", "user"}
+			if tc.debug {
+				args = append(args, "--debug")
+			}
+			if code := app.Execute(ctx, args); code != 130 || calls != 1 || stdout.Len() != 0 {
+				t.Fatalf("login cancellation changed: code=%d calls=%d stdout=%s stderr=%s", code, calls, stdout, stderr)
+			}
+			if !strings.Contains(stderr.String(), "error: authorization cancelled or timed out: context canceled") {
+				t.Fatalf("cancellation text missing: %s", stderr)
+			}
+			notice := "contract-cli 1.0.1 available, current 1.0.0, run: "
+			if count := strings.Count(stderr.String(), notice); (tc.wantNotice && count != 1) || (!tc.wantNotice && count != 0) {
+				t.Fatalf("update notice mismatch: want=%t stderr=%s", tc.wantNotice, stderr)
+			}
+			if tc.wantNotice && !strings.Contains(stderr.String(), "npm install -g @qfeius/contract-cli@latest --registry https://registry.npmjs.org") {
+				t.Fatalf("upgrade command missing: %s", stderr)
+			}
+		})
+	}
+}
+
 func TestExecuteOnlyExplicitJSONChangesErrorPresentation(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

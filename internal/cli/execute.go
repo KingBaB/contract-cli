@@ -37,12 +37,21 @@ func (a *App) Execute(ctx context.Context, args []string) int {
 		encoder.SetEscapeHTML(false)
 		_ = encoder.Encode(envelope) // Broken stderr must not change the operation's exit status.
 	} else {
-		_, _ = fmt.Fprintln(a.stderr, "error:", err)
+		a.writeCommandFailureText(err)
 	}
 	if errors.Is(err, context.Canceled) {
 		return 130
 	}
 	return 1
+}
+
+func (a *App) writeCommandFailureText(err error) {
+	_, _ = fmt.Fprintln(a.stderr, "error:", err)
+	update, _ := a.updateNotice["update"].(map[string]any)
+	message, _ := update["message"].(string)
+	if message != "" {
+		_, _ = fmt.Fprintln(a.stderr, message)
+	}
 }
 
 func describeCommandFailure(err error) commandFailure {
