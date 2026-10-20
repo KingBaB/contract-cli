@@ -351,6 +351,13 @@ module ContractHandoverValidation
       check.call("parent authorization needs complete member evidence", false, lambda { |r, _| assembly!(r, "ASSEMBLY_OWNER_ONLY"); r["manifest"]["assembly_memberships"][0]["complete"] = false })
       check.call("sensitive evidence field rejected without value output", false, lambda { |_r, sample| sample["access_token"] = "synthetic-forbidden-placeholder" })
 
+      bundled_contract = YAML.safe_load(File.read(File.expand_path("../references/api-contract.yaml", __dir__), encoding: "UTF-8"), aliases: false)
+      cli_transport = bundled_contract.dig("runtime", "transports", "cli")
+      results << { "name" => "bundled CLI contract requires capability without pinning a version or package",
+                   "status" => cli_transport.is_a?(Hash) && (cli_transport.keys & %w[version package package_version download_url install_url]).empty? &&
+                     bundled_contract.dig("runtime", "required_capability") == "universal_open_web_call" &&
+                     cli_transport["entrypoint"] == "contract-cli api call --channel web" ? "PASS" : "FAIL" }
+
       candidate = contract
       candidate["readiness"] = { "contract_complete" => true, "delivery_status" => "RUNNABLE" }
       candidate["business"]["impact_gate"]["current_status"] = "CONFIRMED"

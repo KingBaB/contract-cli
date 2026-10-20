@@ -32,7 +32,7 @@ description: 智书合同管理交接：定位指定合同或全部搜索结果�
 
 读取契约的 `runtime.execution_mode`。HYBRID 按 MCP、CLI 顺序检查；MCP_ONLY 只检查 MCP；CLI_ONLY 只检查 CLI。检查实际 Tool Schema 或 CLI 命令帮助，确认支持通用 Open Web 调用。仅入口缺失或能力不兼容时才按模式换通道；业务拒绝或已发送请求不能通过换通道重放。
 
-使用相同 test 用户授权上下文。MCP 只映射其真实 schema 支持的 method、path、query、body/raw_body；CLI 使用已验证的 `api call --channel web`，显式沿用选定的 profile 和 user 身份。配套 CLI 与全局同名命令可能版本不同，不能只看命令名。业务请求只能访问契约中确认的 `/open-web/web/**` 路径。
+使用相同 test 用户授权上下文。MCP 只映射其真实 schema 支持的 method、path、query、body/raw_body；CLI 使用已验证的 `api call --channel web`，显式沿用选定的 profile 和 user 身份。按实际命令帮助与通道能力判定兼容性，不指定 CLI 版本、安装包或下载地址。业务请求只能访问契约中确认的 `/open-web/web/**` 路径。
 
 无通道时按契约的安装／连接恢复策略处理；来源必须经批准，安装变化须说明。授权失效时沿用通道自有登录流程，授权后续办原请求。Skill 不接收、构造或保存 token、Cookie、可信身份头，不切换到生产，不借用其他用户身份。具体安装路径、profile 和账号属于本机运行上下文，不硬编码进业务配方。
 

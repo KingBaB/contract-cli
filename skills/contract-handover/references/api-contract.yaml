@@ -427,7 +427,6 @@ runtime:
       entrypoint: contract-cli api call --channel web
       environment: test
       note: 通用通道及本次8类读取接口有成功证据；不表示交接写入、后置核对或全部业务场景已验证。具体本机入口见包外报告。
-      version: 2.0.0-test
     mcp:
       status: UNVERIFIED
       identity: USER

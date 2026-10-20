@@ -182,9 +182,22 @@ executeOpenPlatformCommand 调用结构化开放平台接口，并在输出后�
 入参 ctx（context.Context）为请求上下文，options（commandOptions）为输出和身份选项，request（openplatform.Request）为接口请求；返回 error 为调用、输出或业务错误。
 */
 func (a *App) executeOpenPlatformCommand(ctx context.Context, options commandOptions, request openplatform.Request) error {
-	client, requestContext, err := a.openPlatformClientAndContextForOptions(options, request.Path, request.IdentityPolicy)
+	return a.executeOpenPlatformCommandWithCommonQuery(ctx, options, request, commandCommonQuery(options))
+}
+
+func (a *App) executeOpenPlatformCommandWithoutCommonQuery(ctx context.Context, options commandOptions, request openplatform.Request) error {
+	return a.executeOpenPlatformCommandWithCommonQuery(ctx, options, request, nil)
+}
+
+func (a *App) executeOpenPlatformCommandWithCommonQuery(ctx context.Context, options commandOptions, request openplatform.Request, commonQuery url.Values) error {
+	client, requestContext, err := a.openPlatformClientAndContext(options.profileName, options.identity, request.Path, request.IdentityPolicy)
 	if err != nil {
 		return err
+	}
+	requestContext.CommonQuery = commonQuery
+	if isRuleOpenPlatformPath(request.Path) {
+		// 编辑人由服务端认证身份决定，不能被公共命令参数覆盖。
+		requestContext.CommonQuery.Del("user_id")
 	}
 
 	response, err := client.Do(ctx, requestContext, request)

@@ -617,10 +617,6 @@ func TestUnknownHelpTopicReturnsClearError(t *testing.T) {
 			args:    []string{"contract", "unknown", "--help"},
 			wantErr: `unknown help topic "contract unknown"`,
 		},
-		{
-			args:    []string{"help", "api", "call"},
-			wantErr: `unknown help topic "api call"`,
-		},
 	}
 
 	for _, tc := range testCases {

@@ -207,6 +207,7 @@ func helpRegistry() map[string]helpTopic {
 		{"contract-cli skills install [flags]", "安装内置 Agent skills"},
 		{"contract-cli update check [flags]", "检查 npm 远端版本"},
 		{"contract-cli environment inspect [flags]", "探测当前 CLI 的宿主客户端环境"},
+		{"contract-cli api call [flags] <METHOD> <PATH>", "调用 Skill 已知的 Open Web 页面接口"},
 		{"contract-cli contract <subcommand> [flags]", "合同结构化命令"},
 		{"contract-cli employee list [flags]", "按姓名或部门查询人员"},
 		{"contract-cli department list [flags]", "查询部门候选与部门 ID"},
@@ -252,6 +253,7 @@ func helpRegistry() map[string]helpTopic {
 	addSkillsHelp(registry)
 	addUpdateHelp(registry)
 	addEnvironmentHelp(registry)
+	addAPIHelp(registry)
 	addContractHelp(registry)
 	addDirectoryHelp(registry)
 	addPaymentHelp(registry)
@@ -260,6 +262,42 @@ func helpRegistry() map[string]helpTopic {
 	addRuleHelp(registry)
 	addRuleStructureHelp(registry)
 	return registry
+}
+
+func addAPIHelp(registry map[string]helpTopic) {
+	registry["api"] = helpTopic{
+		Name:  "api",
+		Usage: []string{"contract-cli api <subcommand> [flags]"},
+		Commands: []helpCommand{
+			{"contract-cli api call [flags] <METHOD> <PATH>", "调用 Skill 已知的 Open Web 页面接口"},
+		},
+	}
+	registry["api call"] = helpTopic{
+		Name:    "api call",
+		Summary: "复用 CLI user profile 授权，调用已知的 /open-web/web/** 页面接口。",
+		Usage:   []string{"contract-cli api call --channel web [flags] <METHOD> <PATH>"},
+		Flags: []helpFlag{
+			{"--channel <web>", "必填；当前只开放 web 通道"},
+			{"--profile <name>", "profile 名称；不传使用当前 profile"},
+			{"--as <user>", "仅支持 user；不传时固定使用 user"},
+			{"--query <key=value>", "追加 query 参数；可重复"},
+			{"--header <Key: Value>", "追加业务请求头；可重复，不能覆盖授权或可信身份头"},
+			{"--input-file <path>", "从文件读取请求体，与 --data 互斥"},
+			{"--data <json>", "直接传请求体，与 --input-file 互斥"},
+			{"--output <json|yaml|table>", "结构化输出格式，默认 json"},
+			{"--raw", "原样输出响应体"},
+		},
+		Examples: []string{
+			`contract-cli api call --channel web --profile contract --as user --output json POST /open-web/web/clm/statistic/contractInfoByTradingParty --data '{"pageNum":1,"pageSize":20}'`,
+			`contract-cli api call --channel web GET /open-web/web/clm/contract/info --query contractId=<id>`,
+		},
+		Notes: []string{
+			"method、path、query/body 和响应映射由业务 Skill 提供；CLI 不发现接口，也不负责编排业务语义。",
+			"只接受相对 /open-web/web/ 路径；请求体最大 1 MiB。",
+			"Authorization、Cookie、租户/用户和网关可信身份头由 CLI 与网关管理，不能通过 --header 传入。",
+			"HTTP 2xx 不等于业务成功；调用方仍需按业务 Skill 的响应映射判断。",
+		},
+	}
 }
 
 func addEnvironmentHelp(registry map[string]helpTopic) {
