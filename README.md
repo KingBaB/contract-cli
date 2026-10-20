@@ -896,3 +896,10 @@ contract-cli contract search --help
 | 7 | v1.6 | 发布付款申请、付款计划、付款记录与流程审批能力 | 2026-07-06 |
 | 8 | v1.7 | 新增cli命令，覆盖合同搜索 V2、字段/签署/授权/协商，MDM 写入与汇率/文件，事件出口 IP 和审批矩阵；同步完善 Agent Skills 参数约束，并修复敏感日志与规则行搜索分页问题 | 2026-08-12 |
 | 9 | v1.9.5 | 按 15 个 Skill 重构用户场景和能力地图，补齐合同创建、审批等 36 个场景；增加中文简称及个人 / 应用授权标记。 | 2026-10-13 |
+
+
+## 合同交接与 Open Web 通道
+
+合同交接使用内置 `contract-handover` Skill：复用已有合同搜索、核对同环境和内部 ID、说明影响并确认后交接，再逐份回查。参数见 [交接 Skill](skills/contract-handover/SKILL.md)。
+
+通用入口为 `contract-cli api call --channel web <METHOD> <PATH>`，仅支持 user 身份与 `/open-web/web/**` 相对路径。沿用当前已授权 profile，query 使用 `--query`，JSON 使用 `--input-file`。不允许自带 Authorization、Cookie 或身份覆盖头；通用入口不替代结构化命令的业务规则。当前环境支持范围不因此改变。

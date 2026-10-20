@@ -1,6 +1,39 @@
 # AI 变更记录
 
 - 2026-10-20
+  变更摘要：MR !19 同步最新 blue，保留客户 README 与 release 功能，并合入合同交接 Skill 优化。
+  涉及文件/模块：README、AI变更记录、公共请求适配、Skill分发检查及lint清理。
+  关键逻辑/决策：基于blue建中间分支merge源分支，保留双方历史与blue矩阵ID默认值；README保留blue正文并补入口，交接运行资料不变。
+  验证：go test ./...、go build ./...、Node 23项通过/1跳过、Skill格式通过；exhaustive lint 0 issues。
+
+- 2026-10-20
+  变更摘要：仅优化合同交接 Skill，复用已有搜索能力并移除运行资料的环境测试／验收阶段描述。
+  涉及文件/模块：contract-handover 主文档及参考、对应分发检查、白名单说明；其他 Skill 与 CLI 业务代码未改动。
+  关键逻辑/决策：删除重复页面搜索协议，优先复用已选候选；强制同环境/租户/user及可靠内部ID映射，身份或映射不明时停止。
+  业务边界：按当前通道能力判断环境支持，保留完整预检、明确影响确认、不重放和逐份回查；交接自身白名单从9个减至8个。
+  验证：新增运行资料/搜索引用检查先红后绿，安装引用与go test ./...通过，exhaustive lint 0 issues，Skill格式校验通过。
+
+- 2026-10-20
+  变更摘要：仅补齐合同交接 Skill 的接口说明，统一参数类型、流程必传条件、取值来源、默认值与失败边界。
+  涉及文件/模块：contract-handover 六份接口参考及主文档、参数审查记录、对应 Go 测试。
+  关键逻辑/决策：完整列出业务类型枚举并区分交接入口与验证范围；补齐条件子字段、ID绑定、分页与响应空值语义；未知filterUnits结构明确不构造。
+  验证：参数完整性先红后绿；请求示例与安装引用、go test ./...、Skill格式校验通过；exhaustive lint 0 issues。
+
+- 2026-10-20
+  变更摘要：独立分支重整合同交接 Skill，改为业务流程与按场景加载的接口说明。
+  涉及文件/模块：contract-handover 主文档、agents、5份接口参考、Go分发与请求示例测试、研发归档及白名单来源。
+  关键逻辑/决策：保留9端点与原请求参数；移出源码/页面映射及历史证据；不扩大test受控写入范围，不绑定CLI版本包。
+  交付边界：生产构建不能运行test配方，文档明确停止而非绕过；Ruby检查器只保留在研发归档。
+  验证：安装引用与请求示例先红后绿；go test ./...、Node 5项、归档自测76项通过；exhaustive lint 0 issues；Skill格式校验通过。
+
+- 2026-10-20
+  变更摘要：contract-handover 合并通用 Open Web 调用分支，取消交接 Skill 对 CLI 版本的指定。
+  涉及文件/模块：CLI/OpenPlatform 通用通道、合同交接 Skill 与自测、接口白名单文档、lint 清理。
+  关键逻辑/决策：保留双方历史；恢复矩阵编辑人保护，web 通道不附加公共 query；版本按能力检查，不绑定安装包。
+  白名单：12 个配方去重为 9 个方法/路径，详情回查复用；文档区分普通与合同组场景。
+  验证：矩阵回归先失败后通过、版本检查先红后绿；go test ./...、Node 5项、自测76项通过；exhaustive lint 0 issues。
+
+- 2026-10-20
   变更摘要：同步 GitHub release@f6da3c0 到 GitLab master/blue 的准备分支。
   涉及文件/模块：release 全量基线及本变更记录。
   关键逻辑/决策：保留 master 历史记录；业务文件与 release 一致，不合入 contract-handover。
@@ -98,6 +131,7 @@
   关键逻辑/决策：按客户场景暴露已发布能力，核对 user/app、审查/审批、搜索及矩阵边界；更新授权说明。
   交付边界：独立分支，仅本地 Markdown；不回写飞书，不修改运行代码或全局 skills。
   验证：Release 源码构建、命令帮助与 16 个 Skill 清单核对、相关已有测试及独立文案复核通过。
+
 - 2026-09-28
   变更摘要：将 GitHub qfeius/contract-cli 的 release 同步到 GitLab contract/contract-cli 的 master，保留原始提交历史。
   涉及文件/模块：release 全量 CLI 源码、Skills、构建脚本、测试与文档；本次仅额外追加此同步记录。
@@ -109,6 +143,15 @@
   变更摘要：当前分支移除 test/blue 环境运行能力，源码与本地预发布包统一只支持 prod。
   涉及文件/模块：环境预设与传输拦截、构建脚本、回归测试、README、命令文档及 auth/shared Skill。
   关键逻辑/决策：非 prod 配置和历史 profile 在请求前拒绝；不迁移、不复用旧凭据。历史记录中的 test/blue 联调方案保留为当时背景，不代表当前可用能力。
+
+- 2026-09-22
+  变更摘要：开放 `contract-cli api call --channel web`，为业务 Skill 提供 Open Web 通用执行通道。
+  涉及文件/模块：CLI API 命令与帮助、openplatform 路径/身份策略、命令/README/Changelog、非独立 API Skill 维护资料及测试。
+  关键逻辑/决策：仅允许 user 身份、`/open-web/web/**` 相对路径和网关支持的方法；授权只复用 CLI profile / Device Grant。
+  安全边界：拒绝外部 Authorization/Cookie/租户/用户/网关/代理来源头、危险路径形式和超过 1 MiB 的 body。
+  传输语义：支持重复 `--query`/`--header`、`--data`/`--input-file` 和既有输出；不追加 OpenPlatform 默认 query。
+  架构边界：CLI 不发现接口或编排业务；通道不发布独立 Skill，由业务 Skill 提供 method/path/query/body/响应映射。
+  验证：TDD 覆盖 profile 与 Device Grant 授权复用、请求映射和拒绝路径；可提交快照 `go test ./...` 通过，golangci-lint 0 issues。
 
 - 2026-09-21
   变更摘要：将合同搜索 Skill 调整为“页面默认关键词＋实体/字段引导”的混合路由。
@@ -377,75 +420,91 @@
   涉及文件/模块：`contract-skill-builder/`（SKILL.md、config.example.yaml、scripts/mysql_readonly.sh、scripts/MysqlTestQuery.java、examples/合同到期提醒.skill.md、README.md，均为新增）。
   关键逻辑/决策：确立「代码候选 + 页面操作 + 日志验证 + 数据库校准」四源闭环；git clone 前端仓 master 拿候选接口，OpenObserve test SearchSQL 按用户+时间窗验证真实时序/参数，只读 MySQL 校验字段与写生效；敏感信息（git token / 日志账号密码 / db 密码）全部走 env 不落盘；生成骨架强制写操作人工确认节点；MysqlTestQuery.java 随包分发并封装只读 SQL 白名单。
 
-
 - 2026-09-10
   变更摘要：新增 Skill 能力交付全链路信息图，用一张图展示 Web 接口底座、Skill 场景封装及评测发布平台。
   涉及文件/模块：`docs/assets/skill-delivery-architecture-overview.png`（新增）。
   关键逻辑/决策：采用三层递进结构；底层展示 1316+ Web 接口开放链路及安全底座，中层展示产品编排与 Agent 自由选型，上层展示五步评测发布流程；右侧独立呈现 30/30/25/15 评分权重和总分/安全双门槛。
+
 - 2026-09-10
   变更摘要：新增 Skill 验证平台技术方案文档（含总体架构/运行时序/部署/对话微调等多张 mermaid 图例）。
   涉及文件/模块：`docs/skill-eval-platform-architecture.md`（新增）。
   关键逻辑/决策：确立「薄平台 + headless-agent 通用运行时 + 两个评测 skill（eval-case-gen / eval-run-report）+ 执行器工具 + 评分器」五层架构；明确智能（LLM）与确定（执行器/评分器）分离，执行走工具、评分走平台、对话复用 turn/steer 并加阶段限权；复用 agentCodex 内核 7 模块、替换 5 接线端；给出执行器工具与评分器接口草案、部署图（headless 实例池/每任务 dataDir/无 Electron）、关键数据契约、M1-M6 里程碑。
+
 - 2026-09-10
   变更摘要：源码级重新分析 agentCodex 与 Skill 验证平台的结合方式，确认复用纯 Node 内核、无需桥接 Electron。
   涉及文件/模块：`agentCodex/docs/skill-eval-integration.md`（新增）、`docs/skill-eval-agent-integration.md`（v2 修订）、`docs/skill-eval-platform-effort.md`（M4 由 8→4 人日，总量 50→46 人日）。
   关键逻辑/决策：逐层确认 agent-session-service/codex-stdio-connection/codex-app-server-runtime/json-rpc-client/shared 均为纯 Node、依赖注入、无 electron 引用；main.ts 只是组装器；方案由「桥接 Electron」改为「复用内核抽 headless-agent」，替换 5 个 Electron 依赖（视觉/视频 stub、附件空实现、emit 接平台、models 配置化、logger），暴露 HTTP 接口；无需 Linux Electron 构建与 Xvfb；每评测任务 dataDir 解决单实例锁；改造量 3-5 人日。
+
 - 2026-09-10
   变更摘要：新增 Skill 验证平台与 agentCodex 的集成架构文档，明确两个集成点与职责边界。
   涉及文件/模块：`docs/skill-eval-agent-integration.md`（新增）。
   关键逻辑/决策：平台=调度展示层，agentCodex=评测大脑；集成点①（M4）经桥接（推荐抽取 Main session-service 为 headless 服务）调用约 50 个无 UI IPC 能力驱动用例生成与审批应答；集成点②（M6）用例执行不走 Agent 对话而由平台执行器直调 B' 链路（确定性/可断言/可重放），Agent 仅做智能环节（生成场景、失败归因建议）；给出 skill 生命周期七步数据流与里程碑对应关系。
+
 - 2026-09-10
   变更摘要：新增 Skill 验证平台工作量评估（基于 PRD 与 16 屏 UI 稿核对）。
   涉及文件/模块：`docs/skill-eval-platform-effort.md`（新增）。
   关键逻辑/决策：P0 全量 50 人日（单人全栈口径）≈ 2.5 人月，双人并行日历 3-4 周，含缓冲建议承诺 6.5-7 人周；模块拆解 M1 基座 5 / M2 上传解析 6 / M3 归档 4 / M4 Agent 桥接 8（成败点：CDP vs Main 服务抽取需先 PoC） / M5 确认工作台 6 / M6 沙箱执行 10（安全集中点） / M7 SSE 3 / M8 报告评分 5 / M9 导出通知 3；UI 稿 16 屏与 PRD 覆盖一致无大缺口（新增用例表单与版本时间线需确认口径）；列 4 项量化假设与 4 项前置依赖（B' 链路、清单 v2、linux 构建、评测租户）。
+
 - 2026-09-10
   变更摘要：补齐 Skill 验证平台全流程 UI 设计，共 17 张页面与状态图，并新增业务流程索引。
   涉及文件/模块：`docs/assets/skill-eval-platform-ui/*.png`、`docs/skill-eval-platform-ui-design.md`。
   关键逻辑/决策：覆盖登录、列表/空态、上传成功/失败、详情、生成中/失败、用例确认/编辑、排队/执行/中止、通过/未通过报告；所有页面复用统一蓝白企业级设计系统，异常状态提供明确证据、恢复入口与安全确认。
+
 - 2026-09-10
   变更摘要：新增 Skill 验证平台「用例确认」高保真 UI 图，用于产品评审与前端实现参考。
   涉及文件/模块：`docs/assets/skill-eval-platform-case-confirmation-ui.png`（新增）。
   关键逻辑/决策：围绕 P5 核心工作台出图；采用左侧导航、四步评测进度、五类用例表格、Agent 可解释侧栏与底部常驻执行栏；类别颜色、覆盖统计与写操作风险提示均按 PRD 表达。
+
 - 2026-09-10
   变更摘要：新增 Skill 验证平台 PRD（供 UI 出图），覆盖 8 个页面、任务状态机、功能/非功能需求与数据契约。
   涉及文件/模块：`docs/skill-eval-platform-prd.md`（新增）。
   关键逻辑/决策：页面清单 P0-P8（登录/列表/上传/详情/生成中/用例确认/执行中/报告），核心交互页为用例确认（五类徽章配色 + 可解释侧栏 + 新增用例）与报告页（四维评分条 + 门禁徽章 + 一票否决提示 + 改进建议）；任务状态机 created→generating→awaiting_confirm→running→finished（含 failed/aborted 分支）；断线恢复用持久任务+推送；明确本期不做在线编辑/多角色/移动端/线上指标；附开发数据契约速查表。
+
 - 2026-09-10
   变更摘要：澄清评测 Web 交互方案——agentCodex 服务器端无本地 UI，平台自建轻量 Web 经 Main IPC 协议桥接驱动。
   涉及文件/模块：`docs/delivery-platform-design.md`（5.4 MVP 第 3 条扩充）。
   关键逻辑/决策：基于代码证据（desktop-api.ts 约 50 个 IPC channel：send-message/decide-approval/answer-user-input/list-skills 等均为无 UI 纯协议调用），确定 Renderer 只是 Main 服务的消费者；推荐路线 i：平台 Web 后端经本地桥接调 Main 服务，Web 呈现任务时间线（生成用例→确认→执行→报告）而非聊天窗；路线 ii（remote-debugging 投屏）仅作应急兜底。
+
 - 2026-09-10
   变更摘要：交付平台设计确认评测执行环境——agentCodex 服务端单机部署 + Web 页面使用，新增风险清单与 MVP 范围。
   涉及文件/模块：`docs/delivery-platform-design.md`（第 5 节新增）。
   关键逻辑/决策：部署形态为评测平台轻量 Web 服务 + 服务器上 agentCodex 实例（AI_ASSISTANT_USER_DATA_PATH 按会话隔离，代码已支持）；九大风险点：Linux 无头显示（建议 MVP 禁用 Computer Use/Git 页）、单实例锁（多 userData 实例解并发）、评测租户 token 托管（KMS+短时，禁用个人 token 跑写用例）、写副作用（测试租户+数据打标）、审批弹窗（协议自动应答或最高权限沙箱）、版本锁定、资源 8C32G/3-5 并发、缺 linux 构建目标需补；MVP 五步范围（Linux 构建、特性禁用、四页面 Web、串行起步、租户打标）。
+
 - 2026-09-10
   变更摘要：交付平台设计 v2，吸收产品边界调整（skill 平台仅输出不绑定运行时；评测改为上传→Agent 生成用例→确认→执行→报告）。
   涉及文件/模块：`docs/delivery-platform-design.md`（重写为 v2）。
   关键逻辑/决策：交付物 2 明确「做输出/校验/组装助手，不做执行/绑定运行时/托管凭证」，skill 包以声明式 YAML + SKILL.md 公共子集保证 Codex/WorkBuddy/豆包均可装载；交付物 3 新增智能评测链路（五类场景：正常/边界/异常/权限/幂等，用户确认后用例集随版本归档复用）；评分维持 30/30/25/15 与 ≥80 且安全 ≥90，新增写用例失败一票否决，「运行时表现」本版以试跑耗时/稳定性折算；MCP 建议保留 SSOT+派生+治理复用；列出 4 项待确认（评测 Agent 载体、沙箱写策略、两 CLI 格式一致性、折算规则）。
+
 - 2026-09-10
   变更摘要：新增客户端 Agent 云端化可行性分析（本地终端模式 → 手机号登录多租户 Web 模式）。
   涉及文件/模块：`docs/client-agent-web-remoting.md`（新增）。
   关键逻辑/决策：盘点本地模式五类依赖（文件/凭证/会话/skill 安装/终端交互）；结论是 CLI 内核约 70% 可平移（通道/清单/声明式 skill/JSON 输出），但多租户 SaaS 设施（登录/沙箱隔离/文件代理/前端/审计）需从零建且为工作量大头，粗估 4-6 人月；列出 14 项问题（高风险 5：token 金库、租户隔离、授权合规、确认真实性、文件生命周期）；推荐三阶段演进——先走 B' 链路+平台 worker，再用飞书做交互壳跳过自建前端与手机号登录，最后独立 Web 端；提出关键疑问：目标用户若无飞书账号手机号登录才有必要。
+
 - 2026-09-10
   变更摘要：新增交付平台设计文档，覆盖基础建设/Skill 生成平台/Skill 归档评分 CI-CD 发布三大交付物，含 MCP 发布专项建议。
   涉及文件/模块：`docs/delivery-platform-design.md`（新增）。
   关键逻辑/决策：定义 skill.yaml 包格式（deps 为生产开白依据、自动插入人工确认节点、PII 声明、写接口不自动重试）；设计 registry 状态机与四维评分门禁（静态 30/试跑 30/安全 25/运行时 15）；CI 七步流水线（schema→静态→清单核对→沙箱试跑→安全扫描→评分→产物）；发布多端走 MR 机制（contract-cli skills/ + embed + 现有 release-beta.sh 升级）；MCP 建议以 web-api-catalog 为 SSOT、skill 发布自动派生 MCP tools、读类直接暴露/写类默认由 skill 承接、复用开平治理与 resource_metadata 发现规范；给出 M1–M5 里程碑与 5 项待确认（everyline 关系、MCP 维护方式、沙箱写策略、评分阈值、运行时载体）。
+
 - 2026-09-09
   变更摘要：技术架构总览补充「CLI 定位澄清」与「安全设计」两个章节，并同步飞书。
   涉及文件/模块：`docs/web-api-exposure-architecture.md`、飞书《技术架构总览》。
   关键逻辑/决策：明确定位转变——CLI 不再承载业务命令（结构化命令冻结只维护），只提供标准 HTTP 调用通道 + 接口清单，业务闭环完全由 skill 承接（编排/参数映射/状态/确认节点）；安全设计覆盖四层：令牌（scope 收敛、Agent 短时 token）、开平（userTokenPaths/userId 强制非空/限流/ID转换）、Web 接口层（写操作确认、幂等、PII、IDOR）、治理（灰度只读→低危写→高危写、白名单回收、清单 diff 告警）；列出 4 项安全待确认（UserID 强制性、网络路径、PII 清单、Agent token 生命周期）。
+
 - 2026-09-09
   变更摘要：技术架构总览补充部署架构章节，推荐 B 通道走 open-platform 复用限流与敏感信息 ID 转换能力。
   涉及文件/模块：`docs/web-api-exposure-architecture.md`（更新 1.4 节）、飞书《技术架构总览》同步。
   关键逻辑/决策：基于代码证据确认 open-platform 已有 RateLimiterGatewayFilterFactory（Nacos 动态限流）与 RewriteUserId/DeptId 过滤器（user_id/dept_id 内外 ID 转换）；对比 B'（open-gateway→open-platform→clm-api，推荐）与 B（直连 common-gateway，fallback）两条路线，采纳 B' 理由：限流/ID 转换是 Agent 硬需求、生产白名单复用 ACL、CLI 单出口改动最小、A/B 统一网关治理；分发设计相应简化为同网关前缀区分。
+
 - 2026-09-09
   变更摘要：新增技术架构与业务流程方案文档（评审用），含现状/变动架构 mermaid 图、产品使用流程图、按模块接口附表。
   涉及文件/模块：`docs/web-api-exposure-architecture.md`（新增）。
   关键逻辑/决策：架构图区分「现状 CLI→open-apis 单通道」与「改造后双通道 + Agent 平台」；业务流程按内部验证/产品生成 skill/用户执行 skill/生产名单控制四个 sequence/flowchart 表达；接口附表基于 doc001 清单按模块汇总（contract 1203 / office 33 / _custom 26 / retrieval 12 / dreamcar 10 / 散落 32 / systemConfig 1，共 1316），方法分布 POST 589/GET 576/PUT 86/DELETE 47/其他 18，未识别 12 待 S1.1 补齐。
+
 - 2026-09-09
   变更摘要：新增前端 API 静态解析脚本，完成 S1 接口清单与接口文档的初版生成。
   涉及文件/模块：`tools/gen_web_api_catalog.py`（新增）。
   关键逻辑/决策：扫描 clm-monorepo-fe 的 `features/common/src/api/**`（函数级高精度，free-swagger 格式）+ `apps/*/src`、`features/pc/src`（行级兜底），提取 url/method/params/data/返回泛型/注释，按 path+method 去重，输出机器清单 JSON 与人读 Markdown。实测去重后 1316 个接口（common 共享层 1288 + apps 自有 clm 19/admin 9），counterparty/clm-h5 无自有接口复用 common。已知不足：12 个 method 未识别（上传/下载/preload 边缘）、61 个 path 含模板变量待解析常量。
+
 - 2026-09-09
   变更摘要：Web 接口暴露方案 v2 修订，吸收评审结论（common-gateway 纯转发、1400+ 全量+文档同步、生产按 skill 依赖动态开白、清单覆盖 apps/* 全部、命令命名暂不设计）。
   涉及文件/模块：`docs/web-api-exposure-design.md`（更新为 v2）。
@@ -470,6 +529,7 @@
   变更摘要：将 Doubao Work 纳入运行环境识别并作为独立渠道透传。
   涉及文件/模块：`internal/invocation` 客户端规则与测试、运行环境识别 README 和专项测试文档。
   关键逻辑/决策：macOS 基于官方应用通过系统验签得到的 Bundle ID `com.work.pc.doubao` 与 Team ID `96L78H6LMH`；Windows 基于官方 2.27.10 x64、ARM64 发行包中 `DoubaoWork.exe` 的有效 Authenticode 签名登记叶证书 SHA-256，并要求证书与可执行文件路径/名称同时命中。新增智能体来源值 `doubaoWork`、`client.doubao_work.signed-bundle` 与 `client.doubao_work.authenticode`；即使 Doubao 与 Doubao Work 当前共享发布者证书，也通过各自路径规则独立分类。
+
 - 2026-08-12
   变更摘要：将下一版 contract-cli 版本更新为 `1.7.0`。
   涉及文件/模块：`package.json`、发布版本元数据。
@@ -520,11 +580,6 @@
   涉及文件/模块：`docs/cli-command-reference.md`、`docs/cli-test-plan.md`、`docs/cli-p2-提示词.md`、`skills/contract-cli-payment`、`skills/contract-cli-contract`、`skills/contract-cli-shared`、`internal/cli/command_reference_doc_test.go`
   关键逻辑/决策：保留 README/auth/旧配置迁移中的 `--as bot` 兼容说明；新增文档契约测试只约束 P2 新命令和 skill 不再出现 `bot-only` / `--as bot` 主推文案。
 
-- 2026-06-03
-  变更摘要：修复 P2 分支在 app 身份改名后的编译失败。
-  涉及文件/模块：`internal/cli/payment_command.go`、`internal/cli/contract_command.go`、`internal/openplatform/payment/service.go`、`internal/openplatform/contract/service.go`、相关 CLI/service 测试
-  关键逻辑/决策：将付款和审批命令残留的 `IdentityPolicyBotOnly` / `IdentityBot` fixture 迁移为现有 `IdentityPolicyAppOnly` / `IdentityApp`，保持 app-only 身份限制语义并恢复生产入口编译。
-
 - 2026-06-05
   变更摘要：修复生产验证发现的输出精度、授权状态和开放平台命令契约问题。
   涉及文件/模块：`internal/output`、`internal/cli`、`README.md`、`docs/*`、`skills/contract-cli-*`
@@ -539,6 +594,11 @@
   变更摘要：收敛 P3 新增命令的 README、命令文档、Agent skills 和 help 测试口径。
   涉及文件/模块：`README.md`、`docs/cli-command-reference.md`、`skills/contract-cli-*`、`internal/cli/*_test.go`、`docs/ai-changes.md`
   关键逻辑/决策：补充回归测试覆盖新增 skill 清单、app-only 摘要、shared/contract/mdm-fields skill 旧口径和新增 help topic；修正审批/授权、MDM 写入、event/rule/payment 等已实现命令的引导，避免 Agent 误判未覆盖。
+
+- 2026-06-03
+  变更摘要：修复 P2 分支在 app 身份改名后的编译失败。
+  涉及文件/模块：`internal/cli/payment_command.go`、`internal/cli/contract_command.go`、`internal/openplatform/payment/service.go`、`internal/openplatform/contract/service.go`、相关 CLI/service 测试
+  关键逻辑/决策：将付款和审批命令残留的 `IdentityPolicyBotOnly` / `IdentityBot` fixture 迁移为现有 `IdentityPolicyAppOnly` / `IdentityApp`，保持 app-only 身份限制语义并恢复生产入口编译。
 
 - 2026-06-03
   变更摘要：将新增开放平台结构化命令的应用身份口径从 bot 收敛为 app。
@@ -590,16 +650,6 @@
   涉及文件/模块：`internal/cli/contract_command.go`、`internal/openplatform/contract/service.go`、上传命令测试、帮助与命令文档、contract skills
   关键逻辑/决策：上传接口仍复用 `POST /open-apis/contract/v1/files/upload` 和 multipart 字段，将身份策略从 app-only 调整为 user/app 通用，并补充显式 user 与默认 user 上传测试。
 
-- 2026-04-23
-  变更摘要：新增 9 个 app-only 合同命令，覆盖提交、重提、更新、下载、删除、打印、分享记录和协商信息查询。
-  涉及文件/模块：`internal/openplatform`、`internal/openplatform/contract`、`internal/cli/contract_command.go`、`internal/cli/help.go`、`docs/cli-command-reference.md`、`docs/cli-test-plan.md`、`skills/contract-cli-contract`、`skills/contract-cli-shared`
-  关键逻辑/决策：所有新增结构化命令统一 `IdentityPolicyAppOnly`，通用 query 仍由 `CommonQuery` 注入；`download-file` 使用流式下载，默认保存弹窗，脚本环境推荐 `--output-file`，`--raw` 直接写 stdout；`delete` 直接执行不加 `--yes`。
-
-- 2026-04-23
-  变更摘要：新增 app 命令开发指南，沉淀后续 app 功能和 skill 文档开发约定。
-  涉及文件/模块：`docs/app-command-development-guide.md`、`docs/ai-changes.md`
-  关键逻辑/决策：按功能开发、身份路由、通用 query、测试要求、skill 编写和 Definition of Done 组织；补充 skill 版本、业务错误、`user_id` 必填、输出归一化等后续需要团队确认的问题。
-
 - 2026-04-29
   变更摘要：发布前忽略所有层级的 macOS `.DS_Store` 本机文件。
   涉及文件/模块：`.gitignore`、`docs/ai-changes.md`
@@ -649,6 +699,16 @@
   变更摘要：修复 `auth login --as user --no-open-browser` 超时前不输出授权 URL 的问题。
   涉及文件/模块：`internal/cli/auth_provider.go`、`internal/cli/app.go`、`internal/cli/auth_provider_test.go`、`docs/ai-changes.md`
   关键逻辑/决策：user OAuth 登录在构造授权 URL 后、等待本地 callback 前立即将 URL 写入 stdout；正常自动打开浏览器的路径保持原有成功输出；新增可注入 callback 等待接口，测试无需真实监听端口即可覆盖超时场景。
+
+- 2026-04-23
+  变更摘要：新增 9 个 app-only 合同命令，覆盖提交、重提、更新、下载、删除、打印、分享记录和协商信息查询。
+  涉及文件/模块：`internal/openplatform`、`internal/openplatform/contract`、`internal/cli/contract_command.go`、`internal/cli/help.go`、`docs/cli-command-reference.md`、`docs/cli-test-plan.md`、`skills/contract-cli-contract`、`skills/contract-cli-shared`
+  关键逻辑/决策：所有新增结构化命令统一 `IdentityPolicyAppOnly`，通用 query 仍由 `CommonQuery` 注入；`download-file` 使用流式下载，默认保存弹窗，脚本环境推荐 `--output-file`，`--raw` 直接写 stdout；`delete` 直接执行不加 `--yes`。
+
+- 2026-04-23
+  变更摘要：新增 app 命令开发指南，沉淀后续 app 功能和 skill 文档开发约定。
+  涉及文件/模块：`docs/app-command-development-guide.md`、`docs/ai-changes.md`
+  关键逻辑/决策：按功能开发、身份路由、通用 query、测试要求、skill 编写和 Definition of Done 组织；补充 skill 版本、业务错误、`user_id` 必填、输出归一化等后续需要团队确认的问题。
 
 - 2026-04-22
   变更摘要：将 user OAuth 的 `resource` 调整为可选，dev 预设不再写入旧 Higress 内网 resource。
