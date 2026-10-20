@@ -131,15 +131,15 @@ func TestAuthAndBusinessCommandsRejectDevProfileBeforeNetworkRequest(t *testing.
 	}
 }
 
-func TestDeviceProfileRecoveryRejectsDevSnapshotBeforeSavingProfile(t *testing.T) {
+func TestDeviceProfileRecoveryRejectsUnsupportedSnapshotBeforeSavingProfile(t *testing.T) {
 	credentials := &deviceMemoryCredentialStore{values: map[string]credential.DeviceCredential{
 		"contract": {DeviceProfile: &credential.DeviceProfile{
-			Name: "contract", Environment: "dev", OpenPlatformBaseURL: "https://dev-open.qtech.cn",
-			Resource: "https://dev-open.qtech.cn", BusinessType: "contract", ClientName: "contract-cli",
+			Name: "contract", Environment: "test", OpenPlatformBaseURL: "https://test-open.qtech.cn",
+			Resource: "https://test-open.qtech.cn", BusinessType: "contract", ClientName: "contract-cli",
 			DeviceClientID: "zscli_892efdadc11a3f53", DeviceScope: "contract:full contract-review:full",
-			DeviceAuthorizationEndpoint: "https://dev-myaccount.qtech.cn/api/public/oauth/device-authorization/contract",
-			TokenEndpoint:               "https://dev-myaccount.qtech.cn/api/public/oauth/token/contract",
-			RevocationEndpoint:          "https://dev-myaccount.qtech.cn/api/public/oauth/revoke/contract",
+			DeviceAuthorizationEndpoint: "https://test-myaccount.qtech.cn/api/public/oauth/device-authorization/contract",
+			TokenEndpoint:               "https://test-myaccount.qtech.cn/api/public/oauth/token/contract",
+			RevocationEndpoint:          "https://test-myaccount.qtech.cn/api/public/oauth/revoke/contract",
 		}},
 	}}
 	store := config.NewStore(t.TempDir())
@@ -158,7 +158,7 @@ func TestDeviceProfileRecoveryRejectsDevSnapshotBeforeSavingProfile(t *testing.T
 		t.Fatalf("profile recovery error = %v", err)
 	}
 	if _, found, lookupErr := store.LookupProfile("contract"); lookupErr != nil || found {
-		t.Fatalf("dev snapshot must not be restored, found=%v err=%v", found, lookupErr)
+		t.Fatalf("unsupported snapshot must not be restored, found=%v err=%v", found, lookupErr)
 	}
 }
 
@@ -363,7 +363,7 @@ func TestConfigAddRejectsNonProductionMetadataOverrideBeforeNetworkRequest(t *te
 	}
 }
 
-func TestProductionHTTPClientBlocksKnownDevHosts(t *testing.T) {
+func TestHTTPClientBlocksUnsupportedDevelopmentOrigins(t *testing.T) {
 	requestCount := 0
 	app := New(Options{
 		Store: config.NewStore(t.TempDir()),
@@ -373,7 +373,11 @@ func TestProductionHTTPClientBlocksKnownDevHosts(t *testing.T) {
 		})},
 	})
 
-	for _, rawURL := range []string{"https://dev-open.qtech.cn/open-apis/test", "https://dev-myaccount.qtech.cn./device"} {
+	urls := []string{"https://dev-myaccount.qtech.cn./device"}
+	if !developmentBuildEnabled {
+		urls = append(urls, "https://dev-open.qtech.cn/open-apis/test")
+	}
+	for _, rawURL := range urls {
 		request, err := http.NewRequest(http.MethodGet, rawURL, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -415,6 +419,10 @@ func validProductionProfile() config.Profile {
 }
 
 func productionProfileErrorMessage(profileName string) string {
+	if developmentBuildEnabled {
+		return `profile "` + profileName + `" has an unsupported environment or mismatched endpoints; run ` +
+			"`contract-cli config add --env <prod|dev> --name " + profileName + "` and authorize again"
+	}
 	return `profile "` + profileName + `" belongs to a non-production environment and is not allowed in this production build; run ` +
 		"`contract-cli config add --env prod --name contract` and authorize again"
 }

@@ -36,7 +36,17 @@
 
 ### 环境与本地预发布包
 
-当前源码构建和正式构建都只支持 `prod`，默认 profile 为 `contract`；将 `--env` 指定为 `test`、`blue` 或 `dev` 会在发请求前拒绝，历史非 prod profile 也不会自动迁移或复用凭据。API 地址为 `https://open.qfei.cn`，账号地址为 `https://myaccount.qfei.cn`。
+默认源码构建和正式构建都只支持 `prod`，默认 profile 为 `contract`；将 `--env` 指定为 `test`、`blue` 或 `dev` 会在发请求前拒绝，历史非 prod profile 也不会自动迁移或复用凭据。API 地址为 `https://open.qfei.cn`，账号地址为 `https://myaccount.qfei.cn`。
+
+本地 dev 链路验证可显式启用 `dev` 构建标签，增加固定的 `https://dev-open.qtech.cn` 和 `https://dev-myaccount.qtech.cn` 预设；默认环境仍为 prod，test/blue 仍被拒绝。dev profile 和认证端点必须属于同一环境，跨环境切换仍清理旧认证状态。
+
+```bash
+go build -tags dev -o /tmp/contract-cli-dev ./cmd/contract-cli
+/tmp/contract-cli-dev config add --env dev --name trace-dev
+/tmp/contract-cli-dev auth login --profile trace-dev --as user
+```
+
+dev 使用浏览器 OAuth 授权码登录；本地预设不复用 prod 的 Device Client ID。该构建仅供本地验证，不改变正式包和 npm 构建入口；Trace 行为与默认构建一致。
 
 若需验证 npm 包构建流程，仍可生成独立的本地预发布包；版本中的 `-test` 只是包标记，不开放 test 环境，也不发布到 npm：
 
@@ -352,14 +362,28 @@ X-Qfei-Rule-Id
 
 业务 Header 只包含归一化后的来源和证据字段，不包含 PID、完整进程路径或命令行参数。`environment inspect --include-processes` 仅用于用户主动执行的本地诊断。
 
-每个 OpenPlatform 逻辑请求还会生成标准 W3C Trace Context，并覆盖发送：
+每次业务命令生成一个 32 位十六进制 Trace ID；命令中的多个接口、分页请求、流式请求和允许的重试共享该 ID。下一次命令生成新 ID，请求覆盖发送：
 
 ```text
 traceparent: 00-<32 位 trace_id>-<16 位 span_id>-01
 X-Log-Id: <与 traceparent 相同的 trace_id>
 ```
 
-只读网络重试或 Token 刷新后的请求重放继续使用同一个 `trace_id`，每次实际 HTTP attempt 使用新的 `span_id`。成功请求的本地 INFO 日志带 `trace_id`；请求失败时，最终错误信息也带 `trace_id=<值>`。它只用于日志与链路关联，不参与鉴权、幂等或来源可信度判断。网关和下游服务仍需保留 `traceparent` 才能形成完整的跨服务 Trace。
+每次 CLI 显式发送尝试（包括允许的只读网络重试或 Token 刷新后的业务重放）使用新的 `span_id`，它对应 W3C 的 parent-id；底层自动重定向和透明重试保持原有行为。命令入口、完成、失败和业务请求的调试日志带 `trace_id`；最终安全错误也带 `trace_id=<值>`，业务 JSON、表格和 raw 输出结构保持不变。
+
+默认不打印内部诊断或请求日志。添加全局 `--debug` 后将调试日志写到 stderr；显式指定 `--output json`（更新检查使用 `--json`）时，每条调试记录为独立一行 JSON，其他情况为文本。Trace 请求头始终正常发送，与日志开关无关。失败时仍在 stderr 输出必要的 `error: ...` 文本摘要和非零退出码，所以错误情况下整个 stderr 不保证都是 JSON。
+
+```bash
+contract-cli contract search --profile contract --as user --output json
+contract-cli contract search --profile contract --as user --debug
+contract-cli contract search --profile contract --as user --debug --output json >result.json 2>debug.jsonl
+```
+
+调试日志复用既有安全字段与脱敏逻辑，不增加原始凭据、请求体或响应体转储。`--debug=false` 显式关闭调试，同一次调用重复传入时最后一个值生效；同一 App 下次执行不会继承前次开关。显式注入 `cli.Options.Logger` 的库调用方继续自行控制其 observer 的格式与级别，默认 CLI 不注入该选项。
+
+用户附件上传的 prepare、content、commit 共用命令 ID；签名存储下载通过本地日志和安全错误关联 ID，不向签名地址新增 Trace 头。直接使用底层 Client 且没有命令上下文时，仍按每个逻辑请求生成 ID。帮助、版本、本地环境诊断及 config/auth/skills/update 不新建业务命令 Trace；OAuth 和更新请求保持现有独立通道。
+
+Trace ID 只用于日志与链路关联，不参与鉴权、幂等或来源可信度判断。网关和下游服务仍需保留 `traceparent` 才能形成跨服务关联；CLI 本身不导出 Span。
 
 ### Output Formats
 

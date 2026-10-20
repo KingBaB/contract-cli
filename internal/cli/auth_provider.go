@@ -123,6 +123,10 @@ func (p userAuthProvider) Login(ctx context.Context, profile *config.Profile, op
 	} else {
 		if err := p.openBrowser(authURL); err != nil {
 			p.logger.Warn("open browser failed", "profile", profile.Name, "error", err.Error())
+			// 手动授权属于用户操作指引，不依赖可关闭的诊断日志。
+			if p.authorizationURLWriter != nil {
+				_, _ = fmt.Fprint(p.authorizationURLWriter, authorizationURLMessage(authURL))
+			}
 		}
 	}
 

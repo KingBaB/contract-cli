@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-- 当前仅内置 `prod` 环境预设；历史 test/blue/dev profile 和对应网络端点会在请求前被拒绝，不自动迁移凭据。首次配置：`contract-cli config add --env prod --name contract`
+- 默认构建仅内置 `prod` 环境预设；历史 test/blue/dev profile 和对应网络端点会在请求前被拒绝，不自动迁移凭据。首次配置：`contract-cli config add --env prod --name contract`。本地显式使用 `go build -tags dev` 时额外启用 dev，使用独立的 `trace-dev` profile 和浏览器 OAuth 登录。
 - `contract get`、`contract search`、`contract create`、`contract sync-user-groups`、`contract text`、`contract category list`、`contract template list`、`contract template get`、`contract template instantiate`、`contract upload-file`、`contract download-file`、`contract approval get`、`mdm vendor list`、`mdm vendor get`、`mdm legal list`、`mdm legal get`、`mdm fields list` 是当前同时支持 `user` 与 `app` 的结构化业务命令
 - `rule *`（包括 `approval-matrix` 别名）支持 `--as user` / `--as app`；user 当前限 contract 产品且需要合同规则管理权限。
 - `contract search-v2`、`contract field update`、`contract sign switch-to-paper`、`contract sign-url get`、`contract form attribute list`、`contract authorization grant`、`contract esign *`、`contract submit/resubmit/patch/delete/print-file`、`contract share get/batch-create`、`contract cooperation link/record/search/file`、`contract approval start`、`payment *`、`mdm vendor create/update/list-all/query-by-cert`、`mdm legal get --code/create/update`、`mdm fixed-exchange-rate get/update`、`mdm file download`、`event outbound-ip list` 当前仅支持 `--as app`
@@ -120,6 +120,14 @@ contract-cli contract get <contract-id> --help
 
 默认输出格式是 `json`。
 
+全局 `--debug` 默认关闭，支持放在命令前或子命令参数中；`--debug=false` 可显式关闭，重复时最后一个值生效。开启后，命令和请求调试日志写入 stderr，显式 `--output json` 或更新检查的 `--json` 使每条日志使用单行 JSON；未显式指定时使用文本。业务结果仍写 stdout，Trace 请求头不受调试开关影响。
+
+```bash
+contract-cli rule table import plan --profile trace-dev-app --as app --product-id contract --group-id approve_matrix --table-id <table-id> --input-file import.json --debug --output json >result.json 2>debug.jsonl
+```
+
+失败时 stderr 仍包含 `error: ...` 用户错误摘要，退出码保持非零；该摘要为文本，不属于 JSON 调试记录。普通 HTTP 200 的非零业务码是否保留业务 JSON，继续沿用各命令现有行为。
+
 ### 通用请求体输入
 
 需要请求体的命令统一使用：
@@ -167,7 +175,7 @@ contract-cli config add --env prod --name contract
 
 支持参数：
 
-- `--env`：环境预设，当前仅支持 `prod`，默认 `prod`
+- `--env`：默认构建仅支持 `prod`；带 `dev` 标签的本地构建支持 `prod|dev`，默认仍为 `prod`
 - `--name`：profile 名称，默认 `contract`
 - `--resource-metadata-url`：覆盖 protected resource metadata 地址
 - `--redirect-url`：覆盖 OAuth callback 地址
@@ -257,8 +265,10 @@ contract-cli environment inspect --output json --include-processes
 - 当前识别器为 `process-ancestry-v6`；探测共享 5 秒预算，超时保留本次已收到的完整报告，没有有效报告才返回 unknown；用户取消时停止业务请求
 - 来源识别透传 `X-Qfei-Channel-Type: cli`、`X-Qfei-Agent-Source-Type`、`X-Qfei-Product-Code: contract`、`X-Qfei-Evidence-Type`、`X-Qfei-Channel-Confidence`、`X-Qfei-Detector-Version` 和 `X-Qfei-Rule-Id`
 - 业务 Header 不包含 PID、进程路径、完整命令行或用户目录信息
-- 每个 OpenPlatform 逻辑请求生成一个 32 位十六进制 `trace_id`；请求发送 `traceparent: 00-<trace_id>-<span_id>-01` 和同值 `X-Log-Id: <trace_id>`
-- 请求重试复用同一 `trace_id`，每个实际 HTTP attempt 重新生成 `span_id`；最终错误信息包含 `trace_id=<值>`
+- 每次业务命令生成一个 32 位十六进制 `trace_id`，命令内多接口、分页和流式请求共用；下一次命令生成新 ID。请求发送 `traceparent: 00-<trace_id>-<span_id>-01` 和同值 `X-Log-Id: <trace_id>`
+- 每次 CLI 显式发送尝试重新生成 `span_id`（W3C parent-id），包含允许的重试和 Token 刷新后的业务重放；底层自动重定向和透明重试保持原有行为
+- 开启 `--debug` 时，命令边界和业务请求调试日志包含 `trace_id`；默认静默时仍传播 Trace，最终安全错误仍携带 ID，业务输出结构不变；用户附件上传三个阶段共用 ID，签名下载只做本地日志与错误关联
+- 底层 Client 无命令上下文时保留请求级 ID；config/auth/skills/update、本地环境诊断、帮助和版本不新建业务命令 Trace，独立认证和更新通道保持现状
 - Trace ID 只用于可观测性关联，不作为鉴权、幂等键或客户端来源证明
 
 #### `contract-cli skills list`

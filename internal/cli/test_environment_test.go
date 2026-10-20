@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 
 	"cn.qfei/contract-cli/internal/config"
 	"cn.qfei/contract-cli/internal/credential"
+	"cn.qfei/contract-cli/internal/openplatform"
 )
 
 /*
@@ -92,7 +94,15 @@ func TestExistingTestAndBlueProfilesRejectedBeforeHTTPRequest(t *testing.T) {
 				{"rule", "table", "get", "--profile", profile.Name, "--as", "app", "--product-id", "contract", "--group-id", "approve_matrix", "--table-id", "table-1"},
 			} {
 				err := app.Run(context.Background(), args)
-				if err == nil || err.Error() != productionProfileErrorMessage(profile.Name) || requests != 0 {
+				actual := err
+				if args[0] == "rule" {
+					var traced *openplatform.TraceError
+					if !errors.As(err, &traced) || len(traced.TraceID) != 32 {
+						t.Fatalf("business command missing trace: %v", err)
+					}
+					actual = traced.Cause
+				}
+				if actual == nil || actual.Error() != productionProfileErrorMessage(profile.Name) || requests != 0 {
 					t.Fatalf("command %v error=%v requests=%d", args, err, requests)
 				}
 			}
@@ -125,16 +135,20 @@ func TestKnownTestAndBlueHostsBlocked(t *testing.T) {
 }
 
 /*
-TestConfigHelpOnlyShowsProductionEnvironment 验证帮助只向用户展示可用的 prod 预设。
+TestConfigHelpShowsBuildEnvironments 验证帮助仅展示当前构建可用的环境预设。
 入参 t（*testing.T）为测试上下文；返回值为空，失败时报告测试错误。
 */
-func TestConfigHelpOnlyShowsProductionEnvironment(t *testing.T) {
+func TestConfigHelpShowsBuildEnvironments(t *testing.T) {
 	output := &bytes.Buffer{}
 	app := New(Options{Store: config.NewStore(t.TempDir()), Stdout: output})
 	if err := app.Run(context.Background(), []string{"config", "add", "--help"}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "--env <prod>") || strings.Contains(output.String(), "--env test") || strings.Contains(output.String(), "--env blue") {
-		t.Fatalf("non-production environment shown in help: %s", output.String())
+	expected := "--env <prod>"
+	if developmentBuildEnabled {
+		expected = "--env <prod|dev>"
+	}
+	if !strings.Contains(output.String(), expected) || strings.Contains(output.String(), "--env test") || strings.Contains(output.String(), "--env blue") {
+		t.Fatalf("unexpected build environments shown in help: %s", output.String())
 	}
 }

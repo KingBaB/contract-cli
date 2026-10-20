@@ -141,7 +141,7 @@ func TestRunCommandLogRedactsSensitiveArguments(t *testing.T) {
 				},
 			})
 
-			if err := app.Run(context.Background(), tc.args); err == nil {
+			if err := app.Run(context.Background(), append(append([]string{}, tc.args...), "--debug")); err == nil {
 				t.Fatal("Run() error = nil, want unknown command error")
 			}
 
@@ -1063,7 +1063,7 @@ func TestConfigAddUsesProdPresetByDefault(t *testing.T) {
 	}
 }
 
-func TestConfigAddRejectsDevPresetBeforeNetworkRequest(t *testing.T) {
+func TestConfigAddRejectsUnknownPresetBeforeNetworkRequest(t *testing.T) {
 	t.Parallel()
 
 	requestCount := 0
@@ -1073,14 +1073,14 @@ func TestConfigAddRejectsDevPresetBeforeNetworkRequest(t *testing.T) {
 		Store:  config.NewStore(t.TempDir()),
 		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			requestCount++
-			t.Fatalf("dev preset must be rejected before network request: %s", req.URL.String())
+			t.Fatalf("unknown preset must be rejected before network request: %s", req.URL.String())
 			return nil, nil
 		})},
 	})
 
-	err := app.Run(context.Background(), []string{"config", "add", "--name", "contract", "--env", "dev"})
-	if err == nil || err.Error() != `unsupported environment "dev"; supported environments: prod` {
-		t.Fatalf("config add dev error = %v", err)
+	err := app.Run(context.Background(), []string{"config", "add", "--name", "contract", "--env", "unsupported"})
+	if err == nil || !strings.Contains(err.Error(), `unsupported environment "unsupported"; supported environments: prod`) {
+		t.Fatalf("config add unknown environment error = %v", err)
 	}
 	if requestCount != 0 {
 		t.Fatalf("network request count = %d, want 0", requestCount)

@@ -27,8 +27,9 @@ const defaultProfileName = "contract"
 var errAPICommandUnavailable = errors.New("api call 暂未开放使用，请使用已开放的结构化命令")
 
 type Options struct {
-	Stdout             io.Writer
-	Stderr             io.Writer
+	Stdout io.Writer
+	Stderr io.Writer
+	// Logger 显式注入时由调用方控制格式和级别；CLI 默认日志由 --debug 管理。
 	Logger             *slog.Logger
 	Store              *config.Store
 	Secrets            *config.SecretsStore
@@ -51,6 +52,7 @@ type App struct {
 	stdout             io.Writer
 	stderr             io.Writer
 	logger             *slog.Logger
+	logPolicy          *commandLogPolicy
 	store              *config.Store
 	secrets            *config.SecretsStore
 	httpClient         *http.Client
@@ -114,8 +116,9 @@ func New(options Options) *App {
 		stderr = os.Stderr
 	}
 	logger := options.Logger
+	var logPolicy *commandLogPolicy
 	if logger == nil {
-		logger = slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{}))
+		logger, logPolicy = newCommandLogger(stderr)
 	}
 	httpClient := options.HTTPClient
 	if httpClient == nil {
@@ -155,6 +158,7 @@ func New(options Options) *App {
 		stdout:             stdout,
 		stderr:             stderr,
 		logger:             logger,
+		logPolicy:          logPolicy,
 		store:              store,
 		secrets:            secrets,
 		httpClient:         httpClient,
@@ -193,7 +197,17 @@ Run 执行完整 CLI 参数并兼容审批矩阵交互文档别名。
 入参 ctx（context.Context）为运行上下文，args（[]string）为命令参数；返回 error 为执行错误。
 */
 func (a *App) Run(ctx context.Context, args []string) error {
+	args, logOptions, err := parseCommandLogOptions(args)
+	if err != nil {
+		return err
+	}
+	if a.logPolicy != nil {
+		previous := a.logPolicy.current.Swap(&logOptions)
+		defer a.logPolicy.current.Store(previous)
+	}
 	args = normalizeApprovalMatrixArgs(args)
+	previousContext := a.commandContext
+	defer func() { a.commandContext = previousContext }()
 	a.updateNotice = nil
 	a.commandContext = ctx
 	a.runtimeEvidence = nil
@@ -220,7 +234,14 @@ func (a *App) Run(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	a.logger.Info("run command", "args", redactCommandArgs(args))
+	if isBusinessCommand(args[0]) {
+		return a.runWithCommandTrace(ctx, args)
+	}
+	return a.runCommand(ctx, args)
+}
+
+func (a *App) runCommand(ctx context.Context, args []string) error {
+	a.commandTraceLogger(ctx).Info("run command", "args", redactCommandArgs(args))
 	// 本地来源诊断不访问更新服务，也不读取或刷新更新缓存。
 	if args[0] == "environment" {
 		return a.runEnvironment(ctx, args[1:])
@@ -621,7 +642,7 @@ func (a *App) providerFor(identity config.IdentityKind) authProvider {
 }
 
 /*
-resolveEnvironment 只提供线上 prod 环境预设，非生产环境在任何网络请求前被拒绝。
+resolveEnvironment 默认仅提供 prod；带 dev 标签的本地构建额外提供开发环境预设。
 入参 name（string）为环境名；返回 environmentPreset 和 error。
 */
 func resolveEnvironment(name string) (environmentPreset, error) {
@@ -641,7 +662,10 @@ func resolveEnvironment(name string) (environmentPreset, error) {
 			DeviceScope:                    "contract:full contract-review:full",
 		}, nil
 	default:
-		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod", name)
+		if preset, supported := developmentEnvironmentPreset(name); supported {
+			return preset, nil
+		}
+		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: %s", name, supportedEnvironmentNames())
 	}
 }
 

@@ -20,12 +20,15 @@ const (
 )
 
 /*
-environmentOrigins 只返回线上 prod 环境域名，避免旧配置跨环境复用。
+environmentOrigins 返回当前构建支持的环境域名，避免配置跨环境复用。
 入参 environment（string）为环境名；返回 API 域名、账号域名（string）及是否支持（bool）。
 */
 func environmentOrigins(environment string) (string, string, bool) {
 	if environment == productionEnvironment {
 		return productionOpenPlatformOrigin, productionAccountOrigin, true
+	}
+	if developmentBuildEnabled && environment == developmentEnvironment {
+		return developmentOpenPlatformOrigin, developmentAccountOrigin, true
 	}
 	return "", "", false
 }
@@ -40,7 +43,7 @@ var blockedProductionBuildHosts = map[string]struct{}{
 }
 
 /*
-validateProductionProfile 校验配置及认证端点都属于线上 prod 环境。
+validateProductionProfile 校验配置及认证端点属于当前构建支持的同一环境。
 入参 profile（config.Profile）为配置；返回 error 表示环境或端点不合法。
 */
 func validateProductionProfile(profile config.Profile) error {
@@ -164,6 +167,9 @@ productionProfileError 返回非生产配置的统一错误，提示重新初始
 入参 profileName（string）为配置名；返回 error。
 */
 func productionProfileError(profileName string) error {
+	if developmentBuildEnabled {
+		return fmt.Errorf("profile %q has an unsupported environment or mismatched endpoints; run `contract-cli config add --env <prod|dev> --name %s` and authorize again", profileName, profileName)
+	}
 	return fmt.Errorf(
 		"profile %q belongs to a non-production environment and is not allowed in this production build; run `contract-cli config add --env prod --name contract` and authorize again",
 		profileName,
@@ -186,13 +192,13 @@ type productionGuardTransport struct {
 }
 
 /*
-RoundTrip 在传输层拒绝已知 dev/test/blue 域名，避免旧配置绕过生产 profile 校验。
+RoundTrip 在传输层拒绝未启用的环境域名；dev 构建仅额外放行固定开发 origin。
 入参 request（*http.Request）为请求；返回 HTTP 响应和 error。
 */
 func (transport productionGuardTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	host := strings.ToLower(strings.TrimSuffix(request.URL.Hostname(), "."))
 	transport.logger.Debug("production network request", "method", request.Method, "host", host)
-	if _, blocked := blockedProductionBuildHosts[host]; blocked {
+	if _, blocked := blockedProductionBuildHosts[host]; blocked && !developmentOriginAllowed(request.URL.String()) {
 		transport.logger.Error("production build blocked non-production network request", "method", request.Method, "host", host)
 		return nil, fmt.Errorf("production build blocks non-production host %q", host)
 	}
