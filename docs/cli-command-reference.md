@@ -126,7 +126,11 @@ contract-cli contract get <contract-id> --help
 contract-cli rule table import plan --profile trace-dev-app --as app --product-id contract --group-id approve_matrix --table-id <table-id> --input-file import.json --debug --output json >result.json 2>debug.jsonl
 ```
 
-失败时 stderr 仍包含 `error: ...` 用户错误摘要，退出码保持非零；该摘要为文本，不属于 JSON 调试记录。普通 HTTP 200 的非零业务码是否保留业务 JSON，继续沿用各命令现有行为。
+只有显式 `--output json` 或 `--output=json` 时，失败或取消结果才在 stderr 输出单行 JSON：`{"ok":false,"error":{"type":"...","message":"...","trace_id":"..."},"_notice":{...}}`；其他模式保留 `error: ...` 文本摘要。业务结果默认是 JSON 不等于错误也默认 JSON，`--json` 单独不切换错误格式。普通失败与超时退出 1，取消退出 130，成功退出 0。
+
+错误 JSON 的 `error.type` 区分 `command`、`http`、`timeout`、`cancelled`、`uncertain_write`；Trace ID、HTTP 状态及取消标志按实际错误链填写，更新通知复用本次执行已准备的 `_notice.update`，不会在取消后重新请求版本服务。HTTP 200 下的非零业务码是否保留 stdout 业务 JSON，沿用各命令原有行为，不额外包装成功或已有业务输出。
+
+第一次 Ctrl+C 沿上下文取消输入、HTTP、授权等待和环境探测，并等待探测子进程回收；第二次 Ctrl+C 可强退。导入 apply 遇取消先保留原有计划落盘与输出，发送中结果不确定的行仍为 `uncertain`，已写入但回读取消的行仍为 `unverified`，停止后续写入且退出 130，不将取消当成“后端未执行”。
 
 ### 通用请求体输入
 

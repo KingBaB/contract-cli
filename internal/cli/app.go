@@ -197,6 +197,7 @@ Run 执行完整 CLI 参数并兼容审批矩阵交互文档别名。
 入参 ctx（context.Context）为运行上下文，args（[]string）为命令参数；返回 error 为执行错误。
 */
 func (a *App) Run(ctx context.Context, args []string) error {
+	a.updateNotice = nil
 	args, logOptions, err := parseCommandLogOptions(args)
 	if err != nil {
 		return err
@@ -208,7 +209,6 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	args = normalizeApprovalMatrixArgs(args)
 	previousContext := a.commandContext
 	defer func() { a.commandContext = previousContext }()
-	a.updateNotice = nil
 	a.commandContext = ctx
 	a.runtimeEvidence = nil
 	if len(args) == 0 {
@@ -309,7 +309,7 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	a.logger.Info("config add started")
 
 	flags := flag.NewFlagSet("config add", flag.ContinueOnError)
-	flags.SetOutput(a.stderr)
+	flags.SetOutput(io.Discard)
 
 	var env string
 	var profileName string
@@ -453,7 +453,7 @@ func (a *App) runAuth(ctx context.Context, args []string) error {
 
 func (a *App) runAuthLogin(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("auth login", flag.ContinueOnError)
-	flags.SetOutput(a.stderr)
+	flags.SetOutput(io.Discard)
 
 	var profileName string
 	var timeout time.Duration
@@ -513,7 +513,7 @@ func (a *App) runAuthLogin(ctx context.Context, args []string) error {
 
 func (a *App) runAuthStatus(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("auth status", flag.ContinueOnError)
-	flags.SetOutput(a.stderr)
+	flags.SetOutput(io.Discard)
 
 	var profileName string
 	var as string
@@ -559,7 +559,7 @@ func (a *App) runAuthStatus(ctx context.Context, args []string) error {
 
 func (a *App) runAuthLogout(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("auth logout", flag.ContinueOnError)
-	flags.SetOutput(a.stderr)
+	flags.SetOutput(io.Discard)
 
 	var profileName string
 	var as string
@@ -601,7 +601,7 @@ func (a *App) runAuthLogout(ctx context.Context, args []string) error {
 
 func (a *App) runAuthUse(args []string) error {
 	flags := flag.NewFlagSet("auth use", flag.ContinueOnError)
-	flags.SetOutput(a.stderr)
+	flags.SetOutput(io.Discard)
 
 	var profileName string
 	var as string

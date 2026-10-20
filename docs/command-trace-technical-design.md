@@ -240,7 +240,7 @@ content 上传继续使用其现有凭据与传输约束，不附加 profile 的
 
 命令入口、结束、失败、业务请求及上传/下载关键阶段的调试日志使用同一 trace-id。新增日志只包含安全的命令名称、阶段和错误类型，保留现有方法、接口路径及状态日志，不扩大请求体、凭据或个人数据的记录范围；未将全部既有日志统一改写。
 
-2026-10-20 已补充 makecli 风格的日志开关：默认关闭内部诊断，--debug 开启；显式 --output json 或更新检查 --json 时，调试记录按 JSONL 写 stderr，其余为文本。Trace 生成和传播不依赖日志开关，stdout 业务结构保持原样。必要的 error 文本摘要保留，不能把失败时整个 stderr 当成 JSONL。日志层采用每个 App 的稳定 handler 及可恢复的原子策略，认证和网络 guard 的既有 logger 引用不变。实现与三种模式 dev 复验见 [CLI 调试日志记录](ai-changes-debug-logging.md)。
+2026-10-20 已补充 makecli 风格的日志开关：默认关闭内部诊断，--debug 开启；显式 --output json 或更新检查 --json 时，调试记录按 JSONL 写 stderr，其余为文本。Trace 生成和传播不依赖日志开关，stdout 业务结构保持原样。后续统一中断改造按用户选择，仅显式 --output json 时将命令错误也写为单行 JSON，其他模式保留 error 文本摘要；成功业务输出不变。日志层采用每个 App 的稳定 handler 及可恢复的原子策略，认证和网络 guard 的既有 logger 引用不变。日志复验见 [CLI 调试日志记录](ai-changes-debug-logging.md)，取消与回滚点见 [中断及错误记录](ai-changes-interrupt-error-output.md)。
 
 在命令错误出口补齐 Trace 信息，覆盖业务码错误和上传错误脱敏后的返回值。处理顺序为先执行既有错误翻译或脱敏，再附加安全的命令 ID。
 

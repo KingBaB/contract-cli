@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -69,7 +70,7 @@ runSkillsInstall 将包内 Skill 安装到目标目录，并可限定只更新�
 */
 func (a *App) runSkillsInstall(args []string) error {
 	flags := flag.NewFlagSet("skills install", flag.ContinueOnError)
-	flags.SetOutput(a.stderr)
+	flags.SetOutput(io.Discard)
 
 	var target string
 	var selectedName string

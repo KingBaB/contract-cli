@@ -371,7 +371,11 @@ X-Log-Id: <与 traceparent 相同的 trace_id>
 
 每次 CLI 显式发送尝试（包括允许的只读网络重试或 Token 刷新后的业务重放）使用新的 `span_id`，它对应 W3C 的 parent-id；底层自动重定向和透明重试保持原有行为。命令入口、完成、失败和业务请求的调试日志带 `trace_id`；最终安全错误也带 `trace_id=<值>`，业务 JSON、表格和 raw 输出结构保持不变。
 
-默认不打印内部诊断或请求日志。添加全局 `--debug` 后将调试日志写到 stderr；显式指定 `--output json`（更新检查使用 `--json`）时，每条调试记录为独立一行 JSON，其他情况为文本。Trace 请求头始终正常发送，与日志开关无关。失败时仍在 stderr 输出必要的 `error: ...` 文本摘要和非零退出码，所以错误情况下整个 stderr 不保证都是 JSON。
+默认不打印内部诊断或请求日志。添加全局 `--debug` 后将调试日志写到 stderr；显式指定 `--output json`（更新检查使用 `--json`）时，每条调试记录为独立一行 JSON，其他情况为文本。Trace 请求头始终正常发送，与日志开关无关。
+
+命令失败时，只有显式 `--output json`（或 `--output=json`）才将错误作为单行 JSON 写到 stderr：`{"ok":false,"error":{"type":"command","message":"...","trace_id":"..."},"_notice":{"update":{...}}}`。Trace ID 和更新通知仅在本次执行已有相应信息时出现；通知复用命令开始阶段的结果，错误出口不重新联网检查。其他模式保留 `error: ...` 文本摘要，`--json` 单独不会切换命令错误格式。成功的业务输出保持原样，普通失败与超时退出码为 1。
+
+首次 Ctrl+C 取消当前操作、回收环境探测辅助进程并以 130 退出；再次 Ctrl+C 恢复系统默认强退行为。输入文件、stdin 管道及 Unix FIFO 等待支持取消。取消的写请求仍可能已经生效：保留 `uncertain_write` 或本地导入计划的 `uncertain/unverified` 状态，不自动重试后续写入。JSON 错误中此时可同时出现 `type=uncertain_write` 和 `cancelled=true`。
 
 ```bash
 contract-cli contract search --profile contract --as user --output json

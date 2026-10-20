@@ -36,7 +36,7 @@ func (a *App) runAPICall(ctx context.Context, args []string) error {
 		return fmt.Errorf("open platform path must be a relative /open-apis/ path")
 	}
 
-	body, err := resolveRawBody(options.commandOptions)
+	body, err := resolveRawBody(ctx, options.commandOptions)
 	if err != nil {
 		return err
 	}

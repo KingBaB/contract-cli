@@ -111,7 +111,7 @@ func (a *App) runMatrixExtension(ctx context.Context, resource string, args []st
 		return fmt.Errorf("matrix extensions only support --user-id-type user_id")
 	}
 	var body []byte
-	body, err = resolveRequiredRawBody(options)
+	body, err = resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}

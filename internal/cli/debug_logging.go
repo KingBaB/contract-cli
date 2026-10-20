@@ -11,8 +11,9 @@ import (
 )
 
 type commandLogOptions struct {
-	debug bool
-	json  bool
+	debug      bool
+	json       bool
+	outputJSON bool
 }
 
 // parseCommandLogOptions 只移除全局调试开关；原命令仍负责业务参数校验。
@@ -20,6 +21,7 @@ type commandLogOptions struct {
 func parseCommandLogOptions(args []string) ([]string, commandLogOptions, error) {
 	clean := make([]string, 0, len(args))
 	options := commandLogOptions{}
+	var parseErr error
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
@@ -33,7 +35,10 @@ func parseCommandLogOptions(args []string) ([]string, commandLogOptions, error) 
 				var err error
 				on, err = strconv.ParseBool(value)
 				if err != nil {
-					return nil, commandLogOptions{}, fmt.Errorf("invalid boolean value for --debug: %w", err)
+					if parseErr == nil {
+						parseErr = fmt.Errorf("invalid boolean value for --debug: %w", err)
+					}
+					continue
 				}
 			}
 			options.debug = on
@@ -54,9 +59,10 @@ func parseCommandLogOptions(args []string) ([]string, commandLogOptions, error) 
 		}
 		if name == "--output" || name == "-output" {
 			options.json = value == "json"
+			options.outputJSON = options.json
 		}
 	}
-	return clean, options, nil
+	return clean, options, parseErr
 }
 
 func isCommandValueFlag(name string, args []string) bool {

@@ -29,12 +29,21 @@ func (a *App) runWithCommandTrace(parent context.Context, args []string) error {
 	a.commandContext = ctx
 	logger := a.commandTraceLogger(ctx)
 	logger.Info("command started", "command", args[0])
-	if err := a.runCommand(ctx, args); err != nil {
+	err = a.runCommand(ctx, args)
+	err = withCommandCancellation(ctx, err)
+	if err != nil {
 		logger.Error("command failed", "command", args[0], "error_type", fmt.Sprintf("%T", err))
 		return withCommandTraceError(trace.TraceID, err)
 	}
 	logger.Info("command completed", "command", args[0])
 	return nil
+}
+
+func withCommandCancellation(ctx context.Context, err error) error {
+	if ctx.Err() != nil && !errors.Is(err, ctx.Err()) {
+		return errors.Join(err, ctx.Err())
+	}
+	return err
 }
 
 func (a *App) commandTraceLogger(ctx context.Context) *slog.Logger {

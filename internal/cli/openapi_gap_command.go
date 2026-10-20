@@ -21,7 +21,7 @@ func (a *App) runContractSearchV2(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: contract-cli contract search-v2 --input-file <path>|--data <json> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func (a *App) runContractField(ctx context.Context, args []string) error {
 			return fmt.Errorf("usage: contract-cli contract field update --input-file <path>|--data <json> [flags]")
 		}
 		options := parseCommandOptions(parsed)
-		body, err := resolveRequiredRawBody(options)
+		body, err := resolveRequiredRawBody(ctx, options)
 		if err != nil {
 			return err
 		}
@@ -168,7 +168,7 @@ func (a *App) runContractAuthorization(ctx context.Context, args []string) error
 			return fmt.Errorf("usage: contract-cli contract authorization grant --input-file <path>|--data <json> [flags]")
 		}
 		options := parseCommandOptions(parsed)
-		body, err := resolveRequiredRawBody(options)
+		body, err := resolveRequiredRawBody(ctx, options)
 		if err != nil {
 			return err
 		}
@@ -198,7 +198,7 @@ func (a *App) runContractEsign(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: contract-cli contract esign %s --input-file <path>|--data <json> [flags]", args[0])
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (a *App) runContractShareBatchCreate(ctx context.Context, args []string) er
 		return fmt.Errorf("usage: contract-cli contract share batch-create --input-file <path>|--data <json> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -269,7 +269,7 @@ func (a *App) runContractCooperationSearch(ctx context.Context, args []string) e
 		return fmt.Errorf("usage: contract-cli contract cooperation search --input-file <path>|--data <json> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -320,7 +320,7 @@ func (a *App) runMDMFixedExchangeRate(ctx context.Context, args []string) error 
 			return fmt.Errorf("usage: contract-cli mdm fixed-exchange-rate update --input-file <path>|--data <json> [flags]")
 		}
 		options := parseCommandOptions(parsed)
-		body, err := resolveRequiredRawBody(options)
+		body, err := resolveRequiredRawBody(ctx, options)
 		if err != nil {
 			return err
 		}
@@ -358,7 +358,7 @@ func (a *App) runMDMVendorUpdate(ctx context.Context, args []string) error {
 	if err := requireMDMWriteUserID("mdm vendor update", options); err != nil {
 		return err
 	}
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -429,7 +429,7 @@ func (a *App) runMDMLegalCreate(ctx context.Context, args []string) error {
 	if err := requireMDMWriteUserID("mdm legal create", options); err != nil {
 		return err
 	}
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -455,7 +455,7 @@ func (a *App) runMDMLegalUpdate(ctx context.Context, args []string) error {
 	if err := requireMDMWriteUserID("mdm legal update", options); err != nil {
 		return err
 	}
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -636,7 +636,7 @@ func (a *App) runRuleTablePublish(ctx context.Context, action string, args []str
 		return fmt.Errorf("usage: contract-cli rule table %s --product-id <id> --group-id <id> --table-id <id> [flags]", action)
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRawBody(options)
+	body, err := resolveRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -714,7 +714,7 @@ func (a *App) runRuleTableRowCreate(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: contract-cli rule table row create --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -795,7 +795,7 @@ func (a *App) runRuleTableRowSearch(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: contract-cli rule table row search --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -827,7 +827,7 @@ func (a *App) runRuleTableRowUpdate(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: contract-cli rule table row update <row-id> --product-id <id> --group-id <id> --table-id <id> --input-file <path>|--data <json> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
