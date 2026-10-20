@@ -1,5 +1,11 @@
 # AI 变更记录
 
+- 2026-10-20
+  变更摘要：同步 GitHub release@f6da3c0 到 GitLab master/blue 的准备分支。
+  涉及文件/模块：release 全量基线及本变更记录。
+  关键逻辑/决策：保留 master 历史记录；业务文件与 release 一致，不合入 contract-handover。
+  验证：相对 release 仅变更本记录；不修改 Go 源码、依赖或构建配置。
+
 - 2026-10-14
   变更摘要：在原文档分支合并 GitHub 最新 release，解决 PR #20 的 README 冲突。
   涉及文件/模块：README.md、docs/ai-changes.md；相对 release 未修改 Go 代码、Skill 或发布配置。
@@ -92,6 +98,12 @@
   关键逻辑/决策：按客户场景暴露已发布能力，核对 user/app、审查/审批、搜索及矩阵边界；更新授权说明。
   交付边界：独立分支，仅本地 Markdown；不回写飞书，不修改运行代码或全局 skills。
   验证：Release 源码构建、命令帮助与 16 个 Skill 清单核对、相关已有测试及独立文案复核通过。
+- 2026-09-28
+  变更摘要：将 GitHub qfeius/contract-cli 的 release 同步到 GitLab contract/contract-cli 的 master，保留原始提交历史。
+  涉及文件/模块：release 全量 CLI 源码、Skills、构建脚本、测试与文档；本次仅额外追加此同步记录。
+  关键逻辑/决策：从 master@af53662 建隔离同步分支，merge release@b3a86ad；不混入 test-agent 的测试环境与打包修复。
+  验证：go test ./... 与 Node 安装器 5 项测试通过；业务源码与 GitHub release 逐文件一致。
+  lint：golangci-lint run --enable=exhaustive ./... 检出源分支既有 8 项问题，用户明确要求本次不修复，原样同步。
 
 - 2026-09-23
   变更摘要：当前分支移除 test/blue 环境运行能力，源码与本地预发布包统一只支持 prod。
