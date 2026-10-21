@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -120,8 +121,11 @@ func TestHandoverRuntimeReusesSearchWithoutDevelopmentInstructions(t *testing.T)
 		if development.Match(raw) {
 			t.Errorf("runtime resource contains development-stage instructions: %s", path)
 		}
-		if bytes.Contains(raw, []byte("/es/search/contractList")) || bytes.Contains(raw, []byte("searchAfter")) {
-			t.Errorf("handover must delegate search instead of duplicating its wire protocol: %s", path)
+		if bytes.Contains(raw, []byte("/es/search/contractList")) && path != "contract-handover/references/assembly-lookup.md" {
+			t.Errorf("only the bounded assembly lookup recipe may define Web search: %s", path)
+		}
+		if bytes.Contains(raw, []byte("searchAfter")) {
+			t.Errorf("handover must delegate general search pagination: %s", path)
 		}
 		return nil
 	})
@@ -137,5 +141,30 @@ func TestHandoverRuntimeReusesSearchWithoutDevelopmentInstructions(t *testing.T)
 	}
 	if _, err := contractskills.FS.ReadFile("contract-cli-contract-search/SKILL.md"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestHandoverAssemblyLookupHasBoundedNumberOnlyRequest(t *testing.T) {
+	raw, err := contractskills.FS.ReadFile("contract-handover/references/assembly-lookup.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(raw, []byte("POST /open-web/web/clm/es/search/contractList")) {
+		t.Fatal("verified parent lookup endpoint missing")
+	}
+	blocks := regexp.MustCompile("(?s)```json\\s*\\n(.*?)\\n```").FindAllSubmatch(raw, -1)
+	if len(blocks) != 1 {
+		t.Fatalf("want one complete number-only lookup request, got %d", len(blocks))
+	}
+	const expected = `{"conditionUnits":[],"filterUnits":[{"searchField":"CONTRACT_NUMBER_FIELD","searchValue":"CG-DEMO-01","unionType":"MUST"}],"order":"DESC","pageIndex":0,"pageSize":10,"searchTabCode":0,"sortType":"SUBMITTED_TIME","withStatistics":false}`
+	var actual, wanted any
+	if err := json.Unmarshal(blocks[0][1], &actual); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(expected), &wanted); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(actual, wanted) {
+		t.Fatal("lookup must be a bounded contract-number query without identity overrides")
 	}
 }
