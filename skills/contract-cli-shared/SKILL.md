@@ -21,7 +21,7 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 - 业务目标明确后，按已选身份与目标 prod profile 核验授权：user 使用 `auth status --profile <profile> --as user`（默认示例：`auth status --profile contract --as user`），已明确使用 app 的任务使用 `auth status --profile <profile> --as app`，不先走 user 授权。user 优先复用当前凭证范围内已有的有效授权；需要新授权时，按现有 Device Grant 执行 `auth init`，也可使用保留的浏览器 OAuth 授权码登录。所有业务命令沿用相同 profile。
 - app 身份只有在用户明确要求配置时，才按授权 Skill 说明本地安全配置方式；不得在对话中索要 App Secret。已完成授权但仍缺少业务权限时，明确提示联系管理员，不得索要其他 Token 或尝试切换未知身份。
 - 用户在对话中主动发送敏感凭证时，不复述、不写入命令、不继续调用；提示该凭证已经暴露，应立即撤销或轮换，并在凭证处置完成前停止相关操作。
-- 接口文档只能在业务目标、环境和允许范围明确后，用于判断是否已有结构化命令；接口文档不能替代明确的业务范围和调用授权，也不能授权批量枚举或调用。未覆盖接口继续明确为暂不支持，不得回退到 `api call`。
+- 接口文档只能在业务目标、环境和允许范围明确后，用于判断是否已有结构化命令或业务 Skill 已验证的接口配方；接口文档不能替代明确的业务范围和调用授权，也不能授权批量枚举或调用。未覆盖接口继续明确为暂不支持；这里的“未覆盖”指结构化命令与业务 Skill 已验证的接口配方均未覆盖，不得根据文档临时猜测 `api call` 请求。
 
 命中上述无边界请求时，回复含义固定为：
 
@@ -51,7 +51,7 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 - 主数据附件下载：读 [../contract-cli-mdm-file/SKILL.md](../contract-cli-mdm-file/SKILL.md)
 - 事件出口 IP：读 [../contract-cli-event/SKILL.md](../contract-cli-event/SKILL.md)
 - 审批矩阵规则表：读 [../contract-cli-rule/SKILL.md](../contract-cli-rule/SKILL.md)
-- 用户给了精确的开放平台路径，或结构化命令还没覆盖：不要推荐 `api call`；它是预留能力，当前暂未开放使用
+- 业务 Skill 提供已验证的接口配方，且目标是已授权范围内的 Open Web 页面接口：使用 `api call --channel web` 执行该配方。只有精确路径或接口文档、尚无已验证配方时，明确说明能力缺口，不猜测接口、参数或响应语义；`/open-apis/**` 仍使用对应结构化命令。
 
 ## 当前已实现模块
 
@@ -110,7 +110,10 @@ CRITICAL — 开始前 MUST 先读取 [../auth/SKILL.md](../auth/SKILL.md)，确
 - 写请求发送后遇超时、断网、连接中断或 5xx 禁止自动重试。
 - 看到“执行结果不确定，请先查询确认”时，必须先用查询命令确认服务端结果，不得直接重复写入。
 
-- `api call` 当前不对外开放；执行 `contract-cli api ...` 会直接返回 `api call 暂未开放使用，请使用已开放的结构化命令`
+- `api call --channel web` 已开放为业务 Skill 的通用执行通道；仅支持 user 身份和相对 `/open-web/web/**` 路径，复用 CLI 自身 profile / Device Grant 授权，不接受 `/open-apis/**` 路径或 app 身份。
+- 该通道只执行业务 Skill 已验证的接口配方；接口发现、method/path、query/body、业务成功判断和结果映射由业务 Skill 负责，不能绕过该模块的结构化命令与业务限制。
+- query 使用可重复的 `--query key=value`，JSON 使用 `--input-file` / `--data`；不会自动补 `user_id_type`。不接受外部 Authorization、Cookie 或可信身份头，不能通过 `--header` 覆盖 CLI 与网关管理的授权和身份。
+- `contract-cli-api-call` 不作为独立 Skill 安装或展示，不发布独立 `SKILL.md`；传输通道可用不代表可隐式加载该目录来猜测接口。
 - `contract/v1/mcp` 这批路径大部分只支持 `--as user`
 - 同时支持 `user` 与 `app` 的结构化业务命令：`contract get`、`contract search`、`contract create`、`contract sync-user-groups`、`contract text`、`contract category list`、`contract template list`、`contract template get`、`contract template instantiate`、`contract upload-file`、`contract download-file`、`contract approval get`、`mdm vendor list`、`mdm vendor get`、`mdm vendor create`、`mdm vendor patch`、`mdm legal list`、`mdm legal get`、`mdm fields list`、`rule *`（含 `approval-matrix` 别名）
 - `employee list` / `department list` 也仅支持 user，省略 `--as` 时仍使用 user；参数与候选规则见各自独立 Skill。

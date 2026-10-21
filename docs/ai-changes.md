@@ -1,3 +1,11 @@
+## 2026-10-21 — 清理 api call 关闭状态的遗留文案
+- 摘要：修正矩阵帮助、共享/搜索/字段/矩阵 Skill、开发指南及测试文档中已失效的关闭提示。
+- 文件：internal/cli/approval_matrix_structure.go、api_call_copy_test.go、相关 skills 与 docs。
+- 决策：按现有实现说明仅开放 user + /open-web/web/**；保留已验证配方、结构化命令、授权及非独立 Skill 边界。
+- 测试：先复现 20 个矩阵命令及别名的错误提示，再修正文案；覆盖 9 份当前文档及共享调用限制。
+- 验证：TMPDIR=/private/tmp 下全量 Go race/coverage 测试通过，CLI 覆盖率 81.9%；exhaustive lint 0 issues；Node 回归 17 通过、1 项既有跳过。
+- 说明：默认 macOS 临时目录别名会触发现有安装用例路径比较失败；使用真实目录重跑通过，保留历史变更记录。
+
 ## 2026-10-21 — 准备 GitHub release 整分支同步
 - 摘要：按用户确认，将协商查询、合同交接 Skill、Open Web 通道及历史版本语义修正一起准备为 GitHub PR。
 - 来源：基于 qfeius/contract-cli release@f6da3c0 建隔离分支，merge 功能开发分支@87761e9，保留原提交历史。
