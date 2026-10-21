@@ -1,3 +1,26 @@
+## 2026-10-21 — 准备 GitHub 合同组编号定位 PR
+- 摘要：将交接 Skill 按编号自动定位父组及完整成员核对提交到 GitHub release。
+- 来源：基于 github/release@fdce78e 创建独立分支，merge codex/contract-negotiation-skill@35acb05，保留提交历史。
+- 范围：9 个 Skill、验证和说明文件；不包含 CLI 业务实现、后端、版本号或安装包二进制。
+- 决策：唯一冲突为变更记录，按时间保留双方条目；GitHub 已发布的共享调用说明继续保留。
+- 验证：合入后全量 Go 测试通过，exhaustive lint 0 issues；Skill 格式、9 个文件范围及交付文档一致性检查通过。
+
+## 2026-10-21 — 交接 Skill 按编号自动定位父组
+- 摘要：仅提供合同编号时，按已验证 Web 分组查询自动取得父行 contractId，核对父组与完整成员后继续交接预检。
+- 文件：交接 Skill 及新增 assembly-lookup.md、安装说明、离线场景和交接包回归测试。
+- 决策：一般搜索仍委托搜索 Skill；新增唯一有界编号定位配方，保留精确匹配、长 ID、歧义、权限和整组确认规则。
+- 验证：生产只读按父编号定位并核对 3 份成员合同，成员编号与零命中正常；配方回归先红后绿，全量 Go 测试及 exhaustive lint（0 issues）通过。
+- 复核：10 个离线场景独立复核无阻断；交付包 35 处引用、全部文件指纹与脱敏检查通过。
+- 交付：重打 group-flow.2 Skill 包；CLI/后端业务代码不变，不提交交接，不覆盖本机已安装 Skill。
+
+## 2026-10-21 — 合同组交接 Skill 独立交付包
+- 摘要：补充可信父组 ID 直接进入组流程，使用父组详情与完整成员列表预检、回查。
+- 文件：contract-handover 的 SKILL.md、contracts.md、assemblies.md、transport.md，离线行为场景及产品安装说明。
+- 决策：组成员完整详情不再是已知父组流程前置；补明确管理员角色及审批中准入，缺父组 ID 不猜 group_id。
+- 分发：仅打包交接 Skill 与安装说明，依赖正式 CLI 1.9.8 配套公共及搜索 Skill；不含生产数据或凭证。
+- 验证：5 个离线合成场景、独立复核、格式与 4 项交接回归通过；隔离安装后 28 处引用解析、ZIP 指纹及脱敏检查通过。
+- 范围：不修改 CLI/后端、不发布 npm、不提交交接，也不覆盖本机正式安装的 Skill。
+
 ## 2026-10-21 — 清理 api call 关闭状态的遗留文案
 - 摘要：修正矩阵帮助、共享/搜索/字段/矩阵 Skill、开发指南及测试文档中已失效的关闭提示。
 - 文件：internal/cli/approval_matrix_structure.go、api_call_copy_test.go、相关 skills 与 docs。
