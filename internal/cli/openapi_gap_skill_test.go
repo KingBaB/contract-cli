@@ -256,7 +256,7 @@ func TestContractSkillRoutingDoesNotCollapseCooperationCommandsToGet(t *testing.
 	}
 	for _, required := range []string{
 		"想查分享、批量分享、协商链接/记录：用 `contract share ...`、`contract share batch-create`、`contract cooperation link get` 或 `contract cooperation record get --as app`",
-		"想查协商列表或协商文件：用 `contract cooperation search`、`contract cooperation file get` 或 `contract cooperation file download --as app`",
+		"想查个人协商列表、详情或历史文件：使用 [contract-cooperation](../contract-cooperation/SKILL.md)，显式传 `--as user`；app 查询列表或文件使用 `contract cooperation search --as app`、`contract cooperation file get` 或 `contract cooperation file download --as app`",
 	} {
 		if !strings.Contains(skill, required) {
 			t.Fatalf("contract skill missing precise cooperation routing %q", required)

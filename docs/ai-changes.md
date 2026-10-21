@@ -1,3 +1,72 @@
+## 2026-10-21 — 仅补协商 Skill：多人合并与确认人数
+- 摘要：多个发起人逐人查询，独立翻页，按协商 ID 合并去重；补齐确认人数展示。
+- 文件：contract-cooperation/SKILL.md、4 份参数/展示附录（含新增 multi-creator-search.md）、README 与验证报告。
+- 决策：复用单值 create_user_id 和 user MCP；共同条件不变，不增加数组参数或统一分页 token。
+- 边界：补重复人员、同名协商、长 ID、字段冲突、缺 ID、部分失败/403 与分页异常规则。
+- 范围：CLI Go 源码及 MCP DTO 前后哈希一致；两组需后端支持的确认筛选暂不动。
+- 验证：独立基线与更新后行为试用；7 组主场景 25 次生产 MCP 搜索，Firefox 单选并集/状态/人数一致。
+- 回归：CLI/Skill 包测试、Skill 格式及 16 项安装脚本检查通过；临时安装文件与源码核对一致。
+
+## 2026-10-21 — 纠正协商通道，撤回页面接口依赖
+- 摘要：协商搜索、详情与历史文件统一使用原定 user MCP 接口，移除新增页面搜索通道。
+- 文件：cooperation_user_command.go、openapi_gap_command.go、help.go、协商 Skill、README 与验证报告。
+- 删除：cooperation_web_search/input/command_test.go 及页面参数附录；保留项目既有通用 Open Web 能力。
+- 决策：前端仅作筛选语义和展示依据；未知 MCP 字段仍在请求前拒绝，不静默忽略或换通道。
+- 缺口：两组确认条件与发起人多选待 MCP 服务端和开放 ID 转换扩展；历史页面验证不计为 MCP 覆盖。
+- 验证：先失败再修复；全量 Go 测试、exhaustive lint（0 issues）、Skill 校验与 16 项安装测试通过。
+
+## 2026-10-21 — 补齐页面确认筛选与发起人多选
+- 摘要：新增 cooperation search --channel web，使用现有 user Open Web 通道调用页面搜索。
+- 文件：cooperation_web_search/input/command_test.go、help.go、openapi_gap_command.go、协商 Skill 与 README。
+- 决策：原 MCP/app 保持兼容；显式 Web 模式与内部 ID、页面分页协议分离，不自动回退。
+- 能力：confirm_process_status_codes、confirmable_status_codes、create_employee_ids 多选及部门内部 ID。
+- 校验：先失败再实现，覆盖枚举、长 ID、重复值、分页窗口、身份与 success=false 失败。
+- 联调：13 项生产只读搜索通过，Firefox 确认类筛选/组合条件一致，双发起人为两次单选结果并集。
+- 纠正：页面当前发起人控件是单选，数组结构不代表 UI 多选；未修改前端或部署后端。
+- 验证：全量 Go、exhaustive lint 0 issues、Skill 校验与安装引用通过；未更新旧交付包或推送代码。
+
+## 2026-10-21 — 协商筛选 Firefox 与 CLI 逐项对照
+- 摘要：依据前端定义验证截图筛选，使用生产 user 授权及 Firefox 页面进行只读对照。
+- 结果：状态、类型、日期、发起人、部门、角色筛选样本一致；补充全部可见角色正例。
+- 缺口：确认流程进度、我是否可确认未进入当前 MCP/CLI；5 个选项均在 CLI 请求前拒绝。
+- 关键：抽屉待我确认 4 条与顶部待我确认/定稿 3 条不同，禁止近似替换；多发起人仅页面支持。
+- 文件：contract-cooperation/SKILL.md、references/filter-coverage.md、docs/cooperation-skill-filter-validation-20261021.md。
+- 边界：未保存视图或修改业务数据，页面恢复我的协商全部；空结果缺正例的项明确保留限制。
+
+## 2026-10-21 — 协商 Skill 状态展示对齐页面
+- 摘要：用户展示优先采用前端协商状态标签，CLI 原始 JSON 和搜索语义不变。
+- 文件：contract-cooperation 的 SKILL.md、response-fields.md、search-parameters.md。
+- 依据：前端 CoopContractStatusTag 的 LEGAL_COOP_INFO 与 CooperationStatus；用户提供生产页面截图。
+- 规则：原始状态 3/6 均展示协商完成；0/5 待发起协商；其余按页面映射，未知值回退原始名称。
+- 验证：8 个映射核对；生产我的协商 4 条（协商中 3、协商完成 1），车钥匙原文件与截图一致。
+- 验证：生产待我确认 3 条均协商中；Skill 校验与安装引用测试通过；未修改业务数据。
+
+## 2026-10-21 — 协商视角与完成状态筛选联调
+- 环境：prod / contract / user，只读；验证我发起、待我确认、完成分组及我的完成分组。
+- 结果：我发起 0 条；待我确认 3 条且均协商中，均无后续页。
+- 完成分组：首屏 20 条（协商完成 1、已结束 19），仍有后续页；我的完成分组 1 条已结束。
+- 发现：请求 CooperationQueryStatus 与响应 CooperationStatus 不同；搜索 4 映射返回 3/6，源码与生产一致。
+- 文件：contract-cooperation 的 SKILL.md、search-parameters.md、response-fields.md，补齐状态枚举与视角规则。
+- 限制：我发起缺少正例；完成分组只验首屏，不宣称已遍历全部；没有修改业务数据。
+
+## 2026-10-21 — 协商 Skill 生产只读联调
+- 环境：prod / contract / user，复用已有 Device 授权，不修改默认 profile。
+- 验证：我的协商搜索、token 翻页、单条详情、历史文件默认及排除当前版本，共 5 次请求均 code=0。
+- 结果：两页各 2 条、无交集，末页 has_more=false；详情关联 ID 一致、当前轮次文件 2 项。
+- 历史：默认返回 1 个文件项，排除当前版本后为空；history 与 confirmed_file_list 为嵌套数组。
+- 文件：skills/contract-cooperation/SKILL.md、references/response-fields.md。
+- 边界：未下载文件、未发起审查、未写业务数据；生产拒权场景未主动制造，仍由模拟测试覆盖。
+
+## 2026-10-21 — 个人协商查询命令与 contract-cooperation Skill
+- 摘要：新增 user 协商详情、历史版本文件查询，扩展协商搜索的 user 分支。
+- 模块：internal/cli/cooperation_*、contract_command、openapi_gap_command、review_reference、help。
+- 决策：搜索沿用显式或 profile 默认身份；app 原接口不变；详情与历史文件固定 user。
+- 兼容：review cooperation get 保留原入口并共享详情请求，固定 user_id/open_department_id。
+- 校验：搜索字段类型、分页/枚举/日期范围；禁止调用人覆盖，响应长 ID 保持精度，业务错误返回失败。
+- Skill：skills/contract-cooperation，补齐共享路由、参数附录和 README；不下载或发起审查。
+- 测试：先失败再实现，覆盖 user/app 路由、权限拒绝不重试、历史参数及真实技能安装/引用。
+- 验证：全量 Go 测试、16 项 Node 测试、Skill 校验通过；golangci-lint exhaustive 为 0 issues。
+
 # AI 变更记录
 
 - 2026-10-20

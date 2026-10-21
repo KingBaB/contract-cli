@@ -903,3 +903,21 @@ contract-cli contract search --help
 合同交接使用内置 `contract-handover` Skill：复用已有合同搜索、核对同环境和内部 ID、说明影响并确认后交接，再逐份回查。参数见 [交接 Skill](skills/contract-handover/SKILL.md)。
 
 通用入口为 `contract-cli api call --channel web <METHOD> <PATH>`，仅支持 user 身份与 `/open-web/web/**` 相对路径。沿用当前已授权 profile，query 使用 `--query`，JSON 使用 `--input-file`。不允许自带 Authorization、Cookie 或身份覆盖头；通用入口不替代结构化命令的业务规则。当前环境支持范围不因此改变。
+
+
+### 个人协商查询（user）
+
+个人协商查询使用 `contract-cooperation` Skill。以下命令以已确认的生产 profile `contract` 为例；环境由 profile 决定，不在命令中覆盖域名。
+
+```bash
+contract-cli contract cooperation search --input-file cooperation-search.json --profile contract --as user --output json
+contract-cli contract cooperation get --cooperation-id 123 --profile contract --as user --output json
+contract-cli contract cooperation history-files list --cooperation-id 123 --include-current-version=false --profile contract --as user --output json
+```
+
+搜索请求体字段见 [个人协商搜索参数](skills/contract-cooperation/references/search-parameters.md)。搜索每次只返回一页，默认 10 条、最大 20 条；首次省略 page_token，继续时原样回传响应值。详情和历史文件只支持 user，历史文件默认包含当前版本。
+
+`contract cooperation search --as app` 保留原接口与请求体；搜索省略身份时沿用 profile 默认身份。`review cooperation get` 保留兼容，智能审查 Skill 的调用方式不变。合同 ID、协商 ID 与文件 ID 不可互换。
+
+
+多个发起人由 Skill [逐人查询后合并去重](skills/contract-cooperation/references/multi-creator-search.md)，保留共同筛选、分别翻页，以协商 ID 去重；没有新增 CLI 数组参数或统一分页 token。确认人数按返回值展示。按“全部节点已确认”及“我是否可确认”筛选仍待 MCP 服务端支持，详见 [筛选覆盖与缺口](skills/contract-cooperation/references/filter-coverage.md)。
