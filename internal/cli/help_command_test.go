@@ -214,6 +214,17 @@ func TestHelpRequestsRenderExpectedTopics(t *testing.T) {
 			},
 		},
 		{
+			name: "cooperation history explains current round filtering",
+			args: []string{"contract", "cooperation", "history-files", "list", "--help"},
+			contains: []string{
+				"--include-current-version[=true|false]",
+				"是否包含当前未完成协商轮次的版本，默认 true",
+				"仅在未发起（0）或协商中（2）时排除当前轮次",
+				"协商完成（3）或已结束（6）仍可返回最终版",
+			},
+			notContains: []string{"是否包含当前版本，默认 true；排除时传 =false"},
+		},
+		{
 			name: "approval matrix import plan help",
 			args: []string{"rule", "table", "import", "plan", "--help"},
 			contains: []string{

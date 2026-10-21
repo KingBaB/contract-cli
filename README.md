@@ -915,7 +915,7 @@ contract-cli contract cooperation get --cooperation-id 123 --profile contract --
 contract-cli contract cooperation history-files list --cooperation-id 123 --include-current-version=false --profile contract --as user --output json
 ```
 
-搜索请求体字段见 [个人协商搜索参数](skills/contract-cooperation/references/search-parameters.md)。搜索每次只返回一页，默认 10 条、最大 20 条；首次省略 page_token，继续时原样回传响应值。详情和历史文件只支持 user，历史文件默认包含当前版本。
+搜索请求体字段见 [个人协商搜索参数](skills/contract-cooperation/references/search-parameters.md)。搜索每次只返回一页，默认 10 条、最大 20 条；首次省略 page_token，继续时原样回传响应值。详情和历史文件只支持 user，历史文件默认包含当前未完成协商轮次的版本。`--include-current-version=false` 仅在未发起（0）或协商中（2）时排除当前轮次；协商完成（3）或已结束（6）仍可返回最终版。文件分组、`latest_version` 和版本计数见 [历史文件响应说明](skills/contract-cooperation/references/response-fields.md)。
 
 `contract cooperation search --as app` 保留原接口与请求体；搜索省略身份时沿用 profile 默认身份。`review cooperation get` 保留兼容，智能审查 Skill 的调用方式不变。合同 ID、协商 ID 与文件 ID 不可互换。
 

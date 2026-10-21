@@ -1,3 +1,11 @@
+## 2026-10-21 — 历史文件当前轮次筛选说明纠正
+- 摘要：修正协商 Skill、响应附录、CLI 帮助和 README 对 include_current_version=false 的解释。
+- 决策：仅原始协商状态 0/2 排除当前轮次；已完成或已结束仍可返回最终版，参数透传和后端逻辑不变。
+- 展示：latest_version 表示返回文件组的最高版本；顶层与 history 的同一文件只计一次，确认留痕独立展示。
+- 测试：帮助输出回归先红后绿；新增 false 保留最终版及嵌套版本的响应回归，完整 Go 测试通过。
+- 验证：exhaustive lint 0 issues，6 项 Node Skill 检查及官方格式校验通过；独立静态三场景行为验证符合预期。
+- 范围：仅在 codex/contract-negotiation-skill 本地修改；不推送、不更新 blue 集成分支或 MR。
+
 ## 2026-10-21 — 本地 1.9.9 安装验收修复 Skill 版本改写
 - 摘要：隔离试装发现安装器会误改 metadata.version；版本写入仅匹配顶层 YAML 字段。
 - 文件：internal/skillsync/transaction.go、transaction_version_test.go。
