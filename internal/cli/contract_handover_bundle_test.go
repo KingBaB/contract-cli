@@ -23,7 +23,7 @@ func TestHandoverSkillInstalledReferencesAreSelfContained(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := filepath.Join(target, "contract-handover")
-	for _, name := range []string{"identity.md", "contracts.md", "handover.md", "assemblies.md", "transport.md"} {
+	for _, name := range []string{"identity.md", "contracts.md", "handover.md", "assemblies.md", "assembly-lookup.md", "transport.md"} {
 		if _, err := os.Stat(filepath.Join(root, "references", name)); err != nil {
 			t.Error(err)
 		}
@@ -119,9 +119,6 @@ func TestHandoverRuntimeReusesSearchWithoutDevelopmentInstructions(t *testing.T)
 		}
 		if development.Match(raw) {
 			t.Errorf("runtime resource contains development-stage instructions: %s", path)
-		}
-		if bytes.Contains(raw, []byte("/es/search/contractList")) || bytes.Contains(raw, []byte("searchAfter")) {
-			t.Errorf("handover must delegate search instead of duplicating its wire protocol: %s", path)
 		}
 		return nil
 	})

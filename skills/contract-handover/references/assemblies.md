@@ -4,6 +4,8 @@
 
 参数表约定见 [调用参数约定](transport.md)；业务类型码与 ID 选择见 [资源类型](resource-types.md)。
 
+先按 [父组 ID 定位](assembly-lookup.md) 使用已核父组入口或成员的真实 assemblyId；缺少映射时只读补齐。已确认组成员的状态和角色从本节 childrenInfo 取得，不强制调用普通 contract/info。父组详情的 contractAssemblyId 必须与定位 ID 一致；原选成员须在完整成员列表中按 contractId 精确匹配，且其 assemblyId 指向该父组。ID、类型或关系矛盾时停止，不换父组继续。
+
 ## 父合同组详情与回查
 
 `GET /open-web/web/clm/contractAssembly/info`
