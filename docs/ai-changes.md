@@ -1,3 +1,11 @@
+## 2026-10-21 — 本地 1.9.9 安装验收修复 Skill 版本改写
+- 摘要：隔离试装发现安装器会误改 metadata.version；版本写入仅匹配顶层 YAML 字段。
+- 文件：internal/skillsync/transaction.go、transaction_version_test.go。
+- 决策：保留嵌套元数据、描述块和正文，只新增或替换顶层安装版本；不改后端。
+- 测试：先复现失败，再修复；覆盖元数据前后顺序、描述块、顶层空白及实际安装流程。
+- 验证：全量 Go 测试、exhaustive lint（0 issues）及安装脚本回归通过；独立复核无阻断项。
+- 打包：基于协商分支构建本地 1.9.9，使用隔离 staging，不修改仓库 package.json 或发布 npm。
+
 ## 2026-10-21 — 仅补协商 Skill：多人合并与确认人数
 - 摘要：多个发起人逐人查询，独立翻页，按协商 ID 合并去重；补齐确认人数展示。
 - 文件：contract-cooperation/SKILL.md、4 份参数/展示附录（含新增 multi-creator-search.md）、README 与验证报告。
