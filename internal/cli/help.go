@@ -1052,13 +1052,16 @@ func addContractHelp(registry map[string]helpTopic) {
 			"走 GET /open-apis/contract/v1/contracts/{contract_id}/share_records。",
 		},
 	}
+	addUserCooperationHelp(registry)
 	registry["contract cooperation"] = helpTopic{
 		Name:  "contract cooperation",
 		Usage: []string{"contract-cli contract cooperation <resource> <subcommand> [flags]"},
 		Commands: []helpCommand{
 			{"contract-cli contract cooperation link get <contract-id> [flags]", "app 身份查询合同协商邀请链接"},
 			{"contract-cli contract cooperation record get <contract-id> [flags]", "app 身份查询合同协商操作记录"},
-			{"contract-cli contract cooperation search [flags]", "app 身份查询协商列表"},
+			{"contract-cli contract cooperation search [flags]", "user/app 身份查询各自可见的协商列表"},
+			{"contract-cli contract cooperation get --cooperation-id <id> [flags]", "user 身份查询协商详情"},
+			{"contract-cli contract cooperation history-files list --cooperation-id <id> [flags]", "user 身份查询历史版本文件"},
 			{"contract-cli contract cooperation file get <contract-id> [flags]", "app 身份查询合同协商文件信息"},
 			{"contract-cli contract cooperation file download <file-id> [flags]", "app 身份下载合同协商文件"},
 		},
@@ -1091,16 +1094,18 @@ func addContractHelp(registry map[string]helpTopic) {
 	}
 	registry["contract cooperation search"] = helpTopic{
 		Name:    "contract cooperation search",
-		Summary: "app 身份查询协商列表，请求体必须是 JSON。",
+		Summary: "user/app 身份查询协商列表；按显式 --as 或 profile 默认身份选择接口，请求体必须是 JSON。",
 		Usage:   []string{"contract-cli contract cooperation search --input-file <path>|--data <json> [flags]"},
 		Flags:   concatHelpFlags(openPlatformCommonFlags(), jsonBodyFlags()),
 		Examples: []string{
 			"contract-cli contract cooperation search --profile contract --as app --input-file cooperation-search.json",
+			"contract-cli contract cooperation search --profile contract --as user --input-file cooperation-search.json",
 		},
 		Notes: []string{
-			"app-only: 当前仅支持 --as app。",
-			"走 POST /open-apis/contract/v1/cooperation/search。",
-			"最小 body 需要包含 user_id。",
+			"app-only 接口：--as app 走 POST /open-apis/contract/v1/cooperation/search，原请求体保持不变。",
+			"--as user 走 POST /open-apis/contract/v1/mcp/cooperations/search，page_size 默认 10、最大 20；不能传 user_id。",
+			"未传 --as 时沿用 profile 默认身份；不自动切换身份。",
+			"MCP 返回 user_id/open_department_id；分页时原样传回 page_token，每次只取一页。",
 		},
 	}
 	registry["contract cooperation file"] = helpTopic{
