@@ -1,5 +1,7 @@
 # 已选合同父组定位修复与验证
 
+> 历史验证记录：2026-10-22 同步 GitHub 1.9.9 后，运行规则以 `skills/contract-handover/references/assembly-lookup.md` 为准；下文保留旧配方的研发证据。
+
 日期：2026-10-21。基线：contract-cli `codex/contract-handover-business-skill@ca186c01dbd50ce5fdc10b19cfc2aef3eb9c23bf`。
 
 ## 问题与修复边界

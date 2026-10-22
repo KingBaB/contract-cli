@@ -24,9 +24,27 @@
 
 ## 历史文件
 
-顶层文件数组为 `data.history_files`。抽样项包含 `cooperation_file_id`、`cooperation_file_name`、`cooperation_file_type_code`、`version`、`latest_version`、`history`、`confirmed_file_list` 等字段。`history` 和 `confirmed_file_list` 是嵌套数组；不要把 history_files 项数直接说成历史版本总数，也不要把 latest_version 当作其他接口的 latest 布尔字段。
+顶层文件数组为 `data.history_files`。抽样项包含 `cooperation_file_id`、`cooperation_file_name`、`cooperation_file_type_code`、`version`、`latest_version`、`history`、`confirmed_file_list` 等字段。
 
-本次样本默认包含当前版本时 history_files 有 1 项，指定 `--include-current-version=false` 后为空。展示时说明“该协商排除当前版本后没有返回文件”，不能据此推断其他协商也没有历史记录。
+### 当前轮次筛选
+
+`--include-current-version` 透传为 `include_current_version`，默认 true。它控制是否包含当前未完成协商轮次的版本，不是无条件剔除每组文件的最高版本。
+
+| 详情返回的原始协商状态码 | 传 false 时的行为 |
+|---|---|
+| 0 未发起、2 协商中 | 排除当前轮次的文件版本，保留符合条件的旧轮次版本 |
+| 1 无需协商、3 协商完成、4 协商已取消、5 协商回滚、6 已结束、7 已拒绝 | 不执行上述当前轮次过滤，仍可能返回最终版 |
+
+需要解释筛选差异时，以协商详情的原始 `cooperation_status_code` 核对状态；不从页面合并后的状态标签、`latest_version` 或文件名推断。状态缺失或未知时，不猜测适用哪一行。
+
+2026-10-21 的协商中（2）样本在默认参数下返回 1 个文件组，传 false 后为空；另一已结束（6）样本的 true/false 均返回同一 V1.0 最终版，生产日志确认后端收到 false。两者均符合上述规则。空结果只表示该协商在本次过滤后没有返回文件，不推断其他协商没有历史记录。
+
+### 文件分组与版本计数
+
+- 顶层每项代表一个文件版本分组，`history` 包含该组返回的版本，也包含顶层代表项自身。同一 `cooperation_file_id` 在顶层与 `history` 出现时，统计为一个版本，不重复相加。
+- `latest_version=true` 标记该文件组返回版本中的最高版本，不保证属于整个协商的当前轮次。即使当前轮次被排除，旧轮次的最高版本仍可带 true；不能据此判定筛选失败。
+- `confirmed_file_list` 是确认留痕列表，与主文件版本分别展示，不计为额外的主文件版本。不要把顶层项数当作版本总数；嵌套版本信息不完整时，说明本次可确认的范围。
+- 版本号取 `version` 字段，文件名中的版本文字不作为系统版本号。只返回 V1.0 最终版时，如实展示本次返回内容，不仅凭筛选前后相同就报告历史缺失，也不补造更早版本。
 
 HTTP/业务权限拒绝场景由模拟测试验证，本次没有主动访问未授权对象或读取文件正文。
 

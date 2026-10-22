@@ -48,7 +48,7 @@ contract-cli contract cooperation get --cooperation-id <协商ID> --profile <pro
 contract-cli contract cooperation history-files list --cooperation-id <协商ID> --profile <profile> --as user --output json
 ```
 
-默认包含当前版本；仅需历史版本时加 `--include-current-version=false`。按实际版本和文件信息整理结果，不根据列表顺序推断最新版本，不把历史版本当作当前主合同；本命令不下载文件。
+默认包含当前未完成协商轮次的版本；`--include-current-version=false` 仅在原始协商状态为未发起（0）或协商中（2）时排除当前轮次。协商完成（3）、已结束（6）等其他状态仍可能返回最终版，不能仅凭 `latest_version=true` 或返回同一文件判定参数未生效。按实际版本和文件信息整理结果，不根据列表顺序推断最新版本，不把历史版本当作当前主合同；本命令不下载文件。
 
 整理结果前读取 [响应字段、确认人数与页面状态映射](references/response-fields.md)。协商总体状态按页面映射展示，优先于接口原始名称，返回码 3、6 均展示“协商完成”；未知码回退原始名称。确认人数使用返回的已确认人数与总人数展示“0/1 人已确认”，不据此推断全部节点已确认或当前用户能否确认。CLI JSON 保留原始字段。历史文件的嵌套 `history`、确认留痕列表与顶层文件项分别处理，不用顶层项数代替版本总数。
 
