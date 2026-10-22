@@ -1,3 +1,11 @@
+## 2026-10-22 — blue 分支按 profile 地址选择服务
+- 摘要：基于 upstream/blue@bbacad3 取消 prod 固定域名绑定，保留 HTTPS、资源及授权端点同源校验。
+- 实现：复用 config add、OAuth/Device 授权与查询；增加 test 预设及业务/授权地址覆盖，关键地址变化清理旧身份。
+- 隔离：普通凭证记录目标指纹；Device 复用地址快照，无来源绑定的旧凭证要求重新授权；原生 Mac Keychain 按 profile 清理。
+- 网络：业务与授权限制同源重定向，资源发现提前核对账号地址，签名下载继续复用独立的现有安全策略。
+- 资料：同步帮助、auth/shared/summary Skills 与简短使用说明；不改 Harness、不发布安装包。
+- 验证：TDD 用例及全部 Go 测试通过；安装器/Skill/打包测试通过，exhaustive lint 为 0；按用户要求不继续本机真实授权和查询。
+
 ## 2026-10-22 — 同步 GitHub 1.9.9 到 GitLab blue
 - 摘要：同步正式 release 的协商历史文件语义、交接编号定位与帮助文案修正。
 - 来源：从 upstream/blue@e226709 建集成分支，merge github/release@238ab3e（v1.9.9），保留双方提交历史。

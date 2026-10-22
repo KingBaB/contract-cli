@@ -120,7 +120,7 @@ func (a *App) runAuthDeviceInit(ctx context.Context, args []string) error {
 		return err
 	}
 	// 授权链接必须属于 profile 所选环境，防止跨环境登录。
-	_, accountOrigin, _ := environmentOrigins(profile.Environment)
+	_, accountOrigin, _ := profileOrigins(profile)
 	if !isProductionOriginURL(response.VerificationURIComplete, accountOrigin, true) {
 		return productionProfileError(profile.Name)
 	}

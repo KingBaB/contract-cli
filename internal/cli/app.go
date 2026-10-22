@@ -54,6 +54,7 @@ type App struct {
 	store              *config.Store
 	secrets            *config.SecretsStore
 	httpClient         *http.Client
+	fileHTTPClient     *http.Client
 	openBrowser        func(string) error
 	saveFileDialog     func(context.Context, string) (string, error)
 	lookupEnv          func(string) (string, bool)
@@ -125,6 +126,7 @@ func New(options Options) *App {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
+	fileHTTPClient := httpClient
 	httpClient = withProductionNetworkGuard(httpClient, logger)
 	opener := options.OpenBrowser
 	if opener == nil {
@@ -163,6 +165,7 @@ func New(options Options) *App {
 		store:              store,
 		secrets:            secrets,
 		httpClient:         httpClient,
+		fileHTTPClient:     fileHTTPClient,
 		openBrowser:        opener,
 		saveFileDialog:     saveFileDialog,
 		lookupEnv:          lookupEnv,
@@ -302,12 +305,15 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	var protectedResourceURL string
 	var redirectURL string
 	var scopes string
+	var openPlatformURL, authorizationMetadataURL string
 
 	flags.StringVar(&env, "env", "prod", "environment preset")
 	flags.StringVar(&profileName, "name", defaultProfileName, "profile name")
 	flags.StringVar(&protectedResourceURL, "resource-metadata-url", "", "override protected resource metadata URL")
 	flags.StringVar(&redirectURL, "redirect-url", "", "OAuth redirect URL")
 	flags.StringVar(&scopes, "scope", "", "space-separated OAuth scopes")
+	flags.StringVar(&openPlatformURL, "open-platform-base-url", "", "override API base URL and Resource")
+	flags.StringVar(&authorizationMetadataURL, "authorization-server-metadata-url", "", "override trusted authorization metadata URL")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -317,6 +323,20 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	if err != nil {
 		a.logger.Error("resolve environment failed", "environment", env, "error", err.Error())
 		return err
+	}
+	if openPlatformURL != "" {
+		preset.OpenPlatformBaseURL = strings.TrimRight(strings.TrimSpace(openPlatformURL), "/")
+		preset.Resource = preset.OpenPlatformBaseURL
+		preset.AppTokenEndpoint = preset.OpenPlatformBaseURL + "/open-apis/auth/v3/tenant_access_token/internal"
+	}
+	if authorizationMetadataURL != "" {
+		preset.AuthorizationServerMetadataURL = strings.TrimSpace(authorizationMetadataURL)
+	}
+	openOrigin, accountOrigin, valid := profileOrigins(config.Profile{Environment: env,
+		OpenPlatformBaseURL: preset.OpenPlatformBaseURL, AuthorizationServerMetadataURL: preset.AuthorizationServerMetadataURL})
+	if !valid || !isExactEnvironmentResource(preset.OpenPlatformBaseURL, openOrigin) {
+		a.logger.Error("config add rejected invalid target addresses", "profile", profileName)
+		return productionProfileError(profileName)
 	}
 
 	existing, found, err := a.store.LookupProfile(profileName)
@@ -336,10 +356,9 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	if protectedResourceURL == "" {
 		protectedResourceURL = preset.ProtectedResourceMetadataURL
 	}
-	openOrigin, _, _ := environmentOrigins(env)
 	if protectedResourceURL != "" && !isProductionOriginURL(protectedResourceURL, openOrigin, true) {
 		err := productionProfileError(profileName)
-		a.logger.Error("config add rejected non-production metadata url", "profile", profileName, "error", err.Error())
+		a.logger.Error("config add rejected mismatched metadata url", "profile", profileName, "error", err.Error())
 		return err
 	}
 	if redirectURL == "" {
@@ -353,7 +372,7 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	var discovery *oauth.DiscoveryResult
 	switch {
 	case protectedResourceURL != "":
-		discovery, err = oauth.Discover(ctx, a.httpClient, a.logger, protectedResourceURL)
+		discovery, err = oauth.Discover(ctx, a.httpClient, a.logger, protectedResourceURL, preset.AuthorizationServerMetadataURL)
 		if err != nil {
 			a.logger.Error("config add discover failed", "profile", profileName, "protected_resource_url", protectedResourceURL, "error", err.Error())
 			return err
@@ -367,6 +386,9 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	default:
 		return fmt.Errorf("environment %q is missing oauth discovery defaults", env)
 	}
+	if !isProductionOriginURL(discovery.AuthorizationServerMetadataURL, accountOrigin, true) {
+		return productionProfileError(profileName)
+	}
 
 	profile := config.Profile{
 		Name:                           profileName,
@@ -374,7 +396,7 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 		OpenPlatformBaseURL:            preset.OpenPlatformBaseURL,
 		AppTokenEndpoint:               preset.AppTokenEndpoint,
 		ProtectedResourceMetadataURL:   protectedResourceURL,
-		AuthorizationServerMetadataURL: discovery.AuthorizationServerMetadataURL,
+		AuthorizationServerMetadataURL: preset.AuthorizationServerMetadataURL,
 		Resource:                       discovery.ProtectedResource.Resource,
 		Scopes:                         scopeList,
 		BusinessType:                   preset.BusinessType,
@@ -394,13 +416,21 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	profile.Identities.User.DeviceClientID = preset.DeviceClientID
 	profile.Identities.User.DeviceScope = preset.DeviceScope
 	profile.Identities.User.RedirectURL = redirectURL
+	if found {
+		resetAuthentication = resetAuthentication || config.CredentialTargetBinding(existing) != config.CredentialTargetBinding(profile)
+	}
 	if err := validateProductionProfile(profile); err != nil {
-		a.logger.Error("reject discovered non-production profile", "profile", profileName, "error", err.Error())
+		a.logger.Error("reject inconsistent discovered profile", "profile", profileName, "error", err.Error())
 		return err
 	}
 	if resetAuthentication {
+		profile.Identities.User.Token = nil
+		profile.Identities.User.ClientID = ""
+		profile.Identities.User.AuthMode = ""
+		profile.Identities.App = config.AppIdentity{}
+		profile.DefaultIdentity = config.IdentityUser
 		if err := a.clearProfileAuthenticationState(profileName); err != nil {
-			return fmt.Errorf("clear non-production authentication state for profile %q: %w", profileName, err)
+			return fmt.Errorf("clear authentication state for changed profile %q: %w", profileName, err)
 		}
 	}
 
@@ -628,6 +658,17 @@ func (a *App) providerFor(identity config.IdentityKind) authProvider {
 }
 
 func resolveEnvironment(name string) (environmentPreset, error) {
+	if name == "test" {
+		preset, err := resolveEnvironment(productionEnvironment)
+		if err != nil {
+			return environmentPreset{}, err
+		}
+		preset.OpenPlatformBaseURL = "https://test-open.qtech.cn"
+		preset.Resource = preset.OpenPlatformBaseURL
+		preset.AppTokenEndpoint = preset.OpenPlatformBaseURL + "/open-apis/auth/v3/tenant_access_token/internal"
+		preset.AuthorizationServerMetadataURL = "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract"
+		return preset, nil
+	}
 	switch name {
 	case productionEnvironment:
 		return environmentPreset{
@@ -644,7 +685,7 @@ func resolveEnvironment(name string) (environmentPreset, error) {
 			DeviceScope:                    "contract:full contract-review:full",
 		}, nil
 	default:
-		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod", name)
+		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod, test", name)
 	}
 }
 

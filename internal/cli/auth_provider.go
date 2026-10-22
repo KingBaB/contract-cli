@@ -147,6 +147,7 @@ func (p userAuthProvider) Login(ctx context.Context, profile *config.Profile, op
 	}
 
 	user.Token = token
+	profile.CredentialBinding = config.CredentialTargetBinding(*profile)
 	p.logger.Info("user auth login completed", "profile", profile.Name)
 
 	var builder strings.Builder
@@ -236,6 +237,7 @@ func (p appAuthProvider) Login(ctx context.Context, profile *config.Profile, opt
 		ConfiguredAt: time.Now().UTC(),
 		Token:        nil,
 	}
+	profile.CredentialBinding = config.CredentialTargetBinding(*profile)
 	p.logger.Info("app credentials saved", "profile", profile.Name, "source", credentials.source)
 
 	p.logger.Info("app token exchange started", "profile", profile.Name, "token_endpoint", profile.AppTokenEndpoint)

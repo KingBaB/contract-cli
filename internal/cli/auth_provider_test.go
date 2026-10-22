@@ -265,6 +265,9 @@ func TestUserAuthLoginRegistersClientEveryTime(t *testing.T) {
 					if profile.Identities.User.Token == nil || profile.Identities.User.Token.AccessToken != "test-token" {
 						t.Fatal("login token was not updated")
 					}
+					if profileCredentialBinding(t, profile) == "" {
+						t.Fatal("successful OAuth login must bind the credential target")
+					}
 				}
 			})
 		}
