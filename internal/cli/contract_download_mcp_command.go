@@ -209,7 +209,9 @@ func (a *App) downloadSignedContractFile(ctx context.Context, rawURL string, exp
 	if err != nil {
 		return fmt.Errorf("build signed file download request: %w", err)
 	}
-	downloadClient := signedDownloadHTTPClient(a.httpClient)
+	// Signed downloads carry no CLI credentials and retain their separate HTTPS
+	// redirect policy, including cross-host CDN redirects and header stripping.
+	downloadClient := signedDownloadHTTPClient(a.fileHTTPClient)
 	response, err := downloadClient.Do(request)
 	if err != nil {
 		a.logger.Error("signed contract file download failed", "host", parsedURL.Hostname(), "error_type", fmt.Sprintf("%T", err))

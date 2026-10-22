@@ -107,26 +107,48 @@ contract-cli --version
 
 ### 2. 初始化本地 profile
 
-当前源码构建仅支持 `prod`，默认 profile 为 `contract`；其他环境会在发请求前被拒绝，旧环境的同名 profile 重新配置时会清理旧认证，避免复用凭据。prod API 地址为 `https://open.qfei.cn`、账号地址为 `https://myaccount.qfei.cn`。
+当前源码构建提供 `prod` 和 `test` 地址预设，首次默认 prod，默认 profile 为 `contract`。实际访问目标由 profile 中的业务与授权地址决定；profile 名和 `environment` 标签不决定请求域名。服务地址须为 HTTPS，Resource 与业务基址匹配，授权端点与授权元数据同源；同名 profile 的关键地址变化会清理旧认证并要求重新授权。
 
-若需验证 npm 包构建流程，可生成独立的本地预发布包；版本中的 `-test` 只是包标记，运行时仅支持 `prod`，也不发布到 npm：
+| 预设 | 业务与 Resource 地址 | 账号地址 |
+| --- | --- | --- |
+| prod | `https://open.qfei.cn` | `https://myaccount.qfei.cn` |
+| test | `https://test-open.qtech.cn` | `https://test-myaccount.qtech.cn` |
+
+若需验证 npm 包构建流程，可生成独立的本地预发布包；版本中的 `-test` 只是包标记，不决定目标环境，也不发布到 npm。将下方版本占位替换为本次预发布版本：
 
 ```bash
-VERSION=1.8.4-test.20260923.6 bash scripts/build-test-package.sh
+VERSION='X.Y.Z-test.<修订号>' bash scripts/build-test-package.sh
 ```
 
-历史联调包可能仍含 test/blue 等旧环境能力，请通过新构建的 `config add --help` 核对当前能力。审批矩阵的 user/app 双身份和规则 OpenAPI 命令保持不变；真实环境验证仍需对应后端及网关配置，见 [双身份接入说明](docs/approval-matrix-user-app-auth.md)。不要在对话中发送 Token 或 App Secret。
+已安装版本的能力可能不同，请通过实际可执行程序的 `config add --help` 核对。审批矩阵的 user/app 双身份和规则 OpenAPI 命令保持不变；真实环境验证仍需对应后端及网关配置，见 [双身份接入说明](docs/approval-matrix-user-app-auth.md)。不要在对话中发送 Token 或 App Secret。
 
-首次使用前，需要在本机初始化一个 profile。本文统一使用 `contract` 作为示例名称，客户可以按项目名称自行调整。
+首次使用前，需要在本机初始化一个 profile。本文多数命令使用 `contract` 作为生产预设示例；所有后续命令必须替换为本任务实际选定的 profile，不自动切换地址。
 
 ```text
 contract-cli config add --env prod --name contract
 contract-cli auth status --profile contract --as user
 ```
 
+测试预设使用独立 profile；后续授权和业务调用都显式传入 `--profile contract-test`：
+
+```text
+contract-cli config add --env test --name contract-test
+contract-cli auth status --profile contract-test --as user
+```
+
+也可保留 `--env prod`，显式指定测试地址，profile 名可自定；此处使用独立名称以保留生产配置：
+
+```text
+contract-cli config add --env prod --name contract-test \
+  --open-platform-base-url https://test-open.qtech.cn \
+  --authorization-server-metadata-url https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract
+```
+
+`--open-platform-base-url` 同时设置 Resource 和 app token 地址；`--authorization-server-metadata-url` 是授权端点同源校验的依据。配置完成后，授权和查询都沿用选定的 profile。
+
 | 参数 | 含义 | 示例值 |
 | --- | --- | --- |
-| `--env` | 目标环境 | `prod` |
+| `--env` | 默认地址预设 | `prod`、`test` |
 | `--name` | 本机 profile 名称 | `contract` |
 | `--profile` | 后续命令指定使用的 profile | `contract` |
 
@@ -187,7 +209,7 @@ contract-cli auth login --profile contract --as app --app-id <app_id> --app-secr
 contract-cli auth status --profile contract --as app
 ```
 
-正式包默认使用 `contract` profile 和 `prod` 环境；CLI 不会使用历史非生产 profile 发起授权或业务请求，也不会把旧凭据迁入 prod。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
+默认使用 `contract` profile 和 `prod` 地址预设；自定义目标以 profile 中的实际地址为准，不同目标地址的凭据不能迁移或复用。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
 
 也可以通过环境变量提供应用凭证：
 
@@ -802,14 +824,7 @@ contract-cli --version
 
 ### 提示 `profile "contract" not found` 怎么办？
 
-说明还没有初始化本地 profile。执行：
-
-```text
-contract-cli config add --env prod --name contract
-
-
-
-```
+先核对 CLI 使用的配置目录和 profile 名称，再按前文“初始化本地 profile”配置本任务已确认的目标地址。不要因为 profile 缺失而自动切换到生产预设或覆盖其他地址的配置。
 
 ### 提示未授权怎么办？
 
