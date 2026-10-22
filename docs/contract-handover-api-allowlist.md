@@ -8,7 +8,7 @@
 | GET | `/open-web/web/clm/permission/function/list` | `/clm/api/permission/function/list` | 读取当前用户功能权限码，不构造管理员或代办身份 |
 | GET | `/open-web/web/clm/employee/findEmployeesByKeywords` | `/clm/api/employee/findEmployeesByKeywords` | 按姓名查找合同接收人候选，展示消歧后选择一个当前内部员工 ID |
 | GET | `/open-web/web/clm/employee/getEmployeesByIds` | `/clm/api/employee/getEmployeesByIds` | 重新读取唯一接收人的当前租户、状态、部门；确认部门实际取第一项 |
-| POST | `/open-web/web/clm/es/search/contractList` | `/clm/api/es/search/contractList` | 仅在已选组对象缺少父组 ID 时按非空编号／名称补齐映射；按原选内部 ID 绑定，不用于重新搜索或扩大交接范围 |
+| POST | `/open-web/web/clm/es/search/contractList` | `/clm/api/es/search/contractList` | 仅在已有完整编号或已选成员缺少父组 ID 时按完整编号补齐映射；核对精确编号及原选内部 ID，不扩大交接范围 |
 | GET | `/open-web/web/clm/contract/info` | `/clm/api/contract/info` | 读取普通处理器资源的当前角色、需求人、部门、状态和关联标识；已确认组成员由父组成员接口分流 |
 | GET | `/open-web/web/clm/contractAssembly/info` | `/clm/api/contractAssembly/info` | 读取合同组/模板多合同本体，取得有效子合同总数及组专用回查字段 |
 | GET | `/open-web/web/clm/contractAssembly/childrenInfo` | `/clm/api/contractAssembly/childrenInfo` | 按父组权限完整分页读取有效成员的身份、状态、当前角色和需求人；不要求成员部门读取或核验 |

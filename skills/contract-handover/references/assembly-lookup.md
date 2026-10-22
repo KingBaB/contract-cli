@@ -1,65 +1,72 @@
-# 补齐已选合同的父组 ID
+# 按合同编号自动定位父组
 
-合同搜索仍由 [合同搜索 Skill](../../contract-cli-contract-search/SKILL.md) 完成。本步骤只补充已选对象的组关系，不重选合同、不重新解释原筛选条件，也不扩大用户选择的范围。
+仅在用户提供合同编号，或已有搜索成员携带编号但缺少真实父组 ID 时使用。一般合同搜索仍委托 [合同搜索 Skill](../../contract-cli-contract-search/SKILL.md)；此处只补充分组关系，不替代原查询、不扩大用户选择，也不提交交接。已有可信父组 ID 时直接读取组接口。
 
-## 先使用已有映射
-
-先核对与交接相同的环境、租户和 user 授权，并保留候选内部 ID、真实业务类型、编号／名称及字段来源。字段名相似或编号相同不证明内部 ID 等价。
-
-- 已确认为父组的 type=10/17 候选：使用其真实内部入口 ID 读取父组详情，不先调普通 contract/info。父组行的 assemblyId 可能为负数占位值，不能覆盖其真实入口 ID。
-- 已确认成员的候选：实际响应中已有语义明确的正十进制 assemblyId／assembly_id 时，直接读取该父组及完整成员，不要求成员先经过普通 contract/info。
-- 已返回 v2.1 Presentation 时，先核对 presentation.schema.id=clm.contract-search-presentation、version=1；通过选中行 row_ref 读取 data.presentation.interaction.entities 中同一实体。核对其 contract_id 或 child_contract_id 与候选内部 ID、business_type_code 一致，再读取 assembly_id。role=PARENT 只表示展示父行，不能据此把 type=11 改成父组类型；无此扩展时不假定它存在，不自行切换响应版本。
-
-type=11 成员缺少父组 ID，或已有明确组上下文却无法从候选取得组关系时，使用下述只读补充查询。不能把普通详情报错本身当成组成员证明。普通合同没有组线索时仍按 [普通详情](contracts.md#普通合同详情与回查) 处理，不为所有合同额外发起本查询。
-
-## 只读补充查询
+## 请求
 
 `POST /open-web/web/clm/es/search/contractList`
 
-通过现有通用 Open Web 通道调用，不绕过网关。参数约定见 [通道说明](transport.md)。只在已有搜索不能提供所需父组映射时使用；搜索服务的业务拒绝、身份／环境不一致不能通过本步骤绕过。
+沿用本次交接的环境、租户和 user 授权。使用 [通道约定](transport.md) 的输入文件调用，不要求用户提供父组 ID、页面链接、Cookie 或 Token。
+
+下面只替换 `searchValue` 为用户完整合同编号或已选成员的原始编号；不要把编号转为数字。
+
+```json
+{
+  "conditionUnits": [],
+  "filterUnits": [
+    {
+      "searchField": "CONTRACT_NUMBER_FIELD",
+      "searchValue": "CG-DEMO-01",
+      "unionType": "MUST"
+    }
+  ],
+  "order": "DESC",
+  "pageIndex": 0,
+  "pageSize": 10,
+  "searchTabCode": 0,
+  "sortType": "SUBMITTED_TIME",
+  "withStatistics": false
+}
+```
 
 | 参数 | 位置 | 类型 | 本流程要求 | 值、来源与限制 |
 |---|---|---|---|---|
-| pageIndex | body | integer | 必须传 | 固定 0；使用游标续查时仍为 0 |
-| pageSize | body | integer | 必须传 | 固定 100 |
-| searchTabCode | body | integer | 必须传 | 沿用本轮已确认的全部合同 0／我的合同 1；上下文不明时先明确范围，不自行扩大 |
-| conditionUnits | body | array&lt;object&gt; | 必须传 | 仅一个非空编号或名称条件，子字段见下表；优先已选候选的完整编号，无编号时使用该候选完整名称 |
-| allConditionUnits | body | boolean | 必须传 | 固定 false，不切到综合关键词模式 |
-| sortType | body | string | 必须传 | 固定 SUBMITTED_TIME |
-| order | body | string | 必须传 | 固定 DESC |
-| withStatistics | body | boolean | 必须传 | 固定 false |
-| searchAfter | body | array（不透明游标） | 续页必须传 | 首轮省略；原样保留前页数组及各项类型，不替换成搜索 Skill 的 page_token |
+| `conditionUnits` | body | array | 必须传 | 固定空数组。 |
+| `filterUnits` | body | array | 必须传 | 固定一个编号条件。 |
+| `filterUnits[0].searchField` | body | string | 必须传 | 固定 `CONTRACT_NUMBER_FIELD`。 |
+| `filterUnits[0].searchValue` | body | string | 必须传 | 用户提供的完整编号；已有成员候选时可用该成员响应中的编号。不得填 groupId 或父组 ID。 |
+| `filterUnits[0].unionType` | body | string | 必须传 | 固定 `MUST`。 |
+| `order` | body | string | 必须传 | 固定 `DESC`。 |
+| `pageIndex` | body | integer | 必须传 | 固定 `0`，仅执行这一页关系定位。 |
+| `pageSize` | body | integer | 必须传 | 固定 `10`，计数单位为搜索分组，不是展开成员数。 |
+| `searchTabCode` | body | integer | 必须传 | 固定 `0`（全部合同中的当前用户可见范围）。不是管理员接口，不扩大权限。 |
+| `sortType` | body | string | 必须传 | 固定 `SUBMITTED_TIME`。 |
+| `withStatistics` | body | boolean | 必须传 | 固定 `false`；不能据此忽略本次返回的分组完整性。 |
 
-| conditionUnits 子字段 | 类型 | 本流程要求 | 值、来源与限制 |
+不补传 tenantId、employeeId、userAuthority 或其他身份、权限字段。不调用管理员搜索，不关闭权限检查。
+
+## 解析与消歧
+
+按 Web 的 `code=200` 且 `success=true` 判断业务成功，再读取以下字段。保留 ID 的全部十进制位；响应 ID 即使编码为 JSON 整数，也不能经过 JavaScript Number。
+
+| 含义 | 路径 | 类型 | 用法 |
 |---|---|---|---|
-| searchField | string | 必须传 | 编号用 CONTRACT_NUMBER_FIELD；仅无编号时名称用 CONTRACT_NAME_FIELD |
-| searchValue | string | 必须传 | 已选候选的完整编号或名称，不使用聚合组 ID，不填空字符串 |
-| unionType | string | 必须传 | 固定 SHOULD；不增加其他条件或 filterUnits |
+| 分组列表 | `$.data.content` | array | 保留父行与成员的分组关系，不能先扁平化丢失父行。 |
+| 命中分组总数 | `$.data.filteredTotalElements` | integer | 本配方只处理 `0..10` 且等于 content 长度的完整一页。 |
+| 分组类型 | `$.data.content[*].groupType` | integer | `1` 表示真实合同组；`0` 的普通合同／版本链不能当成父组。 |
+| 关联标识 | `$.data.content[*].groupId` | string | 关联链标识，不是父组 ID。 |
+| 组内父行与成员 | `$.data.content[*].searchContractListItems` | array | 逐行读取类型、编号和标识。 |
+| 行业务类型 | `…searchContractListItems[*].businessTypeCode` | integer | 父组候选为 `10/17`；不能将 `groupType=1` 当作业务类型。 |
+| 行实体 ID | `…searchContractListItems[*].contractId` | string | 父组行的正 ID 才是父组候选。 |
+| 行父组 ID | `…searchContractListItems[*].assemblyId` | string | 成员应指向父行 contractId；父行可为负哨兵，不读取它作为父组 ID。 |
+| 行编号／名称 | `…searchContractListItems[*].contractNumber` / `contractName` | string | 精确核对编号，展示名称用于业务消歧。 |
 
-以下编号仅展示请求形态，执行前替换为已选候选值，并沿用已确认的 searchTabCode；没有可用编号／名称时说明缺少定位条件，不做无条件枚举：
+1. 搜索可能按编号部分匹配并展开整组，必须逐行比较 `contractNumber` 与本次编号完全相等，不能把同组的其他行当命中。已有用户选定成员时，还须核对其 contractId 与来源上下文一致。
+2. 在同一个 `groupType=1` 分组内确认只有一个类型 `10/17` 的父行，取其 `contractId` 为候选。父编号命中时由该父行定位；成员编号命中时，还要核对命中成员的正 `assemblyId` 等于父行 contractId。多个父行或标识矛盾时停止核对，不取数组第一项，也不以名称或 groupId 推算 ID。
+3. 当前页必须完整：filteredTotalElements 为非负整数、不超过 10，并与 content 长度一致。缺计数、计数矛盾或多于一页时不认定唯一父组，不自行展开深分页或枚举接口；说明需要更精确的完整编号。多个不同父组精确命中时，展示编号、名称等业务候选让用户选择，不要求用户填写内部 ID。
+4. 无精确命中时报告“未找到当前用户可见的对应合同”，不能用部分匹配项继续。只命中普通合同则按普通详情流程处理，不能制造父组。父行缺失、类型未知或成员关系矛盾时保留定位缺口，不用 groupId 或负哨兵补值。
+5. 得到唯一父组候选后，继续 [父组及完整成员核对](assemblies.md#父组定位与读取入口)：父组 info 的 contractAssemblyId、类型和可用编号与候选一致；命中成员必须存在于完整成员集合，所有成员 assemblyId 指向该父组。父编号还要与 info 的 contractAssemblyNumber 一致。
 
-```json
-{"pageIndex":0,"pageSize":100,"searchTabCode":0,"conditionUnits":[{"searchField":"CONTRACT_NUMBER_FIELD","searchValue":"CG-EXAMPLE-1017","unionType":"SHOULD"}],"allConditionUnits":false,"sortType":"SUBMITTED_TIME","order":"DESC","withStatistics":false}
-```
+搜索分组中的成员不是完整有效成员清单，不能据此省略 childrenInfo 分页与父组前后 childrenCount 核对，也不直接从搜索旧角色生成写请求。
 
-仅在 HTTP／通道成功且下游 code=200、success=true 后读取响应；POST 在这里是查询，不是交接写入。
-
-| 响应字段 | 类型 | 用途 |
-|---|---|---|
-| $.data.content[*].searchContractListItems[*].contractId | string（内部 ID） | 与已选候选内部 ID 精确绑定 |
-| 同一条目的 contractNumber／contractName | string | 核对选中对象的编号／名称；模糊命中不形成新选择 |
-| 同一条目的 businessTypeCode | integer | 核对实际成员／父组类型，不用其他条目的类型拼接 |
-| 同一条目的 assemblyId | string，可为空或占位值 | 成员的真实正 ID 才能作为父组 ID；父组自身的占位值不使用 |
-| $.data.content[*].groupId | string，可为空 | 搜索聚合组标识，不作为 contractAssemblyId 或写入 parentId |
-| $.data.searchAfter | array，可为空 | 尚未找到选中对象时按原游标续查 |
-| $.data.filteredTotalElements | integer，可为空 | 聚合组计数，不能当作成员总数 |
-
-## 绑定后再读取父组
-
-1. 在 searchContractListItems 中按已选内部 ID 精确匹配，并核对已有类型、编号／名称。无关条目不纳入本次清单；不能只凭相同编号／名称、第一条结果或同一外层 groupId 选父组。
-2. 对匹配的 type=11 成员，取该条目正十进制 assemblyId；type=0 且实际有正 assemblyId 也按组成员处理。成员返回的 0、null、负值、缺失或冲突不能推导父组 ID，不能改传 businessTypeCode 尝试交接。
-3. 对已核实的 type=10/17 父组条目，取该条目的真实 contractId 作为 contractAssemblyId，不取该行的占位 assemblyId。同一内部 ID 出现矛盾映射时停止；搜索结果不直接生成 resourceList。
-4. 按 [合同组](assemblies.md) 读取父组详情，要求 data.contractAssemblyId 与定位 ID 一致，类型确为 10/17。再完整读取 childrenInfo，确认原选成员 contractId 及其 assemblyId 属于该父组；不要求该成员调用普通详情。父组或成员不匹配时停止，不能把另一父组纳入用户选择。
-5. 匹配关系确认后才说明整组影响，按原规则取得用户对父组及全部成员范围的确认。搜索元数据不能代替父组／成员的当前角色、状态、权限和写后回查。type=17 仍须按自身当前权限与条件核实，不能沿用其他类型的成功结论。
-
-本查询只为选中对象补齐映射，找到后即可通过父组和成员接口核实，不声称查全原搜索结果。未命中时保留条件、页签和排序，按真实 searchAfter 续查；空末页、无有效续页游标、重复游标或窗口限制仍未找到则报告未定位。禁止改成无条件搜索、请求用户手抄内部 ID，或用搜索聚合组 ID 猜测父组。接口不可路由、权限拒绝或关键字段缺失时报告具体缺口，不发起交接写入。
+成员完整详情发生非权限错误（含 110002、110302）时，可走本条已验证的关系定位，不重复请求失败的成员详情。HTTP／业务 401、403 或明确权限拒绝时停止，不用分组定位绕过权限。查询失败不换身份或环境重试；交接请求已发送后的未决结果，只能按原清单回查，不能重新搜索后再提交。

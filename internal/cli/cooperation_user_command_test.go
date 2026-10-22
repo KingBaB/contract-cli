@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -114,6 +115,34 @@ func TestUserCooperationInvalidInputsBeforeHTTP(t *testing.T) {
 				t.Fatal("invalid input accepted")
 			}
 		})
+	}
+}
+
+func TestUserCooperationHistoryFalsePreservesReturnedFinalVersion(t *testing.T) {
+	want := `{"code":0,"data":{"history_files":[{"cooperation_file_id":"9007199254740993","version":"V1.0","latest_version":true,"history":[{"cooperation_file_id":"9007199254740993","version":"V1.0","latest_version":true}]}]}}`
+	calls := 0
+	app, out := alignmentApp(t, func(request *http.Request) string {
+		calls++
+		if request.URL.Query().Get("include_current_version") != "false" {
+			t.Fatal(request.URL)
+		}
+		return want
+	})
+	args := []string{"contract", "cooperation", "history-files", "list", "--cooperation-id", "123", "--include-current-version=false"}
+	if err := app.Run(context.Background(), args); err != nil {
+		t.Fatal(err)
+	}
+	var got, expected struct {
+		Data any `json:"data"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(want), &expected); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 || !reflect.DeepEqual(got.Data, expected.Data) {
+		t.Fatalf("calls=%d got=%+v want=%+v", calls, got.Data, expected.Data)
 	}
 }
 
