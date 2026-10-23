@@ -28,7 +28,12 @@ func commandRequestsJSON(args []string, options commandLogOptions) bool {
 }
 
 func (a *App) renderJSONCommandResult(data any) error {
-	return output.NewRenderer(a.stdout).WithNotice(a.updateNotice).Render(output.FormatJSON, map[string]any{
+	if a.commandContext != nil {
+		if err := a.commandContext.Err(); err != nil {
+			return err
+		}
+	}
+	return output.NewRenderer(commandResultWriter{ctx: a.commandContext, writer: a.stdout}).WithNotice(a.updateNotice).Render(output.FormatJSON, map[string]any{
 		"ok": true, "data": data,
 	})
 }

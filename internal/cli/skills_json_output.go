@@ -121,7 +121,11 @@ func (a *App) renderSkillsJSONInstall(ctx context.Context, service *skillsync.Se
 	if err := skillInstallationCancellation(ctx, result); err != nil {
 		return err
 	}
-	return a.renderJSONCommandResult(payload)
+	err := a.renderJSONCommandResult(payload)
+	if err != nil && ctx.Err() != nil {
+		return errors.Join(err, skillInstallationCancellation(ctx, result))
+	}
+	return err
 }
 
 func skillJSONFailure(err error, service *skillsync.Service, target string) error {

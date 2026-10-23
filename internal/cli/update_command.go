@@ -26,7 +26,9 @@ func (a *App) runUpdate(ctx context.Context, args []string) error {
 	}
 }
 
-func (a *App) runUpdateCheck(ctx context.Context, args []string) error {
+func (a *App) runUpdateCheck(ctx context.Context, args []string) (err error) {
+	var outcome *localCommandOutcome
+	defer func() { err = withCompletedLocalCommand(ctx, err, outcome) }()
 	parsed, err := parseArgs(args, map[string]struct{}{
 		"--channel": {},
 		"--output":  {},
@@ -48,16 +50,24 @@ func (a *App) runUpdateCheck(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if !result.Skipped {
 		if err := updatecheck.SaveCache(a.updateCachePath(), updatecheck.CacheFromResult(result)); err != nil {
 			a.logger.Warn("save update check cache failed", "path", a.updateCachePath(), "error", err.Error())
+		} else {
+			outcome = &localCommandOutcome{Operation: "update check", Result: map[string]any{"cache_saved": true, "current_version": result.CurrentVersion, "latest_version": result.LatestVersion}}
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 
 	if jsonOutput || parsed.Bool("--json") {
-		return output.NewRenderer(a.stdout).Render(output.FormatJSON, updateCheckJSON(result))
+		return output.NewRenderer(commandResultWriter{ctx: ctx, writer: a.stdout}).Render(output.FormatJSON, updateCheckJSON(result))
 	}
-	return writeUpdateCheckText(a.stdout, result)
+	return writeUpdateCheckText(commandResultWriter{ctx: ctx, writer: a.stdout}, result)
 }
 
 func updateCheckJSON(result updatecheck.Result) map[string]any {
@@ -112,9 +122,11 @@ type anyWriter interface {
 	Write([]byte) (int, error)
 }
 
-func (a *App) maybePrepareUpdateNotice(ctx context.Context, args []string) {
+func (a *App) maybePrepareUpdateNotice(ctx context.Context, args []string) (err error) {
+	var outcome *localCommandOutcome
+	defer func() { err = withCompletedLocalCommand(ctx, err, outcome) }()
 	if !a.shouldAutoCheckUpdate(args) {
-		return
+		return nil
 	}
 
 	currentVersion := a.currentUpdateVersion()
@@ -129,7 +141,7 @@ func (a *App) maybePrepareUpdateNotice(ctx context.Context, args []string) {
 			if notice := updatecheck.NoticeFromCache(cache, currentVersion, updatecheck.DefaultPackageName); notice != nil {
 				a.updateNotice = map[string]any{"update": notice.Map()}
 			}
-			return
+			return nil
 		}
 	}
 
@@ -139,18 +151,27 @@ func (a *App) maybePrepareUpdateNotice(ctx context.Context, args []string) {
 	result, err := a.checkUpdateWithLogger(checkCtx, "", nil)
 	if err != nil {
 		a.logger.Debug("automatic update check failed", "error", err.Error())
-		return
+		if ctx.Err() != nil {
+			return withCommandCancellation(ctx, err)
+		}
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	if result.Skipped {
-		return
+		return nil
 	}
 	if err := updatecheck.SaveCache(a.updateCachePath(), updatecheck.CacheFromResult(result)); err != nil {
 		a.logger.Warn("save update check cache failed", "path", a.updateCachePath(), "error", err.Error())
+	} else {
+		outcome = &localCommandOutcome{Operation: "automatic update check", Result: map[string]any{"cache_saved": true, "current_version": result.CurrentVersion, "latest_version": result.LatestVersion}}
 	}
 	a.updateNotice = nil
 	if notice := updatecheck.NoticeFromResult(result); notice != nil {
 		a.updateNotice = map[string]any{"update": notice.Map()}
 	}
+	return ctx.Err()
 }
 
 func (a *App) shouldAutoCheckUpdate(args []string) bool {

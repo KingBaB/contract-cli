@@ -915,6 +915,10 @@ contract-cli update check --output json
 
 新支持的成功结果在 stdout 输出一个 `{"ok":true,"data":{...}}` JSON 对象；`update check` 为兼容已有脚本，继续使用原 `--json` 的顶层字段。失败或取消时 stdout 为空，错误写 stderr；开启 `--debug` 时 stderr 为 JSONL。`auth login` 需要手动打开授权链接时，在 stderr 输出 `authorization_required` JSON 事件，`authorization_url` 为授权链接。`skills install` 的 JSON 失败结果将 CLI 信息、登记位置、恢复状态和建议放入 `error.details`，成功结果包含安装项、跳过项和登记情况。Token 和 App Secret 不写入结果。
 
+管理命令在保存及成功输出前检查取消，并在实际 stdout 写入前再次检查，避免输出 `ok:true` 后又报告取消。写入开始前取消保留旧配置、凭据和更新缓存；已完成的提交通过 `error.details.state=committed`、`operation` 和安全的 `result` 摘要说明实绩。App Secret 已落盘时会完成配套 Profile 保存，Device Token 已确认撤销时会完成本地清理；这些必要收尾不额外切换默认身份或输出成功。普通 App 登录失败仍保留既有的凭据保存行为，Secret 存储错误会在 Token exchange 后发现。Skill 继续使用其原有 `recovery/installation` 详情结构。
+
+取消为协作式检查，不能撤回已经开始写入 stdout 的字节；脚本应同时检查退出码和 stderr。版本命令及其别名收到取消时也退出 130。
+
 ## 参考
 
 | 类型 | 信息 |

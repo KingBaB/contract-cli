@@ -248,7 +248,7 @@ func (a *App) Run(ctx context.Context, args []string) error {
 
 	switch args[0] {
 	case "version", "--version", "-version", "-v":
-		return a.runVersion(args[1:])
+		return withCommandCancellation(ctx, a.runVersion(ctx, args[1:]))
 	}
 
 	if isBusinessCommand(args[0]) {
@@ -263,7 +263,9 @@ func (a *App) runCommand(ctx context.Context, args []string) error {
 	if args[0] == "environment" {
 		return a.runEnvironment(ctx, args[1:])
 	}
-	a.maybePrepareUpdateNotice(ctx, args)
+	if err := a.maybePrepareUpdateNotice(ctx, args); err != nil {
+		return err
+	}
 	// 更新检查可失败降级；命令本身已取消时，不再开始后续认证或本地写入。
 	if err := ctx.Err(); err != nil {
 		return err
@@ -324,7 +326,9 @@ func (a *App) runConfig(ctx context.Context, args []string) error {
 runConfigAdd 按指定环境发现并保存配置，切换环境时清理原有认证以免串用。
 入参 ctx（context.Context）为请求上下文，args（[]string）为命令参数；返回 error。
 */
-func (a *App) runConfigAdd(ctx context.Context, args []string) error {
+func (a *App) runConfigAdd(ctx context.Context, args []string) (err error) {
+	var outcome *localCommandOutcome
+	defer func() { err = withCompletedLocalCommand(ctx, err, outcome) }()
 	a.logger.Info("config add started")
 
 	flags := flag.NewFlagSet("config add", flag.ContinueOnError)
@@ -408,6 +412,9 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	default:
 		return fmt.Errorf("environment %q is missing oauth discovery defaults", env)
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	profile := config.Profile{
 		Name:                           profileName,
@@ -439,15 +446,25 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 		a.logger.Error("reject discovered non-production profile", "profile", profileName, "error", err.Error())
 		return err
 	}
+	a.logger.Info("save profile", "profile", profileName, "environment", env)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if resetAuthentication {
-		if err := a.clearProfileAuthenticationState(profileName); err != nil {
+		if err := a.clearProfileAuthenticationState(ctx, profileName); err != nil {
 			return fmt.Errorf("clear non-production authentication state for profile %q: %w", profileName, err)
 		}
+		outcome = &localCommandOutcome{Operation: "config add", Result: map[string]any{"profile": profileName, "authentication_reset": true, "profile_saved": false}}
 	}
-
-	a.logger.Info("save profile", "profile", profileName, "environment", env)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := a.store.UpsertProfile(profile, true); err != nil {
 		a.logger.Error("save profile failed", "profile", profileName, "error", err.Error())
+		return err
+	}
+	outcome = &localCommandOutcome{Operation: "config add", Result: map[string]any{"profile": profileName, "environment": env, "authentication_reset": resetAuthentication, "profile_saved": true}}
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 
@@ -479,13 +496,15 @@ func (a *App) runAuth(ctx context.Context, args []string) error {
 	case "logout":
 		return a.runAuthLogout(ctx, args[1:])
 	case "use":
-		return a.runAuthUse(args[1:])
+		return a.runAuthUse(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown auth subcommand %q", args[0])
 	}
 }
 
-func (a *App) runAuthLogin(ctx context.Context, args []string) error {
+func (a *App) runAuthLogin(ctx context.Context, args []string) (err error) {
+	var outcome *localCommandOutcome
+	defer func() { err = withCompletedLocalCommand(ctx, err, outcome) }()
 	flags := flag.NewFlagSet("auth login", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	outputFormat := registerJSONOutputFlag(flags)
@@ -525,6 +544,9 @@ func (a *App) runAuthLogin(ctx context.Context, args []string) error {
 	}
 
 	a.logger.Info("auth login started", "profile", profile.Name, "identity", identity)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	message, err := a.providerFor(identity).Login(ctx, &profile, authCommandOptions{
 		Identity:      identity,
 		ProfileName:   profile.Name,
@@ -534,19 +556,38 @@ func (a *App) runAuthLogin(ctx context.Context, args []string) error {
 		AppSecret:     appSecret,
 		JSONOutput:    jsonOutput,
 	})
+	var committed *appCredentialsCommittedError
+	credentialsSaved := identity == config.IdentityApp && (err == nil || errors.As(err, &committed))
+	if credentialsSaved {
+		outcome = &localCommandOutcome{Operation: "auth login", Result: map[string]any{"profile": profile.Name, "identity": identity, "credentials_saved": true, "profile_saved": false}}
+	}
 	if err != nil {
-		if identity == config.IdentityApp {
+		if identity == config.IdentityApp && (credentialsSaved || ctx.Err() == nil) {
+			// A successful Secret write starts the local credential commit.
+			// Finish its matching profile even if cancellation arrived meanwhile.
 			if saveErr := a.store.SaveProfile(profile); saveErr != nil {
 				a.logger.Error("auth login failed while saving app profile", "profile", profile.Name, "identity", identity, "error", saveErr.Error())
 				return saveErr
 			}
+			outcome = &localCommandOutcome{Operation: "auth login", Result: map[string]any{"profile": profile.Name, "identity": identity, "credentials_saved": credentialsSaved, "profile_saved": true, "default_identity": defaultIdentity(profile)}}
 		}
 		a.logger.Error("auth login failed", "profile", profile.Name, "identity", identity, "error", err.Error())
-		return err
+		return withCommandCancellation(ctx, err)
 	}
 
-	profile.DefaultIdentity = identity
+	if !credentialsSaved {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+	}
+	if ctx.Err() == nil {
+		profile.DefaultIdentity = identity
+	}
 	if err := a.store.SaveProfile(profile); err != nil {
+		return err
+	}
+	outcome = &localCommandOutcome{Operation: "auth login", Result: map[string]any{"profile": profile.Name, "identity": identity, "credentials_saved": credentialsSaved, "profile_saved": true, "default_identity": defaultIdentity(profile)}}
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 
@@ -614,7 +655,9 @@ func (a *App) runAuthStatus(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (a *App) runAuthLogout(ctx context.Context, args []string) error {
+func (a *App) runAuthLogout(ctx context.Context, args []string) (err error) {
+	var outcome *localCommandOutcome
+	defer func() { err = withCompletedLocalCommand(ctx, err, outcome) }()
 	flags := flag.NewFlagSet("auth logout", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	outputFormat := registerJSONOutputFlag(flags)
@@ -647,6 +690,9 @@ func (a *App) runAuthLogout(ctx context.Context, args []string) error {
 	var message string
 	if identity == config.IdentityUser && profile.Identities.User.AuthMode == config.UserAuthModeDevice {
 		message, err = a.deviceAuthLogout(ctx, profile)
+		if err == nil {
+			outcome = &localCommandOutcome{Operation: "auth logout", Result: map[string]any{"profile": profile.Name, "identity": identity, "device_credentials_cleared": true}}
+		}
 	} else {
 		message, err = a.providerFor(identity).Logout(ctx, &profile, authCommandOptions{
 			Identity:    identity,
@@ -656,10 +702,17 @@ func (a *App) runAuthLogout(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := a.store.SaveProfile(profile); err != nil {
 		return err
 	}
+	outcome = &localCommandOutcome{Operation: "auth logout", Result: map[string]any{"profile": profile.Name, "identity": identity, "token_cleared": true, "profile_saved": true}}
 	a.logger.Info("auth logout completed", "profile", profile.Name, "identity", identity)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if jsonOutput {
 		return a.renderJSONCommandResult(authCommandJSONResult(profile, identity, authStatusView{}, message))
 	}
@@ -667,7 +720,9 @@ func (a *App) runAuthLogout(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (a *App) runAuthUse(args []string) error {
+func (a *App) runAuthUse(ctx context.Context, args []string) (err error) {
+	var outcome *localCommandOutcome
+	defer func() { err = withCompletedLocalCommand(ctx, err, outcome) }()
 	flags := flag.NewFlagSet("auth use", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	outputFormat := registerJSONOutputFlag(flags)
@@ -697,11 +752,18 @@ func (a *App) runAuthUse(args []string) error {
 		return err
 	}
 	profile.DefaultIdentity = identity
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := a.store.SaveProfile(profile); err != nil {
 		return err
 	}
+	outcome = &localCommandOutcome{Operation: "auth use", Result: map[string]any{"profile": profile.Name, "default_identity": identity, "profile_saved": true}}
 
 	a.logger.Info("default identity switched", "profile", profile.Name, "identity", identity)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if jsonOutput {
 		message := fmt.Sprintf("Default identity for profile %q set to %s.", profile.Name, identity)
 		return a.renderJSONCommandResult(authCommandJSONResult(profile, identity, authStatusView{}, message))

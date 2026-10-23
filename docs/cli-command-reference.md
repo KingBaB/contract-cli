@@ -131,6 +131,8 @@ contract-cli rule table import plan --profile contract --as app --product-id con
 
 `config add`、`auth login/status/logout/use`、`version`（含 `--version`、`-version`、`-v`）、`skills list/install`、`update check` 均支持显式 JSON，省略输出参数时保留默认文本；这些命令只新增 `--output json`，不接受 yaml/table。成功在 stdout 输出一个 `{"ok":true,"data":{...}}` 对象；`update check` 兼容已有 `--json` 顶层字段。失败或取消时 stdout 为空，stderr 输出错误；调试记录和授权指引为 stderr JSONL，适合分别重定向两条流。非法位置参数会在执行命令操作前被拒绝。
 
+管理命令在配置/认证响应完成后、保存前及实际 stdout 写入前检查取消；写入前取消不会继续保存配置、Token 或更新缓存。已完成的提交在 `error.details` 中返回 `state=committed`、`operation` 与安全 `result`，区分 `credentials_saved/profile_saved`、认证清理和缓存保存等实绩，不输出凭据值。Secret 写入已完成时会完成匹配 Profile 的必要保存，Device 撤销已确认时会完成本地删除；默认身份不因晚到取消而额外切换。普通 App exchange 失败仍保存输入凭据，Secret 存储失败在 exchange 后发现。自动检查自身超时仍降级，命令 context 取消则停止后续分发；版本别名取消退出 130。已经开始写出的 stdout 字节无法撤回。
+
 错误 JSON 的 `error.type` 区分 `command`、`http`、`timeout`、`cancelled`、`uncertain_write`；Trace ID、HTTP 状态及取消标志按实际错误链填写，更新通知复用本次执行已准备的 `_notice.update`，不会在取消后重新请求版本服务。HTTP 200 下的非零业务码是否保留 stdout 业务 JSON，沿用各命令原有行为，不额外包装成功或已有业务输出。
 
 第一次 Ctrl+C 沿上下文取消输入、HTTP、授权等待和环境探测，并等待探测子进程回收；第二次 Ctrl+C 可强退。导入 apply 遇取消先保留原有计划落盘与输出，发送中结果不确定的行仍为 `uncertain`，已写入但回读取消的行仍为 `unverified`，停止后续写入且退出 130，不将取消当成“后端未执行”。
