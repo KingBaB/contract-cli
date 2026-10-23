@@ -356,6 +356,8 @@ contract-cli skills install --force
 
 - 复制内置 `auth`、`contract-cli-shared`、`contract-cli-contract-search`、`contract-cli-contract`、`zhishu-contract-summary`、`contract-cli-payment`、`contract-cli-mdm-vendor`、`contract-cli-mdm-legal`、`contract-cli-mdm-fields` 等 skill
 - 保留 `SKILL.md`、`agents/openai.yaml` 和 `references/*.md`
+- Ctrl+C 在元数据读取、暂存、替换、校验和提交前阻止后续安装；若已开始替换，先完成原事务回滚再退出 130，原文件、管理标记和登记保持一致。普通文件系统调用不会被强行打断，新建的空目标根目录可能保留。
+- JSON 取消不输出成功结果；`error.details.recovery.status=restored` 表示已恢复，`failed` 表示恢复失败且需保留事务材料，`unconfirmed` 表示无恢复成功证据。提交完成后才收到取消时不回滚，报告 `committed` 并通过 `installation` 保留实际安装项、跳过项和登记结果，避免把取消误判为安装未发生。
 
 ### 2. 鉴权
 

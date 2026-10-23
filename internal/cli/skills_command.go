@@ -30,7 +30,7 @@ var hiddenBundledSkillDirs = map[string]struct{}{
 	"contract-cli-api-call": {},
 }
 
-func (a *App) runSkills(_ context.Context, args []string) error {
+func (a *App) runSkills(ctx context.Context, args []string) error {
 	a.logger.Info("skills command started", "args", redactCommandArgs(args))
 
 	if len(args) == 0 {
@@ -41,7 +41,7 @@ func (a *App) runSkills(_ context.Context, args []string) error {
 	case "list":
 		return a.runSkillsList(args[1:])
 	case "install":
-		return a.runSkillsInstall(args[1:])
+		return a.runSkillsInstall(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown skills subcommand %q", args[0])
 	}
@@ -84,7 +84,7 @@ func (a *App) runSkillsList(args []string) error {
 runSkillsInstall 将包内 Skill 安装到目标目录，并可限定只更新一个命名 Skill。
 入参 args（[]string）为 install 参数；返回 error 为参数、选择或文件安装错误。
 */
-func (a *App) runSkillsInstall(args []string) (err error) {
+func (a *App) runSkillsInstall(ctx context.Context, args []string) (err error) {
 	_, logOptions, _ := parseCommandLogOptions(append([]string{"skills", "install"}, args...))
 	jsonOutput := logOptions.outputJSON
 	service := a.skillSyncService()
@@ -132,9 +132,12 @@ func (a *App) runSkillsInstall(args []string) (err error) {
 	target = resolvedTarget
 	a.logger.Info("skills install started", "target", resolvedTarget, "name", selectedName, "force", force)
 
-	skills, err := loadBundledSkills(a.skillsFS)
+	skills, err := loadBundledSkillsContext(ctx, a.skillsFS)
 	if err != nil {
 		a.logger.Error("load bundled skills failed", "target", resolvedTarget, "error", err.Error())
+		return err
+	}
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if selectedName != "" {
@@ -155,7 +158,7 @@ func (a *App) runSkillsInstall(args []string) (err error) {
 	for _, skill := range skills {
 		names = append(names, skill.Dir)
 	}
-	result, err := service.Install(resolvedTarget, names, force, selectedName == "")
+	result, err := service.InstallContext(ctx, resolvedTarget, names, force, selectedName == "")
 	if result.Target != "" {
 		resolvedTarget = result.Target
 		target = result.Target
@@ -163,10 +166,13 @@ func (a *App) runSkillsInstall(args []string) (err error) {
 	if err != nil {
 		return err
 	}
+	if err := skillInstallationCancellation(ctx, result); err != nil {
+		return err
+	}
 	installed, skipped := len(result.Installed), len(result.Skipped)
 	if jsonOutput {
 		a.logger.Info("skills install completed", "target", resolvedTarget, "installed", installed, "skipped", skipped)
-		return a.renderSkillsJSONInstall(service, resolvedTarget, result)
+		return a.renderSkillsJSONInstall(ctx, service, resolvedTarget, result)
 	}
 	for _, name := range result.Installed {
 		_, _ = fmt.Fprintf(a.stdout, "Installed skill: %s\n", name)
@@ -378,13 +384,26 @@ func (a *App) resolveSkillsInstallTarget(target string) (string, error) {
 }
 
 func loadBundledSkills(source fs.FS) ([]skillMetadata, error) {
+	return loadBundledSkillsContext(context.Background(), source)
+}
+
+func loadBundledSkillsContext(ctx context.Context, source fs.FS) ([]skillMetadata, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	entries, err := fs.ReadDir(source, ".")
+	if ctx.Err() != nil {
+		return nil, errors.Join(err, ctx.Err())
+	}
 	if err != nil {
 		return nil, fmt.Errorf("read bundled skills: %w", err)
 	}
 
 	var skills []skillMetadata
 	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if !entry.IsDir() {
 			continue
 		}
@@ -393,6 +412,9 @@ func loadBundledSkills(source fs.FS) ([]skillMetadata, error) {
 			continue
 		}
 		content, err := fs.ReadFile(source, path.Join(dir, "SKILL.md"))
+		if ctx.Err() != nil {
+			return nil, errors.Join(err, ctx.Err())
+		}
 		if err != nil {
 			continue
 		}

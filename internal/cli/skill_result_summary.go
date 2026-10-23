@@ -38,6 +38,8 @@ func (a *App) printRegisteredSkillLocations(service *skillsync.Service) {
 
 func recoveryDescription(status string) string {
 	switch status {
+	case "committed":
+		return "取消到达前安装已提交；已保留安装文件及登记，未执行回滚"
 	case "restored":
 		return "已恢复本次替换前的原有文件；未保留长期历史备份"
 	case "failed":
@@ -54,6 +56,8 @@ func (a *App) printSkillFailure(operation, target, reason, recovery string) {
 
 func skillFailureGuidance(target, recovery string) string {
 	switch {
+	case recovery == "committed":
+		return "先核实已提交的安装文件和登记；不要把取消当作安装未发生，也不要直接重复覆盖。"
 	case recovery == "failed":
 		return "先排查恢复失败原因并核实原文件和事务材料，不能假定文件已恢复。"
 	case target == "":

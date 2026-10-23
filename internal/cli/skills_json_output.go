@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -47,6 +49,13 @@ type skillFailureDetails struct {
 	Registration skillRegistrationSnapshot `json:"registration"`
 	Recovery     skillRecoveryDetails      `json:"recovery"`
 	Guidance     string                    `json:"guidance"`
+	Installation *skillCommittedOutcome    `json:"installation,omitempty"`
+}
+
+type skillCommittedOutcome struct {
+	Installed []string `json:"installed"`
+	Skipped   []string `json:"skipped"`
+	Confirmed bool     `json:"confirmed"`
 }
 
 type skillCommandFailure struct {
@@ -97,8 +106,8 @@ func (a *App) renderSkillsJSONList(skills []skillMetadata) error {
 	}{CLI: currentSkillCLIIdentity(), Skills: metadata})
 }
 
-func (a *App) renderSkillsJSONInstall(service *skillsync.Service, target string, result skillsync.InstallResult) error {
-	return a.renderJSONCommandResult(struct {
+func (a *App) renderSkillsJSONInstall(ctx context.Context, service *skillsync.Service, target string, result skillsync.InstallResult) error {
+	payload := struct {
 		CLI                  skillCLIIdentity          `json:"cli"`
 		Target               string                    `json:"target"`
 		Installed            []string                  `json:"installed"`
@@ -108,13 +117,23 @@ func (a *App) renderSkillsJSONInstall(service *skillsync.Service, target string,
 	}{
 		CLI: currentSkillCLIIdentity(), Target: target, Installed: append([]string{}, result.Installed...), Skipped: append([]string{}, result.Skipped...),
 		Registration: readSkillRegistrationSnapshot(service, result.Confirmed), ClientReloadRequired: true,
-	})
+	}
+	if err := skillInstallationCancellation(ctx, result); err != nil {
+		return err
+	}
+	return a.renderJSONCommandResult(payload)
 }
 
 func skillJSONFailure(err error, service *skillsync.Service, target string) error {
 	recovery := skillsync.RecoveryStatus(err)
-	return &skillCommandFailure{cause: err, details: skillFailureDetails{
+	details := skillFailureDetails{
 		CLI: currentSkillCLIIdentity(), Target: target, Registration: readSkillRegistrationSnapshot(service, false),
 		Recovery: skillRecoveryDetails{Status: recovery, Description: recoveryDescription(recovery)}, Guidance: skillFailureGuidance(target, recovery),
-	}}
+	}
+	var committed *skillsync.CommittedCancellationError
+	if errors.As(err, &committed) {
+		details.Installation = &skillCommittedOutcome{Installed: append([]string{}, committed.Result.Installed...), Skipped: append([]string{}, committed.Result.Skipped...), Confirmed: committed.Result.Confirmed}
+		details.Registration.Confirmed = committed.Result.Confirmed
+	}
+	return &skillCommandFailure{cause: err, details: details}
 }

@@ -780,6 +780,8 @@ X-Log-Id: <与 traceparent 相同的 trace_id>
 
 首次 Ctrl+C 取消当前操作、回收环境探测辅助进程并以 130 退出；再次 Ctrl+C 恢复系统默认强退行为。输入文件、stdin 管道及 Unix FIFO 等待支持取消。取消的写请求仍可能已经生效：保留 `uncertain_write` 或本地导入计划的 `uncertain/unverified` 状态，不自动重试后续写入。JSON 错误中此时可同时出现 `type=uncertain_write` 和 `cancelled=true`。
 
+`skills install` 在元数据读取、资源暂存、逐项替换、校验和提交前检查取消；收到首次 Ctrl+C 后停止后续安装。已开始替换时沿现有事务恢复原有 Skill、管理标记和登记；恢复失败则保留事务材料并报告 `recovery.status=failed`。安装提交完成后才收到取消时保留已提交内容，JSON 错误详情报告 `recovery.status=committed` 和 `installation` 实绩。取消为协作式检查，当前文件系统调用及必要的恢复会完成后再退出；新建的空目标根目录可能保留。
+
 ```bash
 contract-cli contract search --profile contract --as user --output json
 contract-cli contract search --profile contract --as user --debug
