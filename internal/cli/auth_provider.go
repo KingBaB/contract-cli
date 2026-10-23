@@ -29,11 +29,12 @@ type authCommandOptions struct {
 	NoOpenBrowser bool
 	AppID         string
 	AppSecret     string
+	JSONOutput    bool
 }
 
 type authStatusField struct {
-	Label string
-	Value string
+	Label string `json:"label"`
+	Value string `json:"value"`
 }
 
 type authStatusView struct {
@@ -48,11 +49,12 @@ type authProvider interface {
 }
 
 type userAuthProvider struct {
-	httpClient             *http.Client
-	logger                 *slog.Logger
-	openBrowser            func(string) error
-	authorizationURLWriter io.Writer
-	startCallbackServer    func(string) (authorizationCallback, error)
+	httpClient              *http.Client
+	logger                  *slog.Logger
+	openBrowser             func(string) error
+	authorizationURLWriter  io.Writer
+	authorizationJSONWriter io.Writer
+	startCallbackServer     func(string) (authorizationCallback, error)
 }
 
 type authorizationCallback interface {
@@ -117,16 +119,12 @@ func (p userAuthProvider) Login(ctx context.Context, profile *config.Profile, op
 
 	p.logger.Info("user auth authorization url prepared", "profile", profile.Name, "no_open_browser", options.NoOpenBrowser)
 	if options.NoOpenBrowser {
-		if p.authorizationURLWriter != nil {
-			_, _ = fmt.Fprint(p.authorizationURLWriter, authorizationURLMessage(authURL))
-		}
+		p.writeAuthorizationGuidance(authURL, options.JSONOutput)
 	} else {
 		if err := p.openBrowser(authURL); err != nil {
 			p.logger.Warn("open browser failed", "profile", profile.Name, "error", err.Error())
 			// 手动授权属于用户操作指引，不依赖可关闭的诊断日志。
-			if p.authorizationURLWriter != nil {
-				_, _ = fmt.Fprint(p.authorizationURLWriter, authorizationURLMessage(authURL))
-			}
+			p.writeAuthorizationGuidance(authURL, options.JSONOutput)
 		}
 	}
 

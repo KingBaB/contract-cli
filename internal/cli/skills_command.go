@@ -48,7 +48,17 @@ func (a *App) runSkills(_ context.Context, args []string) error {
 }
 
 func (a *App) runSkillsList(args []string) error {
-	if len(args) > 0 {
+	flags := flag.NewFlagSet("skills list", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	format := registerJSONOutputFlag(flags)
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	jsonOutput, err := parseJSONOutputFormat(*format)
+	if err != nil {
+		return err
+	}
+	if flags.NArg() > 0 {
 		return fmt.Errorf("skills list does not accept arguments")
 	}
 
@@ -59,6 +69,9 @@ func (a *App) runSkillsList(args []string) error {
 		return err
 	}
 
+	if jsonOutput {
+		return a.renderSkillsJSONList(skills)
+	}
 	_, _ = fmt.Fprintln(a.stdout, "Built-in skills:")
 	cliVersion := build.Current().Version
 	for _, skill := range skills {
@@ -72,15 +85,24 @@ runSkillsInstall 将包内 Skill 安装到目标目录，并可限定只更新�
 入参 args（[]string）为 install 参数；返回 error 为参数、选择或文件安装错误。
 */
 func (a *App) runSkillsInstall(args []string) (err error) {
-	_, logOptions, _ := parseCommandLogOptions(args)
+	_, logOptions, _ := parseCommandLogOptions(append([]string{"skills", "install"}, args...))
+	jsonOutput := logOptions.outputJSON
 	service := a.skillSyncService()
-	a.printSkillCLIIdentity()
+	if !jsonOutput {
+		a.printSkillCLIIdentity()
+	}
 	var target string
 	defer func() {
-		if err != nil && !logOptions.outputJSON {
+		if jsonOutput {
+			if err != nil {
+				err = skillJSONFailure(err, service, target)
+			}
+			return
+		}
+		if err != nil {
 			a.printSkillFailure("Skill 安装", target, err.Error(), skillsync.RecoveryStatus(err))
 		}
-		a.printRegisteredSkillLocations(service, err != nil && logOptions.outputJSON)
+		a.printRegisteredSkillLocations(service)
 	}()
 	flags := flag.NewFlagSet("skills install", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -90,8 +112,12 @@ func (a *App) runSkillsInstall(args []string) (err error) {
 	flags.StringVar(&target, "target", "", "已确认的当前客户端用户 Skill 目录；省略 --target 时默认使用 Codex（CODEX_HOME/skills 或 ~/.codex/skills），不会自动识别当前客户端")
 	flags.StringVar(&selectedName, "name", "", "install only the named bundled skill")
 	flags.BoolVar(&force, "force", false, "overwrite existing installed skills")
+	format := registerJSONOutputFlag(flags)
 
 	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if _, err := parseJSONOutputFormat(*format); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 {
@@ -138,6 +164,10 @@ func (a *App) runSkillsInstall(args []string) (err error) {
 		return err
 	}
 	installed, skipped := len(result.Installed), len(result.Skipped)
+	if jsonOutput {
+		a.logger.Info("skills install completed", "target", resolvedTarget, "installed", installed, "skipped", skipped)
+		return a.renderSkillsJSONInstall(service, resolvedTarget, result)
+	}
 	for _, name := range result.Installed {
 		_, _ = fmt.Fprintf(a.stdout, "Installed skill: %s\n", name)
 	}

@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"cn.qfei/contract-cli/internal/build"
 	"cn.qfei/contract-cli/internal/config"
 	"cn.qfei/contract-cli/internal/credential"
 	"cn.qfei/contract-cli/internal/invocation"
@@ -182,10 +181,11 @@ func New(options Options) *App {
 		now:                now,
 	}
 	app.userProvider = userAuthProvider{
-		httpClient:             httpClient,
-		logger:                 logger,
-		openBrowser:            opener,
-		authorizationURLWriter: stdout,
+		httpClient:              httpClient,
+		logger:                  logger,
+		openBrowser:             opener,
+		authorizationURLWriter:  stdout,
+		authorizationJSONWriter: stderr,
 		startCallbackServer: func(redirectURL string) (authorizationCallback, error) {
 			return oauth.StartCallbackServer(redirectURL)
 		},
@@ -211,6 +211,10 @@ func (a *App) Run(ctx context.Context, args []string) error {
 	args, logOptions, err := parseCommandLogOptions(args)
 	if err != nil {
 		return err
+	}
+	logOptions.outputJSON = commandRequestsJSON(args, logOptions)
+	if logOptions.outputJSON {
+		logOptions.json = true
 	}
 	if a.logPolicy != nil {
 		previous := a.logPolicy.current.Swap(&logOptions)
@@ -244,8 +248,7 @@ func (a *App) Run(ctx context.Context, args []string) error {
 
 	switch args[0] {
 	case "version", "--version", "-version", "-v":
-		a.printVersion()
-		return nil
+		return a.runVersion(args[1:])
 	}
 
 	if isBusinessCommand(args[0]) {
@@ -300,10 +303,6 @@ func (a *App) printUsage() {
 	_ = renderHelp(a.stdout, helpRegistry()["contract-cli"])
 }
 
-func (a *App) printVersion() {
-	_, _ = fmt.Fprintln(a.stdout, build.Current().String())
-}
-
 func (a *App) updateCachePath() string {
 	return filepath.Join(filepath.Dir(a.store.Path()), "update-check.json")
 }
@@ -330,6 +329,7 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 
 	flags := flag.NewFlagSet("config add", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	outputFormat := registerJSONOutputFlag(flags)
 
 	var env string
 	var profileName string
@@ -344,6 +344,13 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	flags.StringVar(&scopes, "scope", "", "space-separated OAuth scopes")
 
 	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("config add does not accept positional arguments")
+	}
+	jsonOutput, err := parseJSONOutputFormat(*outputFormat)
+	if err != nil {
 		return err
 	}
 
@@ -444,6 +451,13 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 		return err
 	}
 
+	if jsonOutput {
+		return a.renderJSONCommandResult(map[string]any{
+			"profile": profile.Name, "environment": profile.Environment,
+			"default_identity": defaultIdentity(profile), "resource": profile.Resource,
+			"authentication_reset": resetAuthentication,
+		})
+	}
 	_, _ = fmt.Fprintf(a.stdout, "Profile %q saved for %s.\n", profileName, env)
 	return nil
 }
@@ -474,6 +488,7 @@ func (a *App) runAuth(ctx context.Context, args []string) error {
 func (a *App) runAuthLogin(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("auth login", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	outputFormat := registerJSONOutputFlag(flags)
 
 	var profileName string
 	var timeout time.Duration
@@ -490,6 +505,13 @@ func (a *App) runAuthLogin(ctx context.Context, args []string) error {
 	flags.StringVar(&appSecret, "app-secret", "", "app secret")
 
 	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("auth login does not accept positional arguments")
+	}
+	jsonOutput, err := parseJSONOutputFormat(*outputFormat)
+	if err != nil {
 		return err
 	}
 
@@ -510,6 +532,7 @@ func (a *App) runAuthLogin(ctx context.Context, args []string) error {
 		NoOpenBrowser: noOpenBrowser,
 		AppID:         appID,
 		AppSecret:     appSecret,
+		JSONOutput:    jsonOutput,
 	})
 	if err != nil {
 		if identity == config.IdentityApp {
@@ -527,6 +550,9 @@ func (a *App) runAuthLogin(ctx context.Context, args []string) error {
 		return err
 	}
 
+	if jsonOutput {
+		return a.renderJSONCommandResult(authCommandJSONResult(profile, identity, authStatusView{Authorization: "authorized"}, message))
+	}
 	_, _ = fmt.Fprintln(a.stdout, message)
 	return nil
 }
@@ -534,6 +560,7 @@ func (a *App) runAuthLogin(ctx context.Context, args []string) error {
 func (a *App) runAuthStatus(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("auth status", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	outputFormat := registerJSONOutputFlag(flags)
 
 	var profileName string
 	var as string
@@ -541,6 +568,13 @@ func (a *App) runAuthStatus(ctx context.Context, args []string) error {
 	flags.StringVar(&as, "as", string(config.IdentityUser), "identity to inspect: user|app")
 
 	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("auth status does not accept positional arguments")
+	}
+	jsonOutput, err := parseJSONOutputFormat(*outputFormat)
+	if err != nil {
 		return err
 	}
 
@@ -566,6 +600,9 @@ func (a *App) runAuthStatus(ctx context.Context, args []string) error {
 		return err
 	}
 
+	if jsonOutput {
+		return a.renderJSONCommandResult(authCommandJSONResult(profile, identity, view, ""))
+	}
 	_, _ = fmt.Fprintf(a.stdout, "Profile: %s\n", profile.Name)
 	_, _ = fmt.Fprintf(a.stdout, "Environment: %s\n", profile.Environment)
 	_, _ = fmt.Fprintf(a.stdout, "Default Identity: %s\n", defaultIdentity(profile))
@@ -580,6 +617,7 @@ func (a *App) runAuthStatus(ctx context.Context, args []string) error {
 func (a *App) runAuthLogout(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("auth logout", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	outputFormat := registerJSONOutputFlag(flags)
 
 	var profileName string
 	var as string
@@ -587,6 +625,13 @@ func (a *App) runAuthLogout(ctx context.Context, args []string) error {
 	flags.StringVar(&as, "as", string(config.IdentityUser), "identity to logout: user|app")
 
 	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("auth logout does not accept positional arguments")
+	}
+	jsonOutput, err := parseJSONOutputFormat(*outputFormat)
+	if err != nil {
 		return err
 	}
 
@@ -615,6 +660,9 @@ func (a *App) runAuthLogout(ctx context.Context, args []string) error {
 		return err
 	}
 	a.logger.Info("auth logout completed", "profile", profile.Name, "identity", identity)
+	if jsonOutput {
+		return a.renderJSONCommandResult(authCommandJSONResult(profile, identity, authStatusView{}, message))
+	}
 	_, _ = fmt.Fprintln(a.stdout, message)
 	return nil
 }
@@ -622,6 +670,7 @@ func (a *App) runAuthLogout(ctx context.Context, args []string) error {
 func (a *App) runAuthUse(args []string) error {
 	flags := flag.NewFlagSet("auth use", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	outputFormat := registerJSONOutputFlag(flags)
 
 	var profileName string
 	var as string
@@ -629,6 +678,13 @@ func (a *App) runAuthUse(args []string) error {
 	flags.StringVar(&as, "as", string(config.IdentityUser), "default business identity: user|app")
 
 	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("auth use does not accept positional arguments")
+	}
+	jsonOutput, err := parseJSONOutputFormat(*outputFormat)
+	if err != nil {
 		return err
 	}
 
@@ -646,6 +702,10 @@ func (a *App) runAuthUse(args []string) error {
 	}
 
 	a.logger.Info("default identity switched", "profile", profile.Name, "identity", identity)
+	if jsonOutput {
+		message := fmt.Sprintf("Default identity for profile %q set to %s.", profile.Name, identity)
+		return a.renderJSONCommandResult(authCommandJSONResult(profile, identity, authStatusView{}, message))
+	}
 	_, _ = fmt.Fprintf(a.stdout, "Default identity for profile %q set to %s.\n", profile.Name, identity)
 	return nil
 }

@@ -13,6 +13,7 @@ import (
 type commandLogOptions struct {
 	debug      bool
 	json       bool
+	jsonAlias  bool
 	outputJSON bool
 }
 
@@ -48,6 +49,7 @@ func parseCommandLogOptions(args []string) ([]string, commandLogOptions, error) 
 		if name == "--json" {
 			on, _ := strconv.ParseBool(value) // 原命令继续校验非法值。
 			options.json = !inline || on
+			options.jsonAlias = options.json
 		}
 		if !isCommandValueFlag(name, clean) || isCommandBooleanFlag(name) {
 			continue

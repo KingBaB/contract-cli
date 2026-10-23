@@ -15,6 +15,7 @@ type commandFailure struct {
 	TraceID    string `json:"trace_id,omitempty"`
 	HTTPStatus int    `json:"http_status,omitempty"`
 	Cancelled  bool   `json:"cancelled,omitempty"`
+	Details    any    `json:"details,omitempty"`
 }
 
 type commandFailureEnvelope struct {
@@ -30,8 +31,8 @@ func (a *App) Execute(ctx context.Context, args []string) int {
 	if err == nil {
 		return 0
 	}
-	_, options, _ := parseCommandLogOptions(args)
-	if options.outputJSON {
+	clean, options, _ := parseCommandLogOptions(args)
+	if commandRequestsJSON(clean, options) {
 		envelope := commandFailureEnvelope{Error: describeCommandFailure(err), Notice: a.updateNotice}
 		encoder := json.NewEncoder(a.stderr)
 		encoder.SetEscapeHTML(false)
@@ -56,6 +57,10 @@ func (a *App) writeCommandFailureText(err error) {
 
 func describeCommandFailure(err error) commandFailure {
 	failure := commandFailure{Type: "command", Message: err.Error(), Cancelled: errors.Is(err, context.Canceled)}
+	var detailed commandFailureDetailer
+	if errors.As(err, &detailed) {
+		failure.Details = detailed.commandFailureDetails()
+	}
 	var traced *openplatform.TraceError
 	if errors.As(err, &traced) {
 		failure.TraceID = traced.TraceID

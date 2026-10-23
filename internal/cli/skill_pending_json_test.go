@@ -98,13 +98,16 @@ func TestSkillInstallParameterFailurePreservesSelectedErrorFormat(t *testing.T) 
 			})
 			args := []string{"skills", "install", "--unknown"}
 			if jsonOutput {
-				args = []string{"skills", "install", "--output", "json"}
+				args = []string{"skills", "install", "--output", "json", "--unknown"}
 			}
 			if code := app.Execute(context.Background(), args); code != 1 {
 				t.Fatalf("install argument failure exit = %d", code)
 			}
-			if !strings.Contains(stdout.String(), "CLI 实际可执行文件：") || !strings.Contains(stdout.String(), "Skill 登记文件：") {
+			if !jsonOutput && (!strings.Contains(stdout.String(), "CLI 实际可执行文件：") || !strings.Contains(stdout.String(), "Skill 登记文件：")) {
 				t.Fatalf("install identity or registration output changed: %s", stdout)
+			}
+			if jsonOutput && stdout.Len() != 0 {
+				t.Fatalf("JSON parameter failure wrote stdout: %s", stdout)
 			}
 			if jsonOutput {
 				if !json.Valid(stderr.Bytes()) || bytes.Count(bytes.TrimSpace(stderr.Bytes()), []byte("\n")) != 0 {
@@ -127,7 +130,7 @@ func TestSkillInstallCorruptRegistryJSONErrorKeepsPendingWarning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := app.Execute(context.Background(), []string{"skills", "install", "--output", "json"}); code != 1 {
+	if code := app.Execute(context.Background(), []string{"skills", "install", "--output", "json", "--unknown"}); code != 1 {
 		t.Fatalf("install parameter failure exit = %d", code)
 	}
 	lines := bytes.Split(bytes.TrimSpace(stderr.Bytes()), []byte("\n"))
@@ -146,8 +149,8 @@ func TestSkillInstallCorruptRegistryJSONErrorKeepsPendingWarning(t *testing.T) {
 	if json.Unmarshal(lines[1], &failure) != nil || failure.OK == nil || *failure.OK {
 		t.Fatalf("final JSON error missing: %s", stderr)
 	}
-	if !strings.Contains(stdout.String(), "CLI 实际可执行文件：") || !strings.Contains(stdout.String(), "Skill 登记文件：") {
-		t.Fatalf("upstream install identity/registration output changed: %s", stdout)
+	if stdout.Len() != 0 {
+		t.Fatalf("JSON install failure wrote human identity/registration to stdout: %s", stdout)
 	}
 	after, err := os.ReadFile(registry)
 	if err != nil || !bytes.Equal(before, after) {

@@ -14,7 +14,7 @@
 - 除上述双身份和 app-only 能力外，当前其他结构化业务命令仍只支持 `--as user`
 - `app` 目前已经支持登录、状态查看、登出、默认身份切换
 - 配套 Skill 使用当前 CLI 内置内容，通过 `contract-cli skills install --target "<已确认的用户 Skill 目录>" --force` 完整安装并登记；历史 `npx skills add ...` 入口保留，但不能替代与当前 CLI 配套的版本同步
-- `update check` 支持手动检查 npm 远端版本；默认输出文本，带 `--json` 时返回飞书式 JSON；CLI 会为符合条件的普通命令按 24 小时缓存检查远端版本，并在 JSON object 输出中注入 `_notice.update`
+- `update check` 支持手动检查 npm 远端版本；默认输出文本，带 `--output json` 或兼容参数 `--json` 时返回飞书式 JSON；CLI 会为符合条件的普通命令按 24 小时缓存检查远端版本，在成功的 JSON object 输出和显式 JSON 错误中附带 `_notice.update`，文本错误显示本次已有的升级提示
 - `environment inspect` 可以在本地查看当前父进程链对应的客户端来源；所有实际业务 HTTP 请求都会在发送前重新探测并覆盖来源 Header
 - 当前全部已支持命令都可以通过 `--help` 查看本地帮助，例如 `contract-cli --help`、`contract-cli contract search --help`、`contract-cli help contract upload-file`
 - `app` 业务接口后续继续新增时，优先在本文件补充命令矩阵
@@ -127,7 +127,9 @@ contract-cli contract get <contract-id> --help
 contract-cli rule table import plan --profile contract --as app --product-id contract --group-id approve_matrix --table-id <table-id> --input-file import.json --debug --output json >result.json 2>debug.jsonl
 ```
 
-只有显式 `--output json` 或 `--output=json` 时，失败或取消结果才在 stderr 输出单行 JSON：`{"ok":false,"error":{"type":"...","message":"...","trace_id":"..."},"_notice":{...}}`；其他模式保留 `error: ...` 文本摘要，有本次已有的更新通知时，在摘要后追加一行升级提示和命令。业务结果默认是 JSON 不等于错误也默认 JSON，`--json` 单独不切换错误格式。普通失败与超时退出 1，取消退出 130，成功退出 0。
+显式 `--output json` 或 `--output=json` 时，失败或取消结果在 stderr 输出单行 JSON：`{"ok":false,"error":{"type":"...","message":"...","trace_id":"..."},"_notice":{...}}`；`update check --json` 同样使用 JSON 错误，其他命令的 `--json` 不切换错误格式。其他模式保留 `error: ...` 文本摘要，有本次已有的更新通知时，在摘要后追加一行升级提示和命令。业务结果默认是 JSON 不等于错误也默认 JSON。普通失败与超时退出 1，取消退出 130，成功退出 0。
+
+`config add`、`auth login/status/logout/use`、`version`（含 `--version`、`-version`、`-v`）、`skills list/install`、`update check` 均支持显式 JSON，省略输出参数时保留默认文本；这些命令只新增 `--output json`，不接受 yaml/table。成功在 stdout 输出一个 `{"ok":true,"data":{...}}` 对象；`update check` 兼容已有 `--json` 顶层字段。失败或取消时 stdout 为空，stderr 输出错误；调试记录和授权指引为 stderr JSONL，适合分别重定向两条流。非法位置参数会在执行命令操作前被拒绝。
 
 错误 JSON 的 `error.type` 区分 `command`、`http`、`timeout`、`cancelled`、`uncertain_write`；Trace ID、HTTP 状态及取消标志按实际错误链填写，更新通知复用本次执行已准备的 `_notice.update`，不会在取消后重新请求版本服务。HTTP 200 下的非零业务码是否保留 stdout 业务 JSON，沿用各命令原有行为，不额外包装成功或已有业务输出。
 
@@ -185,6 +187,7 @@ contract-cli config add --env prod --name contract
 - `--resource-metadata-url`：覆盖 protected resource metadata 地址
 - `--redirect-url`：覆盖 OAuth callback 地址
 - `--scope`：覆盖默认 scope 列表
+- `--output json`：返回安全配置摘要 `profile/environment/default_identity/resource/authentication_reset`，不包含凭据
 
 执行结果：
 
@@ -202,7 +205,10 @@ contract-cli config add --env prod --name contract
 ```bash
 contract-cli version
 contract-cli --version
+contract-cli version --output json
 ```
+
+`--output json` 返回 `data.name/version/commit/built_at/feature_baseline`；默认保持原版本文本。
 
 #### `contract-cli update check`
 
@@ -214,12 +220,14 @@ contract-cli --version
 contract-cli update check
 contract-cli update check --channel latest
 contract-cli update check --channel latest --json
+contract-cli update check --channel latest --output json
 ```
 
 支持参数：
 
 - `--channel`：npm dist-tag；不传时根据当前版本推断，预发布版本默认检查 `beta`，稳定版本默认检查 `latest`
 - `--json`：输出飞书式结构化 JSON；默认输出文本提示
+- `--output json`：与 `--json` 返回相同结构，成功、失败、取消及调试记录均使用 JSON；显式 JSON 不会被 `--json=false` 关闭
 
 执行结果：
 
@@ -284,6 +292,7 @@ contract-cli environment inspect --output json --include-processes
 
 ```bash
 contract-cli skills list
+contract-cli skills list --output json
 ```
 
 输出内容：
@@ -291,6 +300,7 @@ contract-cli skills list
 - skill 名称
 - skill 版本
 - skill 描述
+- 显式 `--output json`：`data.cli` 为当前 CLI 版本和执行路径，`data.skills[]` 包含 `directory/name/version/description`；清单不代表客户端已安装或加载
 
 #### `npx skills add qfeius/contract-cli -y -g`
 
@@ -339,6 +349,7 @@ contract-cli skills install --force
 - `--target`：安装目标目录；默认优先使用 `$CODEX_HOME/skills`，否则使用 `~/.codex/skills`
 - `--name`：只安装指定的内置 Skill，例如 `contract-cli-rule`；不传时处理全部
 - `--force`：覆盖已存在的同名 skill；默认不覆盖，会跳过已有目录
+- `--output json`：成功返回 CLI 信息、目标路径、安装项、跳过项、登记快照和客户端刷新提示；失败时 stdout 为空，`error.details` 保留登记、恢复状态及处理建议
 - 更新本地规则 Skill 时建议组合 `--name contract-cli-rule --force`，仅替换该目录；若有本地自定义内容，先备份。单独使用 `--force` 会覆盖所有同名内置 Skill
 
 执行结果：
@@ -366,6 +377,7 @@ contract-cli auth login --profile contract --as user
 - `--as user`
 - `--timeout`
 - `--no-open-browser`
+- `--output json`：成功返回安全授权摘要；需要手动打开链接时在 stderr 输出 `{"event":"authorization_required","authorization_url":"..."}`，取消结果也写 stderr，不输出 Token
 
 ##### `contract-cli auth login --as app`
 
@@ -383,6 +395,7 @@ contract-cli auth login --profile contract --as app --app-id <id> --app-secret <
 - `--as app`
 - `--app-id`
 - `--app-secret`
+- `--output json`：返回安全授权摘要，不包含 Token 或 App Secret
 
 补充说明：
 
@@ -412,6 +425,8 @@ contract-cli auth status --profile contract --as app
 - user：`authorized` / `unauthorized`
 - app：`authorized` / `expired` / `configured` / `unconfigured`
 
+支持 `--output json`，返回 `profile/environment/identity/default_identity/authorization` 和 `fields[]`（安全状态项的 `label/value`）。
+
 #### `contract-cli auth logout`
 
 用途：清理指定身份的 token。
@@ -432,6 +447,7 @@ contract-cli auth logout --profile contract --as app
 
 - user logout：清空 user token
 - app logout：只清空 app token，保留 app 凭证
+- 支持 `--output json`，返回 profile、环境、身份、默认身份和退出结果消息
 
 #### `contract-cli auth use`
 
@@ -448,6 +464,8 @@ contract-cli auth use --profile contract --as app
 
 - `--profile`
 - `--as user|app`
+
+`auth use` 也支持 `--output json`，返回切换后的 profile、环境、身份、默认身份和结果消息。
 
 ### 3. 原始开放平台调用（暂未开放）
 

@@ -29,6 +29,7 @@ func (a *App) runUpdate(ctx context.Context, args []string) error {
 func (a *App) runUpdateCheck(ctx context.Context, args []string) error {
 	parsed, err := parseArgs(args, map[string]struct{}{
 		"--channel": {},
+		"--output":  {},
 	}, map[string]struct{}{
 		"--json": {},
 	})
@@ -37,6 +38,10 @@ func (a *App) runUpdateCheck(ctx context.Context, args []string) error {
 	}
 	if len(parsed.positionals) != 0 {
 		return fmt.Errorf("unexpected update check arguments: %s", strings.Join(parsed.positionals, " "))
+	}
+	jsonOutput, err := parseJSONOutputFormat(parsed.String("--output"))
+	if err != nil {
+		return err
 	}
 
 	result, err := a.checkUpdate(ctx, parsed.String("--channel"))
@@ -49,7 +54,7 @@ func (a *App) runUpdateCheck(ctx context.Context, args []string) error {
 		}
 	}
 
-	if parsed.Bool("--json") {
+	if jsonOutput || parsed.Bool("--json") {
 		return output.NewRenderer(a.stdout).Render(output.FormatJSON, updateCheckJSON(result))
 	}
 	return writeUpdateCheckText(a.stdout, result)

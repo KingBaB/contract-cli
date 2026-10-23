@@ -774,9 +774,9 @@ X-Log-Id: <与 traceparent 相同的 trace_id>
 
 每次 CLI 显式发送尝试（包括允许的只读网络重试或 Token 刷新后的业务重放）使用新的 `span_id`，它对应 W3C 的 parent-id；底层自动重定向和透明重试保持原有行为。命令入口、完成、失败和业务请求的调试日志带 `trace_id`；最终安全错误也带 `trace_id=<值>`，业务 JSON、表格和 raw 输出结构保持不变。
 
-默认不打印内部诊断或请求日志。添加全局 `--debug` 后将调试日志写到 stderr；显式指定 `--output json`（更新检查使用 `--json`）时，每条调试记录为独立一行 JSON，其他情况为文本。Trace 请求头始终正常发送，与日志开关无关。
+默认不打印内部诊断或请求日志。添加全局 `--debug` 后将调试日志写到 stderr；显式指定 `--output json`（更新检查也兼容 `--json`）时，每条调试记录为独立一行 JSON，其他情况为文本。Trace 请求头始终正常发送，与日志开关无关。
 
-命令失败时，只有显式 `--output json`（或 `--output=json`）才将错误作为单行 JSON 写到 stderr：`{"ok":false,"error":{"type":"command","message":"...","trace_id":"..."},"_notice":{"update":{...}}}`。Trace ID 和更新通知仅在本次执行已有相应信息时出现；通知复用命令开始阶段的结果，错误出口不重新联网检查。其他模式保留 `error: ...` 文本摘要；有本次已准备的更新通知时，在摘要后追加一行升级提示和命令。`--json` 单独不会切换命令错误格式。成功的业务输出保持原样，普通失败与超时退出码为 1。
+命令失败时，显式 `--output json`（或 `--output=json`）将错误作为单行 JSON 写到 stderr：`{"ok":false,"error":{"type":"command","message":"...","trace_id":"..."},"_notice":{"update":{...}}}`。`update check --json` 同样使用 JSON 错误，其他命令的 `--json` 不切换错误格式。Trace ID 和更新通知仅在本次执行已有相应信息时出现；通知复用命令开始阶段的结果，错误出口不重新联网检查。其他模式保留 `error: ...` 文本摘要；有本次已准备的更新通知时，在摘要后追加一行升级提示和命令。成功的业务输出保持原样，普通失败与超时退出码为 1。
 
 首次 Ctrl+C 取消当前操作、回收环境探测辅助进程并以 130 退出；再次 Ctrl+C 恢复系统默认强退行为。输入文件、stdin 管道及 Unix FIFO 等待支持取消。取消的写请求仍可能已经生效：保留 `uncertain_write` 或本地导入计划的 `uncertain/unverified` 状态，不自动重试后续写入。JSON 错误中此时可同时出现 `type=uncertain_write` 和 `cancelled=true`。
 
@@ -899,6 +899,19 @@ contract-cli contract search --help
 ```
 
 优先查看已安装 skills 中的 `SKILL.md` 和 `references/`；查阅 GitHub 在线文档时，请选择与 CLI 版本对应的发布标签。
+
+## 本地管理命令 JSON 输出
+
+`config add`、`auth login/status/logout/use`、`version`（含 `--version`、`-version`、`-v`）、`skills list/install`、`update check` 均支持显式 `--output json` 或 `--output=json`，省略时保留默认文本。这些本地管理命令仅新增 JSON 格式，不接受 yaml/table。
+
+```bash
+contract-cli version --output json
+contract-cli auth status --profile contract --as user --output json
+contract-cli skills list --output json
+contract-cli update check --output json
+```
+
+新支持的成功结果在 stdout 输出一个 `{"ok":true,"data":{...}}` JSON 对象；`update check` 为兼容已有脚本，继续使用原 `--json` 的顶层字段。失败或取消时 stdout 为空，错误写 stderr；开启 `--debug` 时 stderr 为 JSONL。`auth login` 需要手动打开授权链接时，在 stderr 输出 `authorization_required` JSON 事件，`authorization_url` 为授权链接。`skills install` 的 JSON 失败结果将 CLI 信息、登记位置、恢复状态和建议放入 `error.details`，成功结果包含安装项、跳过项和登记情况。Token 和 App Secret 不写入结果。
 
 ## 参考
 
