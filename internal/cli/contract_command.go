@@ -103,7 +103,7 @@ func (a *App) runContractSearch(ctx context.Context, args []string) (err error) 
 	if err != nil {
 		return err
 	}
-	bodyObject, err := resolveJSONObjectBody(options, false)
+	bodyObject, err := resolveJSONObjectBody(ctx, options, false)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func (a *App) runContractCreate(ctx context.Context, args []string) error {
 	}
 
 	options := parseCommandOptions(parsed)
-	bodyObject, err := resolveJSONObjectBody(options, true)
+	bodyObject, err := resolveJSONObjectBody(ctx, options, true)
 	if err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func (a *App) runContractSubmit(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: contract-cli contract submit <contract-id> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRawBody(options)
+	body, err := resolveRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -286,7 +286,7 @@ func (a *App) runContractResubmit(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: contract-cli contract resubmit <contract-id> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRawBody(options)
+	body, err := resolveRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -312,7 +312,7 @@ func (a *App) runContractPatch(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: contract-cli contract patch <contract-id> --input-file <path>|--data <json> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -454,7 +454,7 @@ func (a *App) runContractPrintFile(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: contract-cli contract print-file --input-file <path>|--data <json> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -604,7 +604,7 @@ func (a *App) runContractApprovalStart(ctx context.Context, args []string) error
 		return fmt.Errorf("usage: contract-cli contract approval start <process-instance-id> --input-file <path>|--data <json> [flags]")
 	}
 	options := parseCommandOptions(parsed)
-	body, err := resolveRequiredRawBody(options)
+	body, err := resolveRequiredRawBody(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -740,7 +740,7 @@ func (a *App) runContractTemplate(ctx context.Context, args []string) error {
 			return fmt.Errorf("usage: contract-cli contract template instantiate [flags]")
 		}
 		options := parseCommandOptions(parsed)
-		bodyObject, err := resolveJSONObjectBody(options, true)
+		bodyObject, err := resolveJSONObjectBody(ctx, options, true)
 		if err != nil {
 			return err
 		}

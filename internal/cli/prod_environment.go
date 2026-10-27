@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -256,10 +257,19 @@ func (a *App) productionProfileRequiresReset(profile config.Profile) (bool, erro
 	return validateProductionDeviceCredential(profile, stored) != nil, nil
 }
 
-func (a *App) clearProfileAuthenticationState(profileName string) error {
+func (a *App) clearProfileAuthenticationState(ctx context.Context, profileName string) (err error) {
+	var outcome *localCommandOutcome
+	defer func() { err = withCompletedLocalCommand(ctx, err, outcome) }()
 	a.logger.Info("clear changed profile authentication state", "profile", profileName)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := a.secrets.Delete(config.AppSecretKey(profileName)); err != nil {
 		a.logger.Error("clear app secret failed", "profile", profileName, "error", err.Error())
+		return err
+	}
+	outcome = &localCommandOutcome{Operation: "config add", Result: map[string]any{"profile": profileName, "app_secret_cleared": true, "profile_saved": false}}
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 	store, available, err := a.deviceCredentialStoreIfAvailable()
@@ -268,10 +278,14 @@ func (a *App) clearProfileAuthenticationState(profileName string) error {
 		return err
 	}
 	if available {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := store.Delete(profileName); err != nil {
 			a.logger.Error("clear Device credential failed", "profile", profileName, "error", err.Error())
 			return err
 		}
+		outcome = &localCommandOutcome{Operation: "config add", Result: map[string]any{"profile": profileName, "app_secret_cleared": true, "device_credentials_cleared": true, "profile_saved": false}}
 	}
-	return nil
+	return ctx.Err()
 }
