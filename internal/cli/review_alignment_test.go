@@ -449,16 +449,12 @@ func TestReviewAlignmentBoundaries(t *testing.T) {
 			t.Fatalf("err=%v calls=%d output=%s", err, calls, out.String())
 		}
 	})
-	t.Run("run without wait and local source", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "contract.pdf")
-		if err := os.WriteFile(path, []byte("contract"), 0600); err != nil {
-			t.Fatal(err)
-		}
+	t.Run("URL run without wait retains existing behavior", func(t *testing.T) {
 		calls := 0
 		app, out := alignmentApp(t, func(r *http.Request) string {
 			calls++
 			if calls == 1 {
-				if !strings.HasSuffix(r.URL.Path, "/file/upload") {
+				if !strings.HasSuffix(r.URL.Path, "/file/uploadByUrl") {
 					t.Fatal(r.URL)
 				}
 				return `{"code":200,"data":{"fileId":"1","businessId":"biz","fileHash":"` + strings.Repeat("a", 64) + `"}}`
@@ -469,7 +465,7 @@ func TestReviewAlignmentBoundaries(t *testing.T) {
 			t.Fatal("unexpected stage", r.URL)
 			return ""
 		})
-		spec := `{"source":{"type":"file","path":` + strconvQuote(path) + `,"name":"a.pdf"},"config":` + alignmentConfig + `,"wait":false}`
+		spec := `{"source":{"type":"url","fileUrl":"https://example.com/a.pdf","name":"a.pdf"},"config":` + alignmentConfig + `,"wait":false}`
 		if err := app.Run(context.Background(), []string{"review", "run", "--data", spec}); err != nil {
 			t.Fatal(err)
 		}

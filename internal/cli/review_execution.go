@@ -19,6 +19,11 @@ import (
 	"cn.qfei/contract-cli/internal/openplatform"
 )
 
+type reviewRequestSession struct {
+	client *openplatform.Client
+	rc     openplatform.RequestContext
+}
+
 func (a *App) renderReviewValue(options commandOptions, value any) error {
 	body, err := json.Marshal(value)
 	if err != nil {
@@ -36,11 +41,17 @@ func reviewJSONRequest(path string, value any) (openplatform.Request, error) {
 func (a *App) doReview(ctx context.Context, options commandOptions, request openplatform.Request) (openplatform.Response, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	client, rc, err := a.openPlatformClientAndContextForOptions(options, request.Path, openplatform.IdentityPolicyUserOnly)
-	if err != nil {
-		return openplatform.Response{}, err
+	var session *reviewRequestSession
+	if options.reviewSession != nil {
+		session = options.reviewSession
+	} else {
+		client, rc, err := a.openPlatformClientAndContextForOptions(options, request.Path, openplatform.IdentityPolicyUserOnly)
+		if err != nil {
+			return openplatform.Response{}, err
+		}
+		session = &reviewRequestSession{client: client, rc: rc}
 	}
-	response, err := client.Do(ctx, rc, request)
+	response, err := session.client.Do(ctx, session.rc, request)
 	if err != nil {
 		return response, err
 	}
@@ -73,6 +84,9 @@ func (a *App) reviewDocument(ctx context.Context, options commandOptions, reques
 	response, err := a.doReview(ctx, options, request)
 	if err != nil {
 		return nil, err
+	}
+	if options.reviewSession != nil {
+		return preAuditResponseData(response)
 	}
 	var envelope struct {
 		Data map[string]any `json:"data"`
@@ -380,9 +394,12 @@ func (a *App) runReviewWorkflow(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	config, err := normalizedReviewConfig(input.Config)
-	if err != nil {
-		return err
+	var config map[string]any
+	if input.Source.Type != "file" || input.Config != nil {
+		config, err = normalizedReviewConfig(input.Config)
+		if err != nil {
+			return err
+		}
 	}
 	if err := validateReviewName(input.Source.Name); err != nil {
 		return err
@@ -416,6 +433,9 @@ func (a *App) runReviewWorkflow(ctx context.Context, args []string) error {
 	options := parseReviewOptions(parsed)
 	if parsed.Bool("--dry-run") || parsed.Bool("--print-input") {
 		// Run previews show normalized workflow input; enum conversion belongs to startReview.
+		if input.Source.Type == "file" {
+			return a.renderReviewValue(options, map[string]any{"source": input.Source, "workflowStage": "awaiting_category", "nextCommand": "review pre-audit create/start after category selection"})
+		}
 		strength := input.Config["reviewStrength"]
 		if text, ok := strength.(string); ok {
 			strength = strings.TrimSpace(text)
@@ -429,18 +449,15 @@ func (a *App) runReviewWorkflow(ctx context.Context, args []string) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, deadline)
 	defer cancel()
-	a.logger.Info("review workflow started", "source_type", input.Source.Type, "wait", input.Wait)
-	var request openplatform.Request
 	if input.Source.Type == "file" {
-		file, openErr := os.Open(input.Source.Path)
-		if openErr != nil {
-			return openErr
+		run, prepareErr := a.preparePreAudit(ctx, options, input.Source.Path, input.Source.Name)
+		if prepareErr == nil {
+			prepareErr = fmt.Errorf("文件已上传，请按runId执行contract category list选择分类，再用review pre-audit create/start继续")
 		}
-		request, err = reviewUploadRequest(file, input.Source.Path, input.Source.Name)
-		_ = file.Close()
-	} else {
-		request, err = reviewJSONRequest("/file/uploadByUrl", map[string]string{"fileUrl": input.Source.FileURL, "name": input.Source.Name})
+		return a.finishReviewWorkflow(options, preAuditOutput(run), prepareErr)
 	}
+	a.logger.Info("review workflow started", "source_type", input.Source.Type, "wait", input.Wait)
+	request, err := reviewJSONRequest("/file/uploadByUrl", map[string]string{"fileUrl": input.Source.FileURL, "name": input.Source.Name})
 	if err != nil {
 		return err
 	}

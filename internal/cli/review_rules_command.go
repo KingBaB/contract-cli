@@ -37,6 +37,8 @@ func (a *App) runReview(ctx context.Context, args []string) error {
 		return a.runReviewRule(ctx, args[1:])
 	case "run":
 		return a.runReviewWorkflow(ctx, args[1:])
+	case "pre-audit":
+		return a.runPreAudit(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown review subcommand %q", args[0])
 	}

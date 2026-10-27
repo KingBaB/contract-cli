@@ -81,6 +81,7 @@ func addReviewHelp(registry map[string]helpTopic) {
 	}
 	completeReviewHelp(registry, input, dry)
 	completeReviewReferenceHelp(registry)
+	addPreAuditHelp(registry, input, dry, wait, configNotes)
 	for _, key := range []string{"review file upload-url", "review run"} {
 		topic := registry[key]
 		if key == "review run" {
@@ -89,6 +90,32 @@ func addReviewHelp(registry map[string]helpTopic) {
 		topic.Notes = append(topic.Notes, "URL 文件由服务端下载并校验大小，CLI 不预先下载。")
 		registry[key] = topic
 	}
+}
+
+func addPreAuditHelp(registry map[string]helpTopic, input, dry, wait []helpFlag, configNotes []string) {
+	root := registry["review"]
+	root.Summary = "执行合同智能审查。本地外部文件使用review pre-audit：上传CLM后选择分类、创建预审、确认配置，等待审查完成后返回预审链接。URL来源继续使用review run；合同ID使用既有分步引用流程。"
+	root.Commands = append(root.Commands, helpCommand{"contract-cli review pre-audit <subcommand> [flags]", "本地文件预审及链接恢复"})
+	registry["review"] = root
+	registry["review pre-audit"] = helpTopic{Name: "review pre-audit", Summary: "将本地外部文件接入CLM预审，完整成功后返回结果和页面地址。", Usage: []string{"contract-cli review pre-audit <prepare|create|start|resume> [flags]"}, Commands: []helpCommand{
+		{"contract-cli review pre-audit prepare --file <path> --name <name>", "上传CLM，保存runId并等待选择分类"},
+		{"contract-cli review pre-audit create --run-id <id> --category-id <id>", "创建预审并准备AI引用，等待选择配置"},
+		{"contract-cli review pre-audit start --run-id <id> --input-file <config.json>", "使用绑定文件和配置发起，等待结果及链接"},
+		{"contract-cli review pre-audit resume --run-id <id>", "续查原任务或仅重取原预审链接"},
+	}, Notes: []string{"仅支持user身份；分类复用contract category list，在上传后选择。", "不自动打开浏览器；恢复记录位于配置目录preaudit-runs，由用户管理，无后台清理。"}}
+	registry["review pre-audit prepare"] = helpTopic{Name: "review pre-audit prepare", Summary: "上传CLM文件后输出runId、sourceFileId及awaiting_category；不发起AI、不返回页面地址。", Usage: []string{"contract-cli review pre-audit prepare --file <path> --name <name> [flags]"}, Flags: reviewHelpFlags(append([]helpFlag{{"--file <path>", "必填，本地普通文件，DOC/DOCX/PDF最大50 MiB"}, {"--name <name>", "必填，包含扩展名的文件名"}}, dry...)...), Examples: []string{"contract-cli review pre-audit prepare --profile contract --file contract.pdf --name 合同.pdf --output json"}}
+	registry["review pre-audit create"] = helpTopic{Name: "review pre-audit create", Summary: "按所选分类创建预审并准备AI引用，输出awaiting_config和字符串文件身份；不返回页面地址。", Usage: []string{"contract-cli review pre-audit create --run-id <id> --category-id <id> [flags]"}, Flags: reviewHelpFlags(append([]helpFlag{{"--run-id <id>", "必填，prepare返回的32位小写十六进制runId"}, {"--category-id <id>", "必填，上传后选择的真实分类ID"}}, dry...)...), Notes: []string{"首次创建明确拒绝并退回awaiting_category时，保留已上传文件；用户重新选择分类并执行create后才再次单次创建。", "创建结果未知时不支持重试恢复，保留原run及分类并停止；请人工核实，create和resume均不再次创建。"}}
+	startFlags := append([]helpFlag{{"--run-id <id>", "必填，create返回的runId"}}, input...)
+	startFlags = append(startFlags, wait...)
+	startFlags = append(startFlags, dry...)
+	registry["review pre-audit start"] = helpTopic{Name: "review pre-audit start", Summary: "以绑定预审/AI文件发起审查，等待终态和合法CLM链接；完整成功才返回0。", Usage: []string{"contract-cli review pre-audit start --run-id <id> --input-file <config.json>|--data <json> [flags]"}, Flags: reviewHelpFlags(startFlags...), Notes: append([]string{"JSON只接受config对象，禁止覆盖businessId/fileId/fileHash/usageReportContext。", "CLI内部注入usageReportContext.biz1=SMART_PRE_AUDIT；无公开aiFunction字段。", "结果含upload/start/final、runId/preAuditId/taskId；导航只取final.reviewDetailUrl。", "AI成功但链接失败返回错误并保留明细，使用resume仅重新获取链接。"}, configNotes...)}
+	resumeFlags := append([]helpFlag{{"--run-id <id>", "必填，原runId"}}, wait...)
+	resumeFlags = append(resumeFlags, dry...)
+	registry["review pre-audit resume"] = helpTopic{Name: "review pre-audit resume", Summary: "续查已知taskId；审查成功后只重取原详情链接。", Usage: []string{"contract-cli review pre-audit resume --run-id <id> [flags]"}, Flags: reviewHelpFlags(resumeFlags...), Notes: []string{"创建结果未知时不支持重试恢复，请人工核实；未知启动结果且无taskId时停止，不自动重发；上传/引用响应未知也不自动重传。", "账号、租户、profile/API origin必须与原run一致；损坏记录不自动重建。", "未完成选择时返回错误并保留runId；成功明细及合法链接齐备后才返回0。"}}
+	run := registry["review run"]
+	run.Summary = "URL来源沿用上传/发起/可选等待；本地文件上传CLM后停在awaiting_category，由pre-audit create/start继续。"
+	run.Notes = append([]string{"本地source.type=file提供path/name，config可稍后选择；上传后必须选择分类，输出runId/awaiting_category并返回未完成错误，不直接创建AI任务。", "URL来源的config必填，wait控制是否等待；URL原流程保持。", "本地文件审查的链接由后续pre-audit start等待成功后交付。"}, configNotes...)
+	registry["review run"] = run
 }
 
 func completeReviewReferenceHelp(registry map[string]helpTopic) {
