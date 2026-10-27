@@ -146,7 +146,7 @@ func TestRunCommandLogRedactsSensitiveArguments(t *testing.T) {
 				},
 			})
 
-			if err := app.Run(context.Background(), tc.args); err == nil {
+			if err := app.Run(context.Background(), append(append([]string{}, tc.args...), "--debug")); err == nil {
 				t.Fatal("Run() error = nil, want unknown command error")
 			}
 
