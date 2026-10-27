@@ -30,7 +30,7 @@ func TestAuthDeviceInitReusesActivePendingTransaction(t *testing.T) {
 	requests := 0
 	app := newDeviceAuthStateTestApp(t, stdout, credentials, func(_ *http.Request) (*http.Response, error) {
 		requests++
-		return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://myaccount.qfei.cn/device","verification_uri_complete":"https://myaccount.qfei.cn/device?user_code=user-a","expires_in":600}`), nil
+		return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://test-myaccount.qtech.cn/device","verification_uri_complete":"https://test-myaccount.qtech.cn/device?user_code=user-a","expires_in":600}`), nil
 	})
 
 	if err := app.Run(context.Background(), []string{"auth", "init", "--profile", "contract", "--output", "json"}); err != nil {
@@ -78,7 +78,7 @@ func TestAuthDeviceInitReturnsMatchingQRCodeDataURI(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	credentials := newLockedDeviceCredentialStore()
 	app := newDeviceAuthStateTestApp(t, stdout, credentials, func(_ *http.Request) (*http.Response, error) {
-		return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://myaccount.qfei.cn/device","verification_uri_complete":"https://myaccount.qfei.cn/device?user_code=user-a","expires_in":600}`), nil
+		return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://test-myaccount.qtech.cn/device","verification_uri_complete":"https://test-myaccount.qtech.cn/device?user_code=user-a","expires_in":600}`), nil
 	})
 
 	if err := app.Run(context.Background(), []string{"auth", "init", "--profile", "contract", "--output", "json"}); err != nil {
@@ -104,7 +104,7 @@ func TestAuthDeviceInitRetriesOnceWhenTCPConnectionWasNotEstablished(t *testing.
 		if requests == 1 {
 			return nil, &net.OpError{Op: "dial", Net: "tcp", Err: deviceAuthTimeoutError{}}
 		}
-		return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://myaccount.qfei.cn/device","verification_uri_complete":"https://myaccount.qfei.cn/device?user_code=user-a","expires_in":600}`), nil
+		return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://test-myaccount.qtech.cn/device","verification_uri_complete":"https://test-myaccount.qtech.cn/device?user_code=user-a","expires_in":600}`), nil
 	})
 
 	if err := app.Run(context.Background(), []string{"auth", "init", "--profile", "contract", "--output", "json"}); err != nil {
@@ -202,7 +202,7 @@ func TestAuthDeviceInitUsesTaskScopedQRCodePathInWorkBuddy(t *testing.T) {
 		stdout := &bytes.Buffer{}
 		credentials := newLockedDeviceCredentialStore()
 		app := newDeviceAuthStateTestAppWithLookupEnv(t, stdout, credentials, func(_ *http.Request) (*http.Response, error) {
-			return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://myaccount.qfei.cn/device","verification_uri_complete":"https://myaccount.qfei.cn/device?user_code=user-a","expires_in":600}`), nil
+			return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://test-myaccount.qtech.cn/device","verification_uri_complete":"https://test-myaccount.qtech.cn/device?user_code=user-a","expires_in":600}`), nil
 		}, func(name string) (string, bool) {
 			if name == "CODEBUDDY_SESSION_ID" {
 				return taskID, true
@@ -238,7 +238,7 @@ func TestAuthDeviceInitPersistsPendingBeforeQRCodeWrite(t *testing.T) {
 	}
 	app := newDeviceAuthStateTestAppWithWorkspace(t, stdout, credentials, func(_ *http.Request) (*http.Response, error) {
 		requests++
-		return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://myaccount.qfei.cn/device","verification_uri_complete":"https://myaccount.qfei.cn/device?user_code=user-a","expires_in":600}`), nil
+		return jsonResponse(`{"device_code":"device-a","user_code":"user-a","verification_uri":"https://test-myaccount.qtech.cn/device","verification_uri_complete":"https://test-myaccount.qtech.cn/device?user_code=user-a","expires_in":600}`), nil
 	}, workspace)
 
 	err := app.Run(context.Background(), []string{"auth", "init", "--profile", "contract", "--output", "json"})
@@ -262,13 +262,13 @@ func TestAuthDeviceInitRequiresExplicitRestartForUncertainTransaction(t *testing
 	credentials := newLockedDeviceCredentialStore()
 	credentials.values["contract"] = credential.DeviceCredential{Pending: &credential.PendingTransaction{
 		Status: credential.PendingStatusUncertain, DeviceCode: "device-old",
-		VerificationURIComplete: "https://myaccount.qfei.cn/device?user_code=old",
-		TokenEndpoint:           "https://myaccount.qfei.cn/token", ClientID: "client-a", ExpiresAt: fixedCLINow().Add(10 * time.Minute),
+		VerificationURIComplete: "https://test-myaccount.qtech.cn/device?user_code=old",
+		TokenEndpoint:           "https://test-myaccount.qtech.cn/token", ClientID: "client-a", ExpiresAt: fixedCLINow().Add(10 * time.Minute),
 	}}
 	requests := 0
 	app := newDeviceAuthStateTestApp(t, stdout, credentials, func(_ *http.Request) (*http.Response, error) {
 		requests++
-		return jsonResponse(`{"device_code":"device-new","user_code":"user-new","verification_uri":"https://myaccount.qfei.cn/device","verification_uri_complete":"https://myaccount.qfei.cn/device?user_code=user-new","expires_in":600}`), nil
+		return jsonResponse(`{"device_code":"device-new","user_code":"user-new","verification_uri":"https://test-myaccount.qtech.cn/device","verification_uri_complete":"https://test-myaccount.qtech.cn/device?user_code=user-new","expires_in":600}`), nil
 	})
 
 	if err := app.Run(context.Background(), []string{"auth", "init", "--profile", "contract", "--output", "json"}); err != nil {
@@ -659,10 +659,10 @@ func newDeviceAuthStateTestAppWithLookupEnv(
 	t.Helper()
 	store := config.NewStore(t.TempDir())
 	profile := productionProfileFixture(config.Profile{
-		Name: "contract", Environment: "prod", Resource: "https://open.qfei.cn", OpenPlatformBaseURL: "https://open.qfei.cn",
+		Name: "contract", Environment: "test", Resource: "https://test-open.qtech.cn", OpenPlatformBaseURL: "https://test-open.qtech.cn",
 		BusinessType: "contract", Identities: config.Identities{User: config.UserIdentity{
-			AuthMode: credentialTestAuthMode(credentials), DeviceAuthorizationEndpoint: "https://myaccount.qfei.cn/device",
-			TokenEndpoint: "https://myaccount.qfei.cn/token", DeviceClientID: "client-a", DeviceScope: "contract:full",
+			AuthMode: credentialTestAuthMode(credentials), DeviceAuthorizationEndpoint: "https://test-myaccount.qtech.cn/device",
+			TokenEndpoint: "https://test-myaccount.qtech.cn/token", DeviceClientID: "client-a", DeviceScope: "contract:full",
 		}},
 	})
 	if err := store.UpsertProfile(productionProfileFixture(profile), true); err != nil {
@@ -684,8 +684,8 @@ func credentialTestAuthMode(credentials credential.Store) string {
 
 func pendingCredential(status credential.PendingStatus) credential.DeviceCredential {
 	return credential.DeviceCredential{Pending: &credential.PendingTransaction{
-		Status: status, DeviceCode: "device-a", VerificationURIComplete: "https://myaccount.qfei.cn/device?user_code=user-a",
-		TokenEndpoint: "https://myaccount.qfei.cn/token", ClientID: "client-a", ExpiresAt: fixedCLINow().Add(10 * time.Minute),
+		Status: status, DeviceCode: "device-a", VerificationURIComplete: "https://test-myaccount.qtech.cn/device?user_code=user-a",
+		TokenEndpoint: "https://test-myaccount.qtech.cn/token", ClientID: "client-a", ExpiresAt: fixedCLINow().Add(10 * time.Minute),
 	}}
 }
 

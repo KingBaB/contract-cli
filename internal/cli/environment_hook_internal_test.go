@@ -81,9 +81,9 @@ func TestOpenPlatformClientWiresFreshEnvironmentHookIntoEveryAttempt(t *testing.
 	store := config.NewStore(t.TempDir())
 	if err := store.UpsertProfile(config.Profile{
 		Name:                "contract",
-		Environment:         "prod",
-		OpenPlatformBaseURL: "https://open.qfei.cn",
-		Resource:            "https://open.qfei.cn",
+		Environment:         "test",
+		OpenPlatformBaseURL: "https://test-open.qtech.cn",
+		Resource:            "https://test-open.qtech.cn",
 		DefaultIdentity:     config.IdentityUser,
 		Identities: config.Identities{
 			User: config.UserIdentity{Token: &config.Token{

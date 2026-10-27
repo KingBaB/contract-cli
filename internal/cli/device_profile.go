@@ -20,7 +20,7 @@ func (a *App) loadDeviceAwareProfile(profileName string) (config.Profile, error)
 	}
 	if found {
 		if err := validateProductionProfile(profile); err != nil {
-			a.logger.Error("reject non-production profile", "profile", profile.Name, "error", err.Error())
+			a.logger.Error("reject unsupported environment profile", "profile", profile.Name, "error", err.Error())
 			return config.Profile{}, err
 		}
 		if err := a.validateProductionDeviceCredentialIfAvailable(profile); err != nil {
@@ -68,11 +68,11 @@ func (a *App) loadDeviceAwareProfile(profileName string) (config.Profile, error)
 		return config.Profile{}, err
 	}
 	if err := validateProductionProfile(profile); err != nil {
-		a.logger.Error("reject non-production Device profile snapshot", "profile", normalizedProfileName, "error", err.Error())
+		a.logger.Error("reject unsupported environment Device profile snapshot", "profile", normalizedProfileName, "error", err.Error())
 		return config.Profile{}, err
 	}
 	if err := validateProductionPendingTransaction(normalizedProfileName, stored.Pending, profile.Environment); err != nil {
-		a.logger.Error("reject non-production Device pending state during profile restore", "profile", normalizedProfileName, "error", err.Error())
+		a.logger.Error("reject unsupported environment Device pending state during profile restore", "profile", normalizedProfileName, "error", err.Error())
 		return config.Profile{}, err
 	}
 	if err := a.store.SaveProfile(profile); err != nil {
@@ -154,7 +154,7 @@ func profileNotFoundError(profileName string) error {
 }
 
 /*
-deviceProfileRecoveryError 说明快照恢复失败原因，并提示按原环境重新配置，避免误切换到 prod。
+deviceProfileRecoveryError 说明快照恢复失败原因，并提示按原环境重新配置，避免误切换环境。
 入参 profileName、reason（string）分别为配置名和失败原因；返回 error。
 */
 func deviceProfileRecoveryError(profileName, reason string) error {

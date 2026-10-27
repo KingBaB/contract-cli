@@ -21,7 +21,7 @@ func TestConfigAddRejectsBluePresetBeforeNetworkRequest(t *testing.T) {
 	})
 
 	err := app.Run(context.Background(), []string{"config", "add", "--env", "blue"})
-	if err == nil || err.Error() != `unsupported environment "blue"; supported environments: prod` {
+	if err == nil || err.Error() != `unsupported environment "blue"; supported environments: test` {
 		t.Fatalf("config add Blue error = %v", err)
 	}
 	if requestCount != 0 {
@@ -70,7 +70,7 @@ func TestProductionHTTPClientBlocksBlueHosts(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err = app.httpClient.Do(request)
-		if err == nil || !strings.Contains(err.Error(), "production build blocks non-production host") {
+		if err == nil || !strings.Contains(err.Error(), "test build blocks unsupported environment host") {
 			t.Fatalf("production request error = %v, want Blue host blocked", err)
 		}
 	}

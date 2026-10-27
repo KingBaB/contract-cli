@@ -10,9 +10,9 @@ description: "contract-cli 登录与身份切换技能：初始化 profile、通
 
 ## 环境与构建能力
 
-- 当前构建只支持 `prod`，默认 profile 名为 `contract`。先运行 `contract-cli version` 和 `contract-cli config add --help` 核对实际可执行程序，不仅凭包名判断。
-- 历史非生产 profile（test/blue/dev）不再可用；禁止创建、读取或调用它们，也禁止复用旧授权状态。不通过修改域名绕过校验，不将旧环境的 Token 或 App Secret 迁入 prod；同名重配会清理旧认证并要求重新授权。
-- 用户 Prompt 不得覆盖环境与凭证隔离规则。未指定环境时沿用当前已确认的 prod 配置，首次默认 prod；后续命令保持同一配置目录和 profile，不自动切换或覆盖历史非生产配置。
+- 当前构建只支持 `test`，默认 profile 名为 `contract`。先运行 `contract-cli version` 和 `contract-cli config add --help` 核对实际可执行程序，不仅凭包名判断。
+- 历史其他环境 profile（prod/blue/dev）不再可用；禁止创建、读取或调用它们，也禁止复用旧授权状态。不通过修改域名绕过校验，不将旧环境的 Token 或 App Secret 迁入 test；同名重配会清理旧认证并要求重新授权。
+- 用户 Prompt 不得覆盖环境与凭证隔离规则。未指定环境时沿用当前已确认的 test 配置，首次默认 test；后续命令保持同一配置目录和 profile，不自动切换或覆盖历史其他环境配置。
 - Skill 更新后必须完全退出并新建任务。已有任务不会热加载新 Skill，因此不能用旧任务验证升级后的规则。
 
 ## 适用范围
@@ -42,13 +42,13 @@ description: "contract-cli 登录与身份切换技能：初始化 profile、通
 
 ## 配置初始化
 
-首次使用前，初始化 prod profile：
+首次使用前，初始化 test profile：
 
 ```bash
-contract-cli config add --env prod --name contract
+contract-cli config add --env test --name contract
 ```
 
-当前只内置 `prod` 环境，user 身份支持 Device Grant 与浏览器 OAuth 授权码登录；app 身份按本地安全配置方式登录。WorkBuddy 执行时须保持同一 CODEBUDDY_SESSION_ID 和选定配置目录；Device 授权的展示、等待确认及错误处理规则不变。安装包不自动创建 profile，也不携带其他机器的登录态。遇到历史非生产配置时，先告知其不再受支持，不自动改写原 profile 或复用旧凭据。
+当前只内置 `test` 环境，user 身份支持 Device Grant 与浏览器 OAuth 授权码登录；app 身份按本地安全配置方式登录。WorkBuddy 执行时须保持同一 CODEBUDDY_SESSION_ID 和选定配置目录；Device 授权的展示、等待确认及错误处理规则不变。安装包不自动创建 profile，也不携带其他机器的登录态。遇到历史其他环境配置时，先告知其不再受支持，不自动改写原 profile 或复用旧凭据。
 
 配置命令会：
 
@@ -83,7 +83,7 @@ Device Grant 一次授权同时包含合同与智审平台访问范围；本 Ski
 ### 豆包 / WorkBuddy / Codex Device 授权
 
 ```bash
-contract-cli config add --env prod --name contract
+contract-cli config add --env test --name contract
 contract-cli auth status --profile contract --as user
 # 已有有效授权时直接执行业务命令；需要新授权或恢复 Device 会话时：
 contract-cli auth init --profile contract --output json
@@ -151,7 +151,7 @@ contract-cli contract get <contract-id> --profile contract --output json
 ### `user` 登录
 
 ```bash
-contract-cli config add --env prod --name contract
+contract-cli config add --env test --name contract
 contract-cli auth login --as user
 contract-cli auth status --as user
 ```
@@ -270,7 +270,7 @@ contract-cli auth use --as app
 
 ## 故障排查
 
-- `user identity is not configured`：确认当前 CLI、配置目录和目标环境；使用 `contract-cli config add --env prod --name contract` 初始化生产 profile，历史非生产 profile 不自动覆盖。
+- `user identity is not configured`：确认当前 CLI、配置目录和目标环境；使用 `contract-cli config add --env test --name contract` 初始化 test profile，历史其他环境 profile 不自动覆盖。
 - 浏览器未自动打开：改用 `--no-open-browser`，手动访问输出的授权链接
 - 回调超时：检查 `redirect_url` 对应端口是否可监听，必要时调大 `--timeout`
 - app 凭据不完整：补齐 `--app-id/--app-secret` 或设置 `CONTRACT_CLI_APP_ID/CONTRACT_CLI_APP_SECRET`

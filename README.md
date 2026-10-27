@@ -107,26 +107,26 @@ contract-cli --version
 
 ### 2. 初始化本地 profile
 
-当前源码构建仅支持 `prod`，默认 profile 为 `contract`；其他环境会在发请求前被拒绝，旧环境的同名 profile 重新配置时会清理旧认证，避免复用凭据。prod API 地址为 `https://open.qfei.cn`、账号地址为 `https://myaccount.qfei.cn`。
+当前测试分支源码构建仅支持 `test`，默认 profile 为 `contract`；其他环境会在发请求前被拒绝，旧环境的同名 profile 重新配置时会清理旧认证，避免复用凭据。test API 地址为 `https://test-open.qtech.cn`、账号地址为 `https://test-myaccount.qtech.cn`。
 
-若需验证 npm 包构建流程，可生成独立的本地预发布包；版本中的 `-test` 只是包标记，运行时仅支持 `prod`，也不发布到 npm：
+若需验证 npm 包构建流程，可生成独立的本地预发布包；版本中的 `-test` 只是包标记，运行时仅支持 `test`，也不发布到 npm：
 
 ```bash
 VERSION=1.8.4-test.20260923.6 bash scripts/build-test-package.sh
 ```
 
-历史联调包可能仍含 test/blue 等旧环境能力，请通过新构建的 `config add --help` 核对当前能力。审批矩阵的 user/app 双身份和规则 OpenAPI 命令保持不变；真实环境验证仍需对应后端及网关配置，见 [双身份接入说明](docs/approval-matrix-user-app-auth.md)。不要在对话中发送 Token 或 App Secret。
+历史安装包的环境能力可能不同，请通过新构建的 `config add --help` 核对当前能力。审批矩阵的 user/app 双身份和规则 OpenAPI 命令保持不变；真实环境验证仍需对应后端及网关配置，见 [双身份接入说明](docs/approval-matrix-user-app-auth.md)。不要在对话中发送 Token 或 App Secret。
 
 首次使用前，需要在本机初始化一个 profile。本文统一使用 `contract` 作为示例名称，客户可以按项目名称自行调整。
 
 ```text
-contract-cli config add --env prod --name contract
+contract-cli config add --env test --name contract
 contract-cli auth status --profile contract --as user
 ```
 
 | 参数 | 含义 | 示例值 |
 | --- | --- | --- |
-| `--env` | 目标环境 | `prod` |
+| `--env` | 目标环境 | `test` |
 | `--name` | 本机 profile 名称 | `contract` |
 | `--profile` | 后续命令指定使用的 profile | `contract` |
 
@@ -187,7 +187,7 @@ contract-cli auth login --profile contract --as app --app-id <app_id> --app-secr
 contract-cli auth status --profile contract --as app
 ```
 
-正式包默认使用 `contract` profile 和 `prod` 环境；CLI 不会使用历史非生产 profile 发起授权或业务请求，也不会把旧凭据迁入 prod。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
+当前测试分支构建默认使用 `contract` profile 和 `test` 环境；CLI 不会使用历史其他环境 profile 发起授权或业务请求，也不会把旧凭据迁入 test。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
 
 也可以通过环境变量提供应用凭证：
 
@@ -729,7 +729,7 @@ contract-cli contract search --help
 
 | 操作目标 | 对应命令 |
 | --- | --- |
-| 初始化与查看版本 | `contract-cli config add --env prod --name contract`<br>`contract-cli version` |
+| 初始化与查看版本 | `contract-cli config add --env test --name contract`<br>`contract-cli version` |
 | 登录/检查 user 身份 | `contract-cli auth login --profile contract --as user`<br>`contract-cli auth status --profile contract --as user` |
 | 登录/检查 app 身份 | `contract-cli auth login --profile contract --as app --app-id <app_id> --app-secret <app_secret>`<br>`contract-cli auth status --profile contract --as app` |
 | 切换默认身份 | `contract-cli auth use --profile contract --as app` |
@@ -805,7 +805,7 @@ contract-cli --version
 说明还没有初始化本地 profile。执行：
 
 ```text
-contract-cli config add --env prod --name contract
+contract-cli config add --env test --name contract
 
 
 
@@ -907,7 +907,7 @@ contract-cli contract search --help
 
 ### 个人协商查询（user）
 
-个人协商查询使用 `contract-cooperation` Skill。以下命令以已确认的生产 profile `contract` 为例；环境由 profile 决定，不在命令中覆盖域名。
+个人协商查询使用 `contract-cooperation` Skill。以下命令以已确认的 test profile `contract` 为例；环境由 profile 决定，不在命令中覆盖域名。
 
 ```bash
 contract-cli contract cooperation search --input-file cooperation-search.json --profile contract --as user --output json
