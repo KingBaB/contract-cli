@@ -13,7 +13,7 @@ metadata:
 
 ## 范围与既有上下文
 
-只审查一份真实文件或继续一个真实审查任务。本地外部文件创建CLM预审，等待审查完成后返回预审页面链接，不要求创建合同或协商；URL文件来源保留既有独立审查流程。系统内合同必须定位当前正文和业务场景，不能把历史版本或普通附件当作当前正文。审查不自动修改文件、回写合同、发起协商、审批或接受修订。
+只审查一份真实文件或继续一个真实审查任务。本地外部文件创建CLM预审，等待审查完成后返回预审页面链接，不要求创建合同或协商。URL文件上传已禁用；外部文件预审必须先上传CLM，再以文件引用上传AI。系统内合同必须定位当前正文和业务场景，不能把历史版本或普通附件当作当前正文。审查不自动修改文件、回写合同、发起协商、审批或接受修订。
 
 调用方须已建立当前智书合同租户、profile 和个人 user 上下文。以下命令中的 `<profile>` 复用该上下文，所有远端请求显式携带 `--as user`。当前上下文是 app、上下文缺失、依赖不可用、权限不足或产品不匹配时，保留输入并报告缺口，交由原有公共能力处理；不自行切换身份或环境，不在本 Skill 编排安装、更新或授权。历史 app 能力不等于审查权限。
 
@@ -23,7 +23,7 @@ metadata:
 
 先读 `contract-cli review --help`，再按本次动作读取具体子命令帮助。只有注册命令与当前请求契约匹配才执行；不得以裸 API、通用网络请求或其他产品 CLI 补能力。
 
-本地外部文件使用 `review pre-audit prepare/create/start/resume`；既有主体、清单和分类查询继续复用。`review run` 不是交互向导，本地来源上传后返回 `awaiting_category` 和runId，须分步继续；URL来源沿用原编排。
+本地外部文件使用 `review pre-audit prepare/create/start/resume`；既有主体、清单和分类查询继续复用。`review run` 不是交互向导，本地来源上传后返回 `awaiting_category` 和runId，须分步继续；URL上传已禁用，包含该命令的source.type=url。
 
 以下目标能力不能仅凭本 Skill 当作已实现：
 
@@ -153,15 +153,7 @@ contract-cli review pre-audit prepare --profile <profile> --as user --file <path
 
 保存 `runId`、`sourceFileId` 和 `workflowStage=awaiting_category`。这一步只上传CLM正文，不是审查成功，也不返回导航地址；接着按「选择合同分类」查询并让用户选择。当前CLI直接文件 `review run` 同样停在此阶段并返回未完成错误；保留runId继续，不重新上传。
 
-`prepare`不接收stdin或URL。URL来源继续使用既有命令；低层字节上传保留给明确使用旧独立审查能力的场景，不作为本地预审的替代流程：
-
-```text
-contract-cli review file upload --profile <profile> --as user --file <path> --name <filename.pdf> --output json
-contract-cli review file upload --profile <profile> --as user --stdin --name <filename.pdf> --output json
-contract-cli review file upload-url --profile <profile> --as user --file-url <https-url> --name <filename.pdf> --output json
-```
-
-URL大小由服务端校验，不预下载；签名query不展开到日志或用户回复。URL/低层独立上传保存原 `businessId/fileId/fileHash`，不能承诺生成CLM预审链接。本地预审的 `sourceFileId/latestFileId` 是CLM文件ID，后续create返回的 `fileId/fileHash` 是AI文件身份，不能混用。大整数使用无损JSON/字符串，禁止经浮点丢失精度。
+`prepare`不接收stdin或URL。本地附件使用上方预审流程；`review file upload` 仅支持 CLM 文件引用，显式传入 `--file` 或 `--stdin` 会被拒绝，包含预览命令和 `--stdin=false`。不要把附件字节直接上传到 AI，也不要在缺少引用参数时改用字节上传。创建预审后的 AI 引用由 `pre-audit create` 内部完成，无须再执行一次上传命令。当前不支持通过文件地址上传，`review run` 的 `source.type=url` 在执行和预览时均会报错；遇到文件地址时请用户提供可读本地附件，再执行CLM预审，不自动下载或将URL直传AI。本地预审的 `sourceFileId/latestFileId` 是CLM文件ID，后续create返回的 `fileId/fileHash` 是AI文件身份，不能混用。大整数使用无损JSON/字符串，禁止经浮点丢失精度。
 
 ## 合同 ID → 协商引用上传
 
@@ -269,7 +261,7 @@ contract-cli contract category list --profile <profile> --as user --output json
 
 保存所选分类的真实 ID、名称和层级路径；分类 ID、number、abbreviation 不可互换，字段含义见 [合同分类参考](../contract-cli-contract/references/category-fields.md)。按已验证的服务映射取得清单查询使用的 `<category-id>`；映射不明时报告缺口，不猜 ID。本地预审把分类ID提交到下一步create，同时用于筛选清单；普通task start或URL review run不添加分类字段。
 
-恢复中断流程时，若已上传且主体、强度已选，但分类未选，先补选分类并保留已有有效选择；主体是否有效必须满足下节同一文件提取来源规则。预审create前更换分类时清除旧清单编号映射，重新查询并确认清单，不重复上传；创建成功或创建结果未知时分类已绑定，不更改原run参数。首次创建明确拒绝且CLI退回awaiting_category时，按下一节重新选择分类。系统合同/URL来源沿用原分类筛选规则。
+恢复中断流程时，若已上传且主体、强度已选，但分类未选，先补选分类并保留已有有效选择；主体是否有效必须满足下节同一文件提取来源规则。预审create前更换分类时清除旧清单编号映射，重新查询并确认清单，不重复上传；创建成功或创建结果未知时分类已绑定，不更改原run参数。首次创建明确拒绝且CLI退回awaiting_category时，按下一节重新选择分类。系统合同沿用原分类筛选规则。
 
 ### 创建本地文件预审
 
@@ -450,18 +442,18 @@ contract-cli review pre-audit resume --profile <profile> --as user --run-id <run
 
 * 已取得 taskId：继续查询原任务，不因查询超时、连接中断或链接缺失重新创建。
 
-本节普通重发规则仅适用于协商、任务中心及URL来源的既有独立审查；本地CLM预审按上一节状态机处理。不改变 CLI 自动重试策略，不绕过服务端权限和参数校验，不承诺后端幂等或重复请求不会产生额外任务。
+本节普通重发规则仅适用于协商和任务中心的既有审查；本地CLM预审按上一节状态机处理。不改变 CLI 自动重试策略，不绕过服务端权限和参数校验，不承诺后端幂等或重复请求不会产生额外任务。
 
-### 已有完整输入时使用 review run
+### review run 的本地文件兼容入口
 
-本节仅用于URL来源已有完整输入的独立审查；所有按合同 ID 发起的流程使用上文引用上传、主体提取和用户选择的分步链路，不用 run 绕过主体确认。只在真实分类、主体、强度和清单均已明确，清单已按该分类及既有显式跨类型规则验证，且尚未上传时使用；分类未选则使用上述分步流程，不能用 run 跳过分类选择。已上传则走 task start，已有 taskId 则只查询。不依赖 extractSubjects 自动选择立场，也不用 run 重新上传来补链接。
+本命令仅接收本地file来源，上传CLM后返回待选分类阶段。推荐直接使用上文review pre-audit分步流程；合同ID继续使用引用上传、主体提取和用户选择的分步链路。URL上传已禁用；不使用run绕过CLM预审、分类或主体确认。以下config仅用于兼容输入示例，不能替代上传后在同一run中选择分类和确认审查配置。
 
 
 
 ```json
 {
 
-  "source": {"type": "url", "fileUrl": "https://example.com/contract.pdf", "name": "contract.pdf"},
+  "source": {"type": "file", "path": "./contract.pdf", "name": "contract.pdf"},
 
   "config": {"selectedPosition": "主体名称示例", "selectedAuditRole": "主体角色示例", "reviewStrength": "中立", "selectedCheckListIds": ["CHECKLIST_ID_FROM_QUERY"], "matchContractTypeRulePackage": true},
 
@@ -480,11 +472,11 @@ contract-cli review run --profile <profile> --as user --input-file <run.json> --
 contract-cli review run --profile <profile> --as user --input-file <run.json> --output json
 ```
 
-URL来源wait=true才等待，deadline限制整个run。本地source.type=file、path/name由新预审流程接管：上传CLM后输出runId/awaiting_category并返回未完成错误，随后create/start，不因已有config或wait=false跳过上传后的分类选择。不要擅自给businessId/fileHash兼容字段赋值。
+source.type仅支持file，path/name由CLM预审流程接管：上传CLM后输出runId/awaiting_category并返回未完成错误，随后create/start，不因已有config或wait=false跳过上传后的分类选择。不要擅自给businessId/fileHash兼容字段赋值。
 
 ## 原任务查询、恢复与结果
 
-本地CLM预审使用 `review pre-audit resume --run-id`，由CLI保留业务和文件绑定并完成链接交付。以下低层查询用于系统合同/URL来源，或只读排查已知taskId；只读排查不替代预审状态机恢复，不据此重新发起。
+本地CLM预审使用 `review pre-audit resume --run-id`，由CLI保留业务和文件绑定并完成链接交付。以下低层查询用于系统合同或只读排查已知taskId；旧URL任务仍可按已知taskId只读查询。只读排查不替代预审状态机恢复，不据此重新发起。
 
 
 ```text
@@ -543,7 +535,7 @@ status/info 各查询一次，result 轮询同一任务成功后取详情。需�
 
 #### 三、外部文件预审输出
 
-外部文件预审：Codex、豆包和 WorkBuddy 统一使用以下结构：基础信息表、审查概览、风险可视化、风险详情和主体风险。不附带原始JSON、状态机信息或调用参数。本地CLM预审在末尾输出 `审查结果：[查看详情](<final.reviewDetailUrl>)`，仅使用CLI实际返回的合法链接。链接失败保留并展示真实审查明细、说明地址获取失败，按原run恢复；不能伪造地址或把审查成功改写成任务失败。URL来源仍不承诺CLM页面，不套用系统合同pc_url规则。
+外部文件预审：Codex、豆包和 WorkBuddy 统一使用以下结构：基础信息表、审查概览、风险可视化、风险详情和主体风险。不附带原始JSON、状态机信息或调用参数。本地CLM预审在末尾输出 `审查结果：[查看详情](<final.reviewDetailUrl>)`，仅使用CLI实际返回的合法链接。链接失败保留并展示真实审查明细、说明地址获取失败，按原run恢复；不能伪造地址或把审查成功改写成任务失败。URL文件上传已禁用；只读查询旧任务时不伪造CLM预审页面。
 
 ##### 内容结构
 
@@ -910,6 +902,6 @@ if (page.pathname === '/cooperation/detail' && page.searchParams.get('from') ===
 console.log(page.toString());
 ```
 
-导航规则允许且取得有效地址时，向用户交付可点击的 Markdown 链接，链接文字为 “查看详情”，目标为上一步生成的真实地址，不只输出裸地址或内部 ID；其他分支省略模板中的链接行。本地预审直接使用final.reviewDetailUrl，不执行此系统合同pc_url转换；URL独立审查不生成CLM预审链接。
+导航规则允许且取得有效地址时，向用户交付可点击的 Markdown 链接，链接文字为 “查看详情”，目标为上一步生成的真实地址，不只输出裸地址或内部 ID；其他分支省略模板中的链接行。本地预审直接使用final.reviewDetailUrl，不执行此系统合同pc_url转换；旧URL任务只读查询不生成CLM预审链接。
 
 页面应打开 AI 审查入口，协商退出到全部协商列表，任务中心退出到该条合同详情；网页是否呈现刚创建的审查结果需通过真实任务联调验证，不能仅凭拼接成功宣称已验证。**未验证网页展示不是返回链接的前置阻断**。浏览器登录与权限沿用网页自身机制，不等同 CLI 身份。pc\_url 缺失或无效时保留已取得的任务和结果，仅报告链接缺口，不因此拒绝发起、重复上传或重审。

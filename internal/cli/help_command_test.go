@@ -379,13 +379,13 @@ func TestHelpRequestsRenderExpectedTopics(t *testing.T) {
 			args: []string{"config", "add", "--help"},
 			contains: []string{
 				"config add",
-				"--env <prod>",
-				"仅支持 prod，默认 prod",
+				"--env <dev>",
+				"仅支持 dev，默认 dev",
 				"--name <profile>",
 				"默认 contract",
-				"contract-cli config add --env prod --name contract",
+				"contract-cli config add --env dev --name contract",
 			},
-			notContains: []string{"--env <dev|prod>", "--env <prod|dev>", "--env <prod|test>", "--env test", "blue"},
+			notContains: []string{"--env <dev|prod>", "--env <prod|dev>", "--env <dev|test>", "--env prod", "--env test", "blue"},
 		},
 		{
 			name: "update check production example",

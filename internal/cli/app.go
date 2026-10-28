@@ -303,7 +303,7 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	var redirectURL string
 	var scopes string
 
-	flags.StringVar(&env, "env", "prod", "environment preset")
+	flags.StringVar(&env, "env", productionEnvironment, "environment preset")
 	flags.StringVar(&profileName, "name", defaultProfileName, "profile name")
 	flags.StringVar(&protectedResourceURL, "resource-metadata-url", "", "override protected resource metadata URL")
 	flags.StringVar(&redirectURL, "redirect-url", "", "OAuth redirect URL")
@@ -339,7 +339,7 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	openOrigin, _, _ := environmentOrigins(env)
 	if protectedResourceURL != "" && !isProductionOriginURL(protectedResourceURL, openOrigin, true) {
 		err := productionProfileError(profileName)
-		a.logger.Error("config add rejected non-production metadata url", "profile", profileName, "error", err.Error())
+		a.logger.Error("config add rejected unsupported environment metadata url", "profile", profileName, "error", err.Error())
 		return err
 	}
 	if redirectURL == "" {
@@ -395,12 +395,12 @@ func (a *App) runConfigAdd(ctx context.Context, args []string) error {
 	profile.Identities.User.DeviceScope = preset.DeviceScope
 	profile.Identities.User.RedirectURL = redirectURL
 	if err := validateProductionProfile(profile); err != nil {
-		a.logger.Error("reject discovered non-production profile", "profile", profileName, "error", err.Error())
+		a.logger.Error("reject discovered unsupported environment profile", "profile", profileName, "error", err.Error())
 		return err
 	}
 	if resetAuthentication {
 		if err := a.clearProfileAuthenticationState(profileName); err != nil {
-			return fmt.Errorf("clear non-production authentication state for profile %q: %w", profileName, err)
+			return fmt.Errorf("clear unsupported environment authentication state for profile %q: %w", profileName, err)
 		}
 	}
 
@@ -631,11 +631,11 @@ func resolveEnvironment(name string) (environmentPreset, error) {
 	switch name {
 	case productionEnvironment:
 		return environmentPreset{
-			OpenPlatformBaseURL:            "https://open.qfei.cn",
-			AppTokenEndpoint:               "https://open.qfei.cn/open-apis/auth/v3/tenant_access_token/internal",
+			OpenPlatformBaseURL:            "https://dev-open.qtech.cn",
+			AppTokenEndpoint:               "https://dev-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal",
 			ProtectedResourceMetadataURL:   "",
-			AuthorizationServerMetadataURL: "https://myaccount.qfei.cn/.well-known/oauth-authorization-server/contract",
-			Resource:                       "https://open.qfei.cn",
+			AuthorizationServerMetadataURL: "https://dev-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
+			Resource:                       "https://dev-open.qtech.cn",
 			RedirectURL:                    "http://127.0.0.1:8000/callback",
 			Scopes:                         []string{"cli:tools", "cli:resources"},
 			BusinessType:                   "contract",
@@ -644,7 +644,7 @@ func resolveEnvironment(name string) (environmentPreset, error) {
 			DeviceScope:                    "contract:full contract-review:full",
 		}, nil
 	default:
-		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: prod", name)
+		return environmentPreset{}, fmt.Errorf("unsupported environment %q; supported environments: dev", name)
 	}
 }
 

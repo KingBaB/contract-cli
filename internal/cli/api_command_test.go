@@ -298,19 +298,19 @@ func TestAPICommandHelpIsExposedForWebChannel(t *testing.T) {
 func apiWebTestProfile() config.Profile {
 	return productionProfileFixture(config.Profile{
 		Name:                           "contract",
-		Environment:                    "prod",
-		OpenPlatformBaseURL:            "https://open.qfei.cn",
-		AppTokenEndpoint:               "https://open.qfei.cn/open-apis/auth/v3/tenant_access_token/internal",
-		ProtectedResourceMetadataURL:   "https://open.qfei.cn/.well-known/oauth-protected-resource",
-		AuthorizationServerMetadataURL: "https://myaccount.qfei.cn/.well-known/oauth-authorization-server/contract",
-		Resource:                       "https://open.qfei.cn",
+		Environment:                    "dev",
+		OpenPlatformBaseURL:            "https://dev-open.qtech.cn",
+		AppTokenEndpoint:               "https://dev-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal",
+		ProtectedResourceMetadataURL:   "https://dev-open.qtech.cn/.well-known/oauth-protected-resource",
+		AuthorizationServerMetadataURL: "https://dev-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
+		Resource:                       "https://dev-open.qtech.cn",
 		BusinessType:                   "contract",
 		ClientName:                     "contract-cli",
 		DefaultIdentity:                config.IdentityUser,
 		Identities: config.Identities{User: config.UserIdentity{
 			AuthMode:              config.UserAuthModeAuthorizationCode,
-			AuthorizationEndpoint: "https://myaccount.qfei.cn/api/public/oauth/authorize/contract",
-			TokenEndpoint:         "https://myaccount.qfei.cn/api/public/oauth/token/contract",
+			AuthorizationEndpoint: "https://dev-myaccount.qtech.cn/api/public/oauth/authorize/contract",
+			TokenEndpoint:         "https://dev-myaccount.qtech.cn/api/public/oauth/token/contract",
 			Token: &config.Token{
 				AccessToken: "user-token",
 				TokenType:   "Bearer",

@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-- 当前仅内置 `prod` 环境预设；历史非生产 profile 和对应网络端点会在请求前被拒绝，不自动迁移凭据。首次配置：`contract-cli config add --env prod --name contract`
+- 当前仅内置 `dev` 环境预设；历史其他环境 profile 和对应网络端点会在请求前被拒绝，不自动迁移凭据。首次配置：`contract-cli config add --env dev --name contract`
 - `contract get`、`contract search`、`contract create`、`contract sync-user-groups`、`contract text`、`contract category list`、`contract template list`、`contract template get`、`contract template instantiate`、`contract upload-file`、`contract download-file`、`contract approval get`、`mdm vendor list`、`mdm vendor get`、`mdm legal list`、`mdm legal get`、`mdm fields list` 是当前同时支持 `user` 与 `app` 的结构化业务命令
 - `rule *`（包括 `approval-matrix` 别名）支持 `--as user` / `--as app`；user 当前限 contract 产品且需要合同规则管理权限。
 - `contract search-v2`、`contract field update`、`contract sign switch-to-paper`、`contract sign-url get`、`contract form attribute list`、`contract authorization grant`、`contract esign *`、`contract submit/resubmit/patch/delete/print-file`、`contract share get/batch-create`、`contract cooperation link/record/search/file`、`contract approval start`、`payment *`、`mdm vendor create/update/list-all/query-by-cert`、`mdm legal get --code/create/update`、`mdm fixed-exchange-rate get/update`、`mdm file download`、`event outbound-ip list` 当前仅支持 `--as app`
@@ -18,6 +18,19 @@
 - `environment inspect` 可以在本地查看当前父进程链对应的客户端来源；所有实际业务 HTTP 请求都会在发送前重新探测并覆盖来源 Header
 - 当前全部已支持命令都可以通过 `--help` 查看本地帮助，例如 `contract-cli --help`、`contract-cli contract search --help`、`contract-cli help contract upload-file`
 - `app` 业务接口后续继续新增时，优先在本文件补充命令矩阵
+
+## 审查文件准备
+
+- 本地文件从 `contract-cli review pre-audit prepare --file <path> --name <name>` 开始，上传到 CLM 后选择分类，再由 `review pre-audit create` 创建预审并自动准备 AI 文件引用；`review pre-audit start` 等待审查完成后返回预审链接。
+- `review file upload` 仅引用 CLM 已有文件，必填 `--name`、`--business-id`、`--business-file-id`、`--business-file-version` 和 `--source-locator`。来源支持 `sourceFileType=0/1/2`；业务、文件、版本和协商关联 ID 均取真实接口结果。
+- 该命令显式拒绝本地文件与 stdin 参数，包括预览；旧脚本会收到 `review pre-audit prepare` 的迁移提示。引用请求不携带 file 二进制字段，由 AI 服务读取 CLM 文件。
+
+```text
+contract-cli review pre-audit prepare --profile contract --as user --file ./合同.pdf --name 合同.pdf
+contract-cli review file upload --profile contract --as user --business-id <business-id> --business-file-id <file-id> --business-file-version <version> --source-locator '{"provider":"clm","sourceFileType":0}' --name 合同.pdf
+```
+
+CLM 本地上传支持 DOC、DOCX、PDF，最大 50 MiB。当前不支持通过文件地址上传；`review run` 的 `source.type=url` 在执行和预览模式均会报错。外部文件预审必须先上传 CLM，再以文件引用上传 AI；不自动下载文件地址。
 
 ## 顶层人员与部门查询
 
@@ -163,12 +176,12 @@ contract-cli contract get <contract-id> --help
 命令：
 
 ```bash
-contract-cli config add --env prod --name contract
+contract-cli config add --env dev --name contract
 ```
 
 支持参数：
 
-- `--env`：环境预设，仅支持 `prod`，默认 `prod`
+- `--env`：环境预设，仅支持 `dev`，默认 `dev`
 - `--name`：profile 名称，默认 `contract`
 - `--resource-metadata-url`：覆盖 protected resource metadata 地址
 - `--redirect-url`：覆盖 OAuth callback 地址

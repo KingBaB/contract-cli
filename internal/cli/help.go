@@ -190,7 +190,7 @@ func renderHelpFlags(writer io.Writer, flags []helpFlag) error {
 }
 
 /*
-helpRegistry 构造本地命令帮助，环境入口始终只展示 prod。
+helpRegistry 构造本地命令帮助，环境入口始终只展示 dev。
 无入参；返回 map[string]helpTopic 为命令路径到帮助主题的映射。
 */
 func helpRegistry() map[string]helpTopic {
@@ -336,7 +336,7 @@ func addEnvironmentHelp(registry map[string]helpTopic) {
 }
 
 /*
-addConfigHelp 注册 profile 配置命令帮助，只展示当前可用的 prod 预设。
+addConfigHelp 注册 profile 配置命令帮助，只展示当前可用的 dev 预设。
 入参 registry（map[string]helpTopic）为帮助主题表；无返回值。
 */
 func addConfigHelp(registry map[string]helpTopic) {
@@ -352,14 +352,14 @@ func addConfigHelp(registry map[string]helpTopic) {
 		Summary: "初始化或更新 profile，并写入开放平台、user OAuth 和 app token endpoint 配置。",
 		Usage:   []string{"contract-cli config add [flags]"},
 		Flags: []helpFlag{
-			{"--env <prod>", "环境预设；仅支持 prod，默认 prod"},
+			{"--env <dev>", "环境预设；仅支持 dev，默认 dev"},
 			{"--name <profile>", "profile 名称，默认 contract"},
 			{"--resource-metadata-url <url>", "覆盖 protected resource metadata 地址"},
 			{"--redirect-url <url>", "覆盖 OAuth callback 地址"},
 			{"--scope <scopes>", "覆盖默认 OAuth scopes，多个 scope 用空格分隔"},
 		},
 		Examples: []string{
-			"contract-cli config add --env prod --name contract",
+			"contract-cli config add --env dev --name contract",
 		},
 	}
 }

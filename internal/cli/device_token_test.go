@@ -97,7 +97,7 @@ func TestDeviceTokenRefreshesOnceOnExplicitGatewayTokenExpired(t *testing.T) {
 
 func TestDeviceTokenInvalidGrantClearsTokenAndPreservesPendingAuthorization(t *testing.T) {
 	pending := &credential.PendingTransaction{
-		DeviceCode: "pending-device", TokenEndpoint: "https://myaccount.qfei.cn/api/public/oauth/token/contract",
+		DeviceCode: "pending-device", TokenEndpoint: "https://dev-myaccount.qtech.cn/api/public/oauth/token/contract",
 		ClientID: "zscli_892efdadc11a3f53", ExpiresAt: deviceTokenTestNow().Add(10 * time.Minute),
 	}
 	app, credentials, _ := newDeviceTokenTestApp(t, &config.Token{
@@ -391,11 +391,11 @@ func newDeviceTokenTestApp(t *testing.T, token *config.Token, handler deviceRoun
 	t.Helper()
 	store := config.NewStore(t.TempDir())
 	profile := config.Profile{
-		Name: "contract", Environment: "prod", Resource: "https://open.qfei.cn",
-		OpenPlatformBaseURL: "https://open.qfei.cn", BusinessType: "contract", DefaultIdentity: config.IdentityUser,
+		Name: "contract", Environment: "dev", Resource: "https://dev-open.qtech.cn",
+		OpenPlatformBaseURL: "https://dev-open.qtech.cn", BusinessType: "contract", DefaultIdentity: config.IdentityUser,
 		Identities: config.Identities{User: config.UserIdentity{
 			AuthMode: config.UserAuthModeDevice, DeviceClientID: "zscli_892efdadc11a3f53",
-			TokenEndpoint: "https://myaccount.qfei.cn/api/public/oauth/token/contract",
+			TokenEndpoint: "https://dev-myaccount.qtech.cn/api/public/oauth/token/contract",
 		}},
 	}
 	if err := store.UpsertProfile(profile, true); err != nil {

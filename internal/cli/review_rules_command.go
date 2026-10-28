@@ -51,8 +51,6 @@ func (a *App) runReviewFile(ctx context.Context, args []string) error {
 	switch args[0] {
 	case "upload":
 		return a.runReviewUpload(ctx, args[1:])
-	case "upload-url":
-		return a.runReviewUploadURL(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown review file subcommand %q", args[0])
 	}

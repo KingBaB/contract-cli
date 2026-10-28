@@ -19,9 +19,9 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 	for _, required := range []string{
 		"禁止无边界接口枚举与批量调用",
 		"具体业务目标",
-		"当前 CLI 只支持 prod",
-		"用户明确要求非生产环境时",
-		"历史非生产 profile 和凭证不迁移、不复用",
+		"当前 CLI 只支持 dev",
+		"用户明确要求其他环境时",
+		"历史其他环境 profile 和凭证不迁移、不复用",
 		"允许操作的业务模块或接口范围",
 		"操作类型（查询或写入）",
 		"不得执行 `auth status`、`curl`、业务命令、帮助枚举或网络探测",
@@ -52,10 +52,10 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 
 	for _, required := range []string{
 		"不得主动询问或接收原始凭证",
-		"当前构建只支持 `prod`",
+		"当前构建只支持 `dev`",
 		"默认 profile 名为 `contract`",
-		"历史非生产 profile",
-		"不将旧环境的 Token 或 App Secret 迁入 prod",
+		"历史其他环境 profile",
+		"不将旧环境的 Token 或 App Secret 迁入 dev",
 		"Skill 更新后必须完全退出并新建任务",
 		"已有任务不会热加载新 Skill",
 		"命令示例仅供本地操作者使用",
@@ -73,13 +73,13 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 	for _, forbidden := range []string{
 		"使用环境（dev、test 或 prod）",
 		"contract-dev",
-		"--env dev",
+		"--env prod",
 		"--env blue",
 		"--env test",
 		"联调构建支持",
 	} {
 		if strings.Contains(shared, forbidden) || strings.Contains(auth, forbidden) {
-			t.Fatalf("production skills still contain non-production guidance %q", forbidden)
+			t.Fatalf("dev skills still contain unsupported environment guidance %q", forbidden)
 		}
 	}
 }
@@ -127,4 +127,26 @@ func readSkillSecurityPolicyFile(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(content)
+}
+
+func TestDevBranchSkillGuidanceUsesDevEnvironment(t *testing.T) {
+	root := filepath.Join("..", "..", "skills")
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || filepath.Ext(path) != ".md" {
+			return nil
+		}
+		content := readSkillSecurityPolicyFile(t, path)
+		for _, stale := range []string{"https://open.qfei.cn", "https://myaccount.qfei.cn", "--env prod", "不改用 prod"} {
+			if strings.Contains(content, stale) {
+				t.Errorf("%s contains stale environment guidance %q", path, stale)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }

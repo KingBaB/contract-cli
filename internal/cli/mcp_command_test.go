@@ -31,9 +31,9 @@ func TestMCPCommandsUseUserIdentityAndExpectedEndpoints(t *testing.T) {
 
 	profile := productionProfileFixture(config.Profile{
 		Name:                "contract",
-		Environment:         "prod",
-		OpenPlatformBaseURL: "https://open.qfei.cn",
-		Resource:            "https://open.qfei.cn",
+		Environment:         "dev",
+		OpenPlatformBaseURL: "https://dev-open.qtech.cn",
+		Resource:            "https://dev-open.qtech.cn",
 		DefaultIdentity:     config.IdentityApp,
 		Identities: config.Identities{
 			User: config.UserIdentity{
@@ -434,9 +434,9 @@ func TestStructuredUserOnlyMCPCommandRejectsAppIdentity(t *testing.T) {
 	store := config.NewStore(t.TempDir())
 	if err := store.UpsertProfile(productionProfileFixture(config.Profile{
 		Name:                "contract",
-		Environment:         "prod",
-		OpenPlatformBaseURL: "https://open.qfei.cn",
-		Resource:            "https://open.qfei.cn",
+		Environment:         "dev",
+		OpenPlatformBaseURL: "https://dev-open.qtech.cn",
+		Resource:            "https://dev-open.qtech.cn",
 		DefaultIdentity:     config.IdentityApp,
 		Identities: config.Identities{
 			User: config.UserIdentity{

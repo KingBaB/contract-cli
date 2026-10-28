@@ -107,26 +107,26 @@ contract-cli --version
 
 ### 2. 初始化本地 profile
 
-当前源码构建仅支持 `prod`，默认 profile 为 `contract`；其他环境会在发请求前被拒绝，旧环境的同名 profile 重新配置时会清理旧认证，避免复用凭据。prod API 地址为 `https://open.qfei.cn`、账号地址为 `https://myaccount.qfei.cn`。
+当前开发分支源码构建仅支持 `dev`，默认 profile 为 `contract`；其他环境会在发请求前被拒绝，旧环境的同名 profile 重新配置时会清理旧认证，避免复用凭据。dev API 地址为 `https://dev-open.qtech.cn`、账号地址为 `https://dev-myaccount.qtech.cn`。
 
-若需验证 npm 包构建流程，可生成独立的本地预发布包；版本中的 `-test` 只是包标记，运行时仅支持 `prod`，也不发布到 npm：
+若需验证 npm 包构建流程，可生成独立的本地预发布包；版本中的 `-test` 只是包标记，运行时仅支持 `dev`，也不发布到 npm：
 
 ```bash
 VERSION=1.8.4-test.20260923.6 bash scripts/build-test-package.sh
 ```
 
-历史联调包可能仍含 test/blue 等旧环境能力，请通过新构建的 `config add --help` 核对当前能力。审批矩阵的 user/app 双身份和规则 OpenAPI 命令保持不变；真实环境验证仍需对应后端及网关配置，见 [双身份接入说明](docs/approval-matrix-user-app-auth.md)。不要在对话中发送 Token 或 App Secret。
+历史安装包的环境能力可能不同，请通过新构建的 `config add --help` 核对当前能力。审批矩阵的 user/app 双身份和规则 OpenAPI 命令保持不变；真实环境验证仍需对应后端及网关配置，见 [双身份接入说明](docs/approval-matrix-user-app-auth.md)。不要在对话中发送 Token 或 App Secret。
 
 首次使用前，需要在本机初始化一个 profile。本文统一使用 `contract` 作为示例名称，客户可以按项目名称自行调整。
 
 ```text
-contract-cli config add --env prod --name contract
+contract-cli config add --env dev --name contract
 contract-cli auth status --profile contract --as user
 ```
 
 | 参数 | 含义 | 示例值 |
 | --- | --- | --- |
-| `--env` | 目标环境 | `prod` |
+| `--env` | 目标环境 | `dev` |
 | `--name` | 本机 profile 名称 | `contract` |
 | `--profile` | 后续命令指定使用的 profile | `contract` |
 
@@ -187,7 +187,7 @@ contract-cli auth login --profile contract --as app --app-id <app_id> --app-secr
 contract-cli auth status --profile contract --as app
 ```
 
-正式包默认使用 `contract` profile 和 `prod` 环境；CLI 不会使用历史非生产 profile 发起授权或业务请求，也不会把旧凭据迁入 prod。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
+当前开发分支构建默认使用 `contract` profile 和 `dev` 环境；CLI 不会使用历史其他环境 profile 发起授权或业务请求，也不会把旧凭据迁入 dev。更新 Skills 后必须完全退出并重新启动，然后新建任务；已有任务不会热加载新 Skill。
 
 也可以通过环境变量提供应用凭证：
 
@@ -445,11 +445,15 @@ Agent 使用个人身份查询部门候选，保留真实部门标识，供后�
 
 **授权支持：**个人
 
-Agent 告知文件将提交至智书合同审查服务，再按分类、主体、强度和清单推进。当前支持单份 DOC、DOCX、PDF，本地文件或原始文件流最大 50 MiB；主体来自同一文件的提取结果。外部预审无须创建合同或协商，结果在 Agent 中展示，不提供系统合同详情链接。
+Agent 告知文件将先上传至 CLM，再由用户选择合同分类并创建预审。CLI 随后通过 CLM 文件引用准备 AI 审查输入，等待立场、强度和清单确认后发起审查，成功后展示明细及预审页面链接。当前支持单份 DOC、DOCX、PDF，本地文件最大 50 MiB；主体来自同一文件的提取结果。外部文件会创建预审记录，无须创建合同或协商。
+
+`review file upload` 仅用于引用 CLM 已有文件，所需业务对象、文件、版本和来源定位必须真实存在。该命令不接受本地文件或 stdin；本地文件从 `review pre-audit prepare` 开始。
+
+当前不支持通过文件地址上传，`review run` 的 `source.type=url` 在执行和预览模式均会报错。外部文件预审统一先上传 CLM，再以文件引用上传 AI，不自动下载文件地址。
 
 | 用户输入提示词 | Agent 会使用的命令 |
 | --- | --- |
-| 请审查我提供的《采购协议.docx》。<br>上传后先让我选择合同分类，再从文件提取的主体中确认保护立场。<br>审查强度用中立，清单从我有权限使用的清单中选择，最后展示风险和建议。 | 上传文件：<br>`contract-cli review file upload --profile contract --as user --file ./采购协议.docx --name 采购协议.docx`<br><br>提取同一文件的主体：<br>`contract-cli review subject extract --profile contract --as user --business-id <business-id> --file-id <file-id>`<br><br>分类、立场、强度和清单确定后：<br>`contract-cli review task start --profile contract --as user --input-file review-start.json` |
+| 请审查我提供的《采购协议.docx》。<br>上传后先让我选择合同分类，再从文件提取的主体中确认保护立场。<br>审查强度用中立，清单从我有权限使用的清单中选择，最后展示风险、建议和预审链接。 | 上传至 CLM，保存返回的 runId：<br>`contract-cli review pre-audit prepare --profile contract --as user --file ./采购协议.docx --name 采购协议.docx`<br><br>用户选择分类后创建预审并准备 AI 引用：<br>`contract-cli review pre-audit create --profile contract --as user --run-id <run-id> --category-id <category-id>`<br><br>从同一 AI 文件提取主体：<br>`contract-cli review subject extract --profile contract --as user --business-id <pre-audit-id> --file-id <ai-file-id> --file-hash <file-hash>`<br><br>配置确定后发起并等待结果及链接，输入 JSON 仅含 config：<br>`contract-cli review pre-audit start --profile contract --as user --run-id <run-id> --input-file pre-audit-config.json` |
 
 #### 场景 6.2：审查系统合同，或继续已有任务
 
@@ -729,7 +733,7 @@ contract-cli contract search --help
 
 | 操作目标 | 对应命令 |
 | --- | --- |
-| 初始化与查看版本 | `contract-cli config add --env prod --name contract`<br>`contract-cli version` |
+| 初始化与查看版本 | `contract-cli config add --env dev --name contract`<br>`contract-cli version` |
 | 登录/检查 user 身份 | `contract-cli auth login --profile contract --as user`<br>`contract-cli auth status --profile contract --as user` |
 | 登录/检查 app 身份 | `contract-cli auth login --profile contract --as app --app-id <app_id> --app-secret <app_secret>`<br>`contract-cli auth status --profile contract --as app` |
 | 切换默认身份 | `contract-cli auth use --profile contract --as app` |
@@ -805,7 +809,7 @@ contract-cli --version
 说明还没有初始化本地 profile。执行：
 
 ```text
-contract-cli config add --env prod --name contract
+contract-cli config add --env dev --name contract
 
 
 
@@ -907,7 +911,7 @@ contract-cli contract search --help
 
 ### 个人协商查询（user）
 
-个人协商查询使用 `contract-cooperation` Skill。以下命令以已确认的生产 profile `contract` 为例；环境由 profile 决定，不在命令中覆盖域名。
+个人协商查询使用 `contract-cooperation` Skill。以下命令以已确认的 dev profile `contract` 为例；环境由 profile 决定，不在命令中覆盖域名。
 
 ```bash
 contract-cli contract cooperation search --input-file cooperation-search.json --profile contract --as user --output json

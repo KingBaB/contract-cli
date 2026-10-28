@@ -12,11 +12,12 @@ import (
 	"cn.qfei/contract-cli/internal/credential"
 )
 
+// 沿用现有内部命名；本分支所有环境预设与校验统一使用 dev。
 const (
-	productionEnvironment        = "prod"
-	productionOpenPlatformURL    = "https://open.qfei.cn"
-	productionAccountOrigin      = "https://myaccount.qfei.cn"
-	productionOpenPlatformOrigin = "https://open.qfei.cn"
+	productionEnvironment        = "dev"
+	productionOpenPlatformURL    = "https://dev-open.qtech.cn"
+	productionAccountOrigin      = "https://dev-myaccount.qtech.cn"
+	productionOpenPlatformOrigin = "https://dev-open.qtech.cn"
 )
 
 /*
@@ -31,12 +32,12 @@ func environmentOrigins(environment string) (string, string, bool) {
 	return "", "", false
 }
 
-// 已移除的 dev/test/blue 域名继续拦截，避免历史配置或重定向重新启用旧环境。
+// 本开发分支拦截 prod/test/blue 域名，避免历史配置或重定向跨环境发起请求。
 var blockedProductionBuildHosts = map[string]struct{}{
 	"test-open.qtech.cn":      {},
 	"test-myaccount.qtech.cn": {},
-	"dev-open.qtech.cn":       {},
-	"dev-myaccount.qtech.cn":  {},
+	"open.qfei.cn":            {},
+	"myaccount.qfei.cn":       {},
 	"open-b.qfei.cn":          {},
 	"myaccount-b.qfei.cn":     {},
 }
@@ -80,7 +81,7 @@ func validateProductionProfile(profile config.Profile) error {
 
 /*
 validateProductionDeviceCredential 校验快照与待授权状态属于当前环境。
-入参 profileName（string）为配置名，stored（credential.DeviceCredential）为凭据，environment（可选 string）默认为 prod；返回校验 error。
+入参 profileName（string）为配置名，stored（credential.DeviceCredential）为凭据，environment（可选 string）默认为 dev；返回校验 error。
 */
 func validateProductionDeviceCredential(profileName string, stored credential.DeviceCredential, environment ...string) error {
 	env := productionEnvironment
@@ -98,7 +99,7 @@ func validateProductionDeviceCredential(profileName string, stored credential.De
 
 /*
 validateProductionPendingTransaction 校验授权中的链接和 token 端点，阻止跨环境续用。
-入参 profileName（string）为配置名，pending（*credential.PendingTransaction）为待授权状态，environment（可选 string）默认为 prod；返回校验 error。
+入参 profileName（string）为配置名，pending（*credential.PendingTransaction）为待授权状态，environment（可选 string）默认为 dev；返回校验 error。
 */
 func validateProductionPendingTransaction(profileName string, pending *credential.PendingTransaction, environment ...string) error {
 	env := productionEnvironment
@@ -145,7 +146,7 @@ func parseProductionURL(rawURL string) (*url.URL, error) {
 	trimmed := strings.TrimSpace(rawURL)
 	parsed, err := url.Parse(trimmed)
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" {
-		return nil, errors.New("invalid production URL")
+		return nil, errors.New("invalid environment URL")
 	}
 	if parsed.Hostname() != strings.TrimSuffix(parsed.Hostname(), ".") {
 		return nil, errors.New("trailing-dot hosts are not allowed")
@@ -159,13 +160,13 @@ productionProfileError 返回环境配置不合法的统一错误，提示重新
 */
 func productionProfileError(profileName string) error {
 	return fmt.Errorf(
-		"profile %q has unsupported or mismatched environment endpoints; run `contract-cli config add --env prod --name contract` and authorize again",
+		"profile %q has unsupported or mismatched environment endpoints; run `contract-cli config add --env dev --name contract` and authorize again",
 		profileName,
 	)
 }
 
 /*
-withProductionNetworkGuard 在传输层拦截非生产域名，包括直接请求和 HTTP 重定向。
+withProductionNetworkGuard 在传输层拦截不支持的环境域名，包括直接请求和 HTTP 重定向。
 入参 client（*http.Client）为原始客户端，logger（*slog.Logger）为日志记录器；返回受保护的 *http.Client。
 */
 func withProductionNetworkGuard(client *http.Client, logger *slog.Logger) *http.Client {
@@ -189,10 +190,10 @@ RoundTrip 在传输层拒绝已知未支持环境域名，避免旧配置绕过 
 */
 func (transport productionGuardTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	host := strings.ToLower(strings.TrimSuffix(request.URL.Hostname(), "."))
-	transport.logger.Debug("production network request", "method", request.Method, "host", host)
+	transport.logger.Debug("environment network request", "environment", productionEnvironment, "method", request.Method, "host", host)
 	if _, blocked := blockedProductionBuildHosts[host]; blocked {
-		transport.logger.Error("production build blocked non-production network request", "method", request.Method, "host", host)
-		return nil, fmt.Errorf("production build blocks non-production host %q", host)
+		transport.logger.Error("environment build blocked unsupported network request", "environment", productionEnvironment, "method", request.Method, "host", host)
+		return nil, fmt.Errorf("dev build blocks unsupported environment host %q", host)
 	}
 	return transport.next.RoundTrip(request)
 }
@@ -207,7 +208,7 @@ func (a *App) loadProductionDeviceCredential(profile config.Profile, store crede
 		return credential.DeviceCredential{}, err
 	}
 	if err := validateProductionDeviceCredential(profile.Name, stored, profile.Environment); err != nil {
-		a.logger.Error("reject non-production Device credential", "profile", profile.Name, "error", err.Error())
+		a.logger.Error("reject unsupported environment Device credential", "profile", profile.Name, "error", err.Error())
 		return credential.DeviceCredential{}, err
 	}
 	return stored, nil
@@ -230,7 +231,7 @@ func (a *App) validateProductionDeviceCredentialIfAvailable(profile config.Profi
 		return err
 	}
 	if err := validateProductionDeviceCredential(profile.Name, stored, profile.Environment); err != nil {
-		a.logger.Error("reject non-production Device credential", "profile", profile.Name, "error", err.Error())
+		a.logger.Error("reject unsupported environment Device credential", "profile", profile.Name, "error", err.Error())
 		return err
 	}
 	return nil
@@ -272,7 +273,7 @@ func (a *App) productionProfileRequiresReset(profile config.Profile) (bool, erro
 }
 
 func (a *App) clearProfileAuthenticationState(profileName string) error {
-	a.logger.Info("clear non-production profile authentication state", "profile", profileName)
+	a.logger.Info("clear unsupported environment profile authentication state", "profile", profileName)
 	if err := a.secrets.Delete(config.AppSecretKey(profileName)); err != nil {
 		a.logger.Error("clear app secret failed", "profile", profileName, "error", err.Error())
 		return err

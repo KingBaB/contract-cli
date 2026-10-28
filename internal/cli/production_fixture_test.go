@@ -7,17 +7,17 @@ import (
 )
 
 func productionProfileFixture(profile config.Profile) config.Profile {
-	profile.Environment = "prod"
-	profile.OpenPlatformBaseURL = "https://open.qfei.cn"
-	profile.Resource = "https://open.qfei.cn"
-	profile.AppTokenEndpoint = productionFixtureURL(profile.AppTokenEndpoint, "https://open.qfei.cn")
-	profile.ProtectedResourceMetadataURL = productionFixtureURL(profile.ProtectedResourceMetadataURL, "https://open.qfei.cn")
-	profile.AuthorizationServerMetadataURL = productionFixtureURL(profile.AuthorizationServerMetadataURL, "https://myaccount.qfei.cn")
-	profile.Identities.User.AuthorizationEndpoint = productionFixtureURL(profile.Identities.User.AuthorizationEndpoint, "https://myaccount.qfei.cn")
-	profile.Identities.User.DeviceAuthorizationEndpoint = productionFixtureURL(profile.Identities.User.DeviceAuthorizationEndpoint, "https://myaccount.qfei.cn")
-	profile.Identities.User.TokenEndpoint = productionFixtureURL(profile.Identities.User.TokenEndpoint, "https://myaccount.qfei.cn")
-	profile.Identities.User.RevocationEndpoint = productionFixtureURL(profile.Identities.User.RevocationEndpoint, "https://myaccount.qfei.cn")
-	profile.Identities.User.RegistrationEndpoint = productionFixtureURL(profile.Identities.User.RegistrationEndpoint, "https://myaccount.qfei.cn")
+	profile.Environment = "dev"
+	profile.OpenPlatformBaseURL = "https://dev-open.qtech.cn"
+	profile.Resource = "https://dev-open.qtech.cn"
+	profile.AppTokenEndpoint = productionFixtureURL(profile.AppTokenEndpoint, "https://dev-open.qtech.cn")
+	profile.ProtectedResourceMetadataURL = productionFixtureURL(profile.ProtectedResourceMetadataURL, "https://dev-open.qtech.cn")
+	profile.AuthorizationServerMetadataURL = productionFixtureURL(profile.AuthorizationServerMetadataURL, "https://dev-myaccount.qtech.cn")
+	profile.Identities.User.AuthorizationEndpoint = productionFixtureURL(profile.Identities.User.AuthorizationEndpoint, "https://dev-myaccount.qtech.cn")
+	profile.Identities.User.DeviceAuthorizationEndpoint = productionFixtureURL(profile.Identities.User.DeviceAuthorizationEndpoint, "https://dev-myaccount.qtech.cn")
+	profile.Identities.User.TokenEndpoint = productionFixtureURL(profile.Identities.User.TokenEndpoint, "https://dev-myaccount.qtech.cn")
+	profile.Identities.User.RevocationEndpoint = productionFixtureURL(profile.Identities.User.RevocationEndpoint, "https://dev-myaccount.qtech.cn")
+	profile.Identities.User.RegistrationEndpoint = productionFixtureURL(profile.Identities.User.RegistrationEndpoint, "https://dev-myaccount.qtech.cn")
 	return profile
 }
 

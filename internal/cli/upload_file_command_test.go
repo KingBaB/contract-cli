@@ -323,9 +323,9 @@ func assertUploadMultipart(t *testing.T, req *http.Request, wantFileName, wantFi
 func uploadProfile(defaultIdentity config.IdentityKind) config.Profile {
 	return productionProfileFixture(config.Profile{
 		Name:                "contract",
-		Environment:         "prod",
-		OpenPlatformBaseURL: "https://open.qfei.cn",
-		Resource:            "https://open.qfei.cn",
+		Environment:         "dev",
+		OpenPlatformBaseURL: "https://dev-open.qtech.cn",
+		Resource:            "https://dev-open.qtech.cn",
 		DefaultIdentity:     defaultIdentity,
 		Identities: config.Identities{
 			User: config.UserIdentity{
