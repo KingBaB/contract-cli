@@ -722,6 +722,7 @@ contract-cli contract text <contract-id> --profile contract --as app --user-id-t
 
 - `--as user`
   - 走 `/open-apis/contract/v1/mcp/contracts/{contract_id}/text?user_id_type=user_id&...`
+  - HTTP 200 仍校验业务结果：`code` 非零或 `success=false` 时退出 1；stdout 保留业务响应中的错误码和消息，stderr 的错误保留本次 Trace ID。成功退出 0，`--raw` 也遵循相同退出码规则。
 - `--as app`
   - 走 `GET /open-apis/contract/v1/contracts/{contract_id}/text?...`
   - 额外传入 `--user-id-type` / `--user-id` 时，会原样拼到 query string
