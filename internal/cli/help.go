@@ -704,6 +704,7 @@ func addContractHelp(registry map[string]helpTopic) {
 		Notes: []string{
 			"user: /open-apis/contract/v1/mcp/contracts/{contract_id}/text",
 			"app: /open-apis/contract/v1/contracts/{contract_id}/text",
+			"user 响应的业务 code 非零或 success=false 时，保留业务响应并返回非零退出码；错误保留本次 Trace ID。",
 		},
 	}
 	registry["contract create"] = helpTopic{
