@@ -24,7 +24,7 @@ func (r *reviewUploadReadCounter) Read([]byte) (int, error) {
 	return 0, io.EOF
 }
 
-func assertReviewURLDisabled(t *testing.T, args []string) {
+func assertReviewURLDisabled(t *testing.T, args []string, required ...string) {
 	t.Helper()
 	store := config.NewStore(t.TempDir())
 	reader := &reviewUploadReadCounter{}
@@ -42,8 +42,13 @@ func assertReviewURLDisabled(t *testing.T, args []string) {
 		})},
 	})
 	err := app.Run(context.Background(), args)
-	if err == nil || !strings.Contains(err.Error(), "URL") || !strings.Contains(err.Error(), "暂不支持") || !strings.Contains(err.Error(), "review pre-audit prepare") {
-		t.Errorf("want URL-disabled rejection and CLM preparation guidance, got %v", err)
+	if len(required) == 0 {
+		required = []string{"URL", "暂不支持", "review pre-audit prepare"}
+	}
+	for _, want := range required {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("want rejection containing %q, got %v", want, err)
+		}
 	}
 	if reader.reads != 0 || requests != 0 || output.Len() != 0 {
 		t.Errorf("URL rejection caused side effects: reads=%d requests=%d output=%q", reader.reads, requests, output.String())
@@ -56,7 +61,7 @@ func assertReviewURLDisabled(t *testing.T, args []string) {
 	}
 }
 
-func TestReviewURLUploadDisabledBeforeSideEffects(t *testing.T) {
+func TestReviewURLCommandRemovedBeforeSideEffects(t *testing.T) {
 	for _, input := range []struct {
 		name string
 		args []string
@@ -70,7 +75,7 @@ func TestReviewURLUploadDisabledBeforeSideEffects(t *testing.T) {
 		for _, mode := range [][]string{nil, {"--dry-run"}, {"--print-input"}} {
 			t.Run(input.name+strings.Join(mode, ""), func(t *testing.T) {
 				args := append([]string{"review", "file", "upload-url"}, input.args...)
-				assertReviewURLDisabled(t, append(args, mode...))
+				assertReviewURLDisabled(t, append(args, mode...), `unknown review file subcommand "upload-url"`)
 			})
 		}
 	}
@@ -100,19 +105,28 @@ func TestReviewRunURLDisabledBeforeSideEffects(t *testing.T) {
 	}
 }
 
-func TestReviewURLDisabledHelpAndGuidance(t *testing.T) {
-	for _, command := range [][]string{{"review"}, {"review", "file"}, {"review", "file", "upload-url"}, {"review", "run"}} {
+func TestReviewRemovedURLCommandHelpAndGuidance(t *testing.T) {
+	for _, command := range [][]string{{"review"}, {"review", "file"}, {"review", "run"}} {
 		t.Run(strings.Join(command, " "), func(t *testing.T) {
 			app, out := alignmentApp(t, nil)
 			if err := app.Run(context.Background(), append(command, "--help")); err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(out.String(), "已禁用") {
-				t.Errorf("help must mark URL uploads disabled: %s", out.String())
+			if strings.Contains(out.String(), "upload-url") || strings.Contains(out.String(), "已禁用") {
+				t.Errorf("help still displays a removed command or placeholder: %s", out.String())
 			}
 			if strings.Contains(out.String(), "--file-url <") || strings.Contains(out.String(), "URL 文件由服务端下载") || strings.Contains(out.String(), "type=url 时提供") {
 				t.Error("help still advertises URL upload inputs")
 			}
+		})
+	}
+	for _, args := range [][]string{
+		{"review", "file", "upload-url", "-h"},
+		{"review", "file", "upload-url", "--help"},
+		{"help", "review", "file", "upload-url"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			assertReviewURLDisabled(t, args, `unknown help topic "review file upload-url"`)
 		})
 	}
 	for _, name := range []string{"skills/contract-cli-review/SKILL.md", "README.md", "docs/cli-command-reference.md"} {
@@ -121,10 +135,10 @@ func TestReviewURLDisabledHelpAndGuidance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Contains(body, []byte("已禁用")) || !bytes.Contains(body, []byte("review pre-audit prepare")) {
-				t.Error("guidance must state URL upload is disabled and direct users to CLM prepare")
+			if !bytes.Contains(body, []byte("review pre-audit prepare")) {
+				t.Error("guidance must direct users to CLM prepare")
 			}
-			for _, pattern := range []string{`contract-cli review file upload-url[^\n\x60]*--file-url`, `"source"\s*:\s*\{\s*"type"\s*:\s*"url"`, `URL来源沿用原编排|URL来源继续使用既有命令|URL 来源继续使用`} {
+			for _, pattern := range []string{`upload-url`, `"source"\s*:\s*\{\s*"type"\s*:\s*"url"`, `URL来源沿用原编排|URL来源继续使用既有命令|URL 来源继续使用`} {
 				if regexp.MustCompile(pattern).Match(body) {
 					t.Errorf("guidance still enables URL uploads: %s", pattern)
 				}
@@ -283,7 +297,7 @@ func TestPreAuditPrepareAfterURLRejection(t *testing.T) {
 		return preAuditUploadResponse(t, r)
 	})
 	err := h.app.Run(context.Background(), []string{"review", "file", "upload-url", "--file-url", "https://example.com/contract.pdf", "--name", "合同.pdf"})
-	if err == nil || !strings.Contains(err.Error(), "review pre-audit prepare") || len(requests) != 0 {
+	if err == nil || !strings.Contains(err.Error(), `unknown review file subcommand "upload-url"`) || len(requests) != 0 {
 		t.Fatalf("URL input must stop before upload: err=%v requests=%v", err, requests)
 	}
 	result, err := h.run("prepare", "--file", h.file, "--name", "合同.pdf")

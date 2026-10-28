@@ -181,12 +181,6 @@ func (a *App) runReviewUpload(ctx context.Context, args []string) error {
 	return a.executeReview(ctx, parsed, request, preview)
 }
 
-func (a *App) runReviewUploadURL(_ context.Context, _ []string) error {
-	// Keep the legacy command recognizable so existing callers get migration guidance.
-	a.logger.Warn("review URL upload rejected", "reason", "CLM reference required")
-	return errReviewURLUploadDisabled
-}
-
 func (a *App) runReviewSubject(ctx context.Context, args []string) error {
 	if len(args) == 0 || args[0] != "extract" {
 		return fmt.Errorf("expected review subject extract")

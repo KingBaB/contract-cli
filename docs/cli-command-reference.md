@@ -30,7 +30,7 @@ contract-cli review pre-audit prepare --profile contract --as user --file ./合�
 contract-cli review file upload --profile contract --as user --business-id <business-id> --business-file-id <file-id> --business-file-version <version> --source-locator '{"provider":"clm","sourceFileType":0}' --name 合同.pdf
 ```
 
-CLM 本地上传支持 DOC、DOCX、PDF，最大 50 MiB。URL 文件上传已禁用：`review file upload-url` 及 `review run` 的 `source.type=url` 均明确报错，包含预览模式。外部文件预审必须先上传 CLM，再以文件引用上传 AI；不自动下载文件地址。
+CLM 本地上传支持 DOC、DOCX、PDF，最大 50 MiB。当前不支持通过文件地址上传；`review run` 的 `source.type=url` 在执行和预览模式均会报错。外部文件预审必须先上传 CLM，再以文件引用上传 AI；不自动下载文件地址。
 
 ## 顶层人员与部门查询
 

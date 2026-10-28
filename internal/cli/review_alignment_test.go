@@ -122,13 +122,13 @@ func TestReviewAlignmentUpload(t *testing.T) {
 			t.Fatal("unsupported extension accepted")
 		}
 	})
-	t.Run("url request disabled", func(t *testing.T) {
+	t.Run("url command removed", func(t *testing.T) {
 		called := false
 		app, _ := alignmentApp(t, func(r *http.Request) string {
 			called = true
 			return `{"code":200,"data":{}}`
 		})
-		if err := app.Run(context.Background(), []string{"review", "file", "upload-url", "--file-url", "https://example.com/a", "--name", "合同.pdf"}); err == nil || !strings.Contains(err.Error(), "review pre-audit prepare") || called {
+		if err := app.Run(context.Background(), []string{"review", "file", "upload-url", "--file-url", "https://example.com/a", "--name", "合同.pdf"}); err == nil || !strings.Contains(err.Error(), `unknown review file subcommand "upload-url"`) || called {
 			t.Fatalf("URL must stop before upload: err=%v called=%t", err, called)
 		}
 	})

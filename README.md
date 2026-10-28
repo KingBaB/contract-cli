@@ -449,7 +449,7 @@ Agent 告知文件将先上传至 CLM，再由用户选择合同分类并创建�
 
 `review file upload` 仅用于引用 CLM 已有文件，所需业务对象、文件、版本和来源定位必须真实存在。该命令不接受本地文件或 stdin；本地文件从 `review pre-audit prepare` 开始。
 
-URL 文件上传已禁用，包括 `review file upload-url` 和 `review run` 的 `source.type=url`，预览模式也会报错。外部文件预审统一先上传 CLM，再以文件引用上传 AI，不自动下载文件地址。
+当前不支持通过文件地址上传，`review run` 的 `source.type=url` 在执行和预览模式均会报错。外部文件预审统一先上传 CLM，再以文件引用上传 AI，不自动下载文件地址。
 
 | 用户输入提示词 | Agent 会使用的命令 |
 | --- | --- |

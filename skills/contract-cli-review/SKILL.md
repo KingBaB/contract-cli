@@ -153,7 +153,7 @@ contract-cli review pre-audit prepare --profile <profile> --as user --file <path
 
 保存 `runId`、`sourceFileId` 和 `workflowStage=awaiting_category`。这一步只上传CLM正文，不是审查成功，也不返回导航地址；接着按「选择合同分类」查询并让用户选择。当前CLI直接文件 `review run` 同样停在此阶段并返回未完成错误；保留runId继续，不重新上传。
 
-`prepare`不接收stdin或URL。本地附件使用上方预审流程；`review file upload` 仅支持 CLM 文件引用，显式传入 `--file` 或 `--stdin` 会被拒绝，包含预览命令和 `--stdin=false`。不要把附件字节直接上传到 AI，也不要在缺少引用参数时改用字节上传。创建预审后的 AI 引用由 `pre-audit create` 内部完成，无须再执行一次上传命令。`review file upload-url` 和 `review run` 的 `source.type=url` 已禁用，包含预览命令；遇到文件地址时请用户提供可读本地附件，再执行CLM预审，不自动下载或将URL直传AI。本地预审的 `sourceFileId/latestFileId` 是CLM文件ID，后续create返回的 `fileId/fileHash` 是AI文件身份，不能混用。大整数使用无损JSON/字符串，禁止经浮点丢失精度。
+`prepare`不接收stdin或URL。本地附件使用上方预审流程；`review file upload` 仅支持 CLM 文件引用，显式传入 `--file` 或 `--stdin` 会被拒绝，包含预览命令和 `--stdin=false`。不要把附件字节直接上传到 AI，也不要在缺少引用参数时改用字节上传。创建预审后的 AI 引用由 `pre-audit create` 内部完成，无须再执行一次上传命令。当前不支持通过文件地址上传，`review run` 的 `source.type=url` 在执行和预览时均会报错；遇到文件地址时请用户提供可读本地附件，再执行CLM预审，不自动下载或将URL直传AI。本地预审的 `sourceFileId/latestFileId` 是CLM文件ID，后续create返回的 `fileId/fileHash` 是AI文件身份，不能混用。大整数使用无损JSON/字符串，禁止经浮点丢失精度。
 
 ## 合同 ID → 协商引用上传
 
