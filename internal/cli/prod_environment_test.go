@@ -16,7 +16,7 @@ import (
 
 func TestLoadDeviceAwareProfileRejectsProdProfile(t *testing.T) {
 	store := config.NewStore(t.TempDir())
-	if err := store.UpsertProfile(validProductionProfile(), true); err != nil {
+	if err := store.UpsertProfile(historicalProductionProfile(), true); err != nil {
 		t.Fatal(err)
 	}
 	app := New(Options{Store: store})
@@ -48,12 +48,12 @@ func TestLoadDeviceAwareProfileRejectsUnsupportedProfileAndMismatchedEndpoints(t
 			return profile
 		}()},
 		{name: "prod profile with test resource", profile: func() config.Profile {
-			profile := validProductionProfile()
+			profile := historicalProductionProfile()
 			profile.Resource = "https://test-open.qtech.cn"
 			return profile
 		}()},
 		{name: "prod profile with test auth endpoint", profile: func() config.Profile {
-			profile := validProductionProfile()
+			profile := historicalProductionProfile()
 			profile.Identities.User.TokenEndpoint = "https://test-myaccount.qtech.cn/api/public/oauth/token/contract"
 			return profile
 		}()},
@@ -77,7 +77,7 @@ func TestLoadDeviceAwareProfileRejectsUnsupportedProfileAndMismatchedEndpoints(t
 
 func TestOpenPlatformContextRejectsProdProfile(t *testing.T) {
 	store := config.NewStore(t.TempDir())
-	profile := validProductionProfile()
+	profile := historicalProductionProfile()
 	profile.DefaultIdentity = config.IdentityApp
 	profile.Identities.App = config.AppIdentity{AppID: "test-app", Token: &config.Token{AccessToken: "test-app-token", Expiry: time.Now().Add(time.Hour)}}
 	if err := store.UpsertProfile(profile, true); err != nil {
@@ -98,7 +98,7 @@ func TestOpenPlatformContextRejectsProdProfile(t *testing.T) {
 
 func TestDeviceProfileRecoveryRejectsProdSnapshot(t *testing.T) {
 	credentials := &deviceMemoryCredentialStore{values: map[string]credential.DeviceCredential{
-		"contract": {DeviceProfile: snapshotDeviceProfile(validProductionProfile())},
+		"contract": {DeviceProfile: snapshotDeviceProfile(historicalProductionProfile())},
 	}}
 	store := config.NewStore(t.TempDir())
 	app := New(Options{
@@ -246,7 +246,7 @@ func TestConfigAddTestResetsSameNameProdProfileAndCredentials(t *testing.T) {
 	configDir := t.TempDir()
 	store := config.NewStore(configDir)
 	secrets := config.NewSecretsStore(configDir)
-	oldProfile := validProductionProfile()
+	oldProfile := historicalProductionProfile()
 	oldProfile.Environment = "prod"
 	oldProfile.OpenPlatformBaseURL = "https://open.qfei.cn"
 	oldProfile.Resource = "https://open.qfei.cn"
@@ -349,7 +349,7 @@ func TestHTTPClientRejectsKnownProdHosts(t *testing.T) {
 	}
 }
 
-func validProductionProfile() config.Profile {
+func historicalProductionProfile() config.Profile {
 	return config.Profile{
 		Name:                           "contract",
 		Environment:                    "prod",
@@ -376,7 +376,7 @@ func validProductionProfile() config.Profile {
 }
 
 func validTestProfile() config.Profile {
-	profile := validProductionProfile()
+	profile := historicalProductionProfile()
 	profile.Environment = "test"
 	profile.OpenPlatformBaseURL = "https://test-open.qtech.cn"
 	profile.AppTokenEndpoint = "https://test-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -409,3 +409,6 @@ func (function productionRoundTripFunc) RoundTrip(request *http.Request) (*http.
 func productionResponse(status int, body string) *http.Response {
 	return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}
 }
+
+// Release regression fixtures use this branch's supported environment.
+func validProductionProfile() config.Profile { return validTestProfile() }

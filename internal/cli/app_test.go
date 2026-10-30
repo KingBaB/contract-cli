@@ -146,7 +146,7 @@ func TestRunCommandLogRedactsSensitiveArguments(t *testing.T) {
 				},
 			})
 
-			if err := app.Run(context.Background(), tc.args); err == nil {
+			if err := app.Run(context.Background(), append(append([]string{}, tc.args...), "--debug")); err == nil {
 				t.Fatal("Run() error = nil, want unknown command error")
 			}
 
@@ -2233,7 +2233,8 @@ func TestDoubaoWorkTaskRestoresDeviceProfileFromTaskCredential(t *testing.T) {
 		},
 		DeviceProfile: &credential.DeviceProfile{
 			Name: "contract", Environment: "test", OpenPlatformBaseURL: "https://test-open.qtech.cn",
-			Resource: "https://test-open.qtech.cn", BusinessType: "contract", ClientName: "contract-cli",
+			AuthorizationServerMetadataURL: "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
+			Resource:                       "https://test-open.qtech.cn", BusinessType: "contract", ClientName: "contract-cli",
 			DeviceClientID: "device-client", DeviceScope: "contract:full",
 			DeviceAuthorizationEndpoint: "https://test-myaccount.qtech.cn/device",
 			TokenEndpoint:               "https://test-myaccount.qtech.cn/token/contract", RevocationEndpoint: "https://test-myaccount.qtech.cn/revoke/contract",
@@ -2323,15 +2324,16 @@ func TestDoubaoWorkTaskReusesPendingWithinTaskAndIsolatesNewTask(t *testing.T) {
 
 func TestDoubaoRebuildRejectsMissingOrInvalidDeviceProfileSnapshot(t *testing.T) {
 	validSnapshot := &credential.DeviceProfile{
-		Name:                        "contract",
-		Environment:                 "test",
-		OpenPlatformBaseURL:         "https://test-open.qtech.cn",
-		Resource:                    "https://test-open.qtech.cn",
-		BusinessType:                "contract",
-		DeviceClientID:              "device-client",
-		DeviceScope:                 "contract:full",
-		DeviceAuthorizationEndpoint: "https://test-myaccount.qtech.cn/device",
-		TokenEndpoint:               "https://test-myaccount.qtech.cn/token/contract",
+		AuthorizationServerMetadataURL: "https://test-myaccount.qtech.cn/.well-known/oauth-authorization-server/contract",
+		Name:                           "contract",
+		Environment:                    "test",
+		OpenPlatformBaseURL:            "https://test-open.qtech.cn",
+		Resource:                       "https://test-open.qtech.cn",
+		BusinessType:                   "contract",
+		DeviceClientID:                 "device-client",
+		DeviceScope:                    "contract:full",
+		DeviceAuthorizationEndpoint:    "https://test-myaccount.qtech.cn/device",
+		TokenEndpoint:                  "https://test-myaccount.qtech.cn/token/contract",
 	}
 	tests := []struct {
 		name     string
@@ -2391,12 +2393,14 @@ func TestDoubaoRebuildRejectsMissingOrInvalidDeviceProfileSnapshot(t *testing.T)
 func TestAuthDeviceCompleteMapsSlowDownToPendingWithoutRetry(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	store := config.NewStore(t.TempDir())
-	profile := config.Profile{Name: "contract", Environment: "test", Identities: config.Identities{User: config.UserIdentity{AuthMode: config.UserAuthModeDevice}}}
-	if err := store.UpsertProfile(productionProfileFixture(profile), true); err != nil {
+	profile := productionProfileFixture(config.Profile{Name: "contract", Environment: "test", Identities: config.Identities{User: config.UserIdentity{
+		AuthMode: config.UserAuthModeDevice, TokenEndpoint: "https://test-myaccount.qtech.cn/token/contract", DeviceClientID: "client-a",
+	}}})
+	if err := store.UpsertProfile(profile, true); err != nil {
 		t.Fatal(err)
 	}
 	credentials := &memoryDeviceCredentialStore{values: map[string]credential.DeviceCredential{
-		"contract": {Pending: &credential.PendingTransaction{
+		"contract": {DeviceProfile: deviceSnapshotFixture(profile), Pending: &credential.PendingTransaction{
 			DeviceCode: "device-a", TokenEndpoint: "https://test-myaccount.qtech.cn/token/contract", ClientID: "client-a", ExpiresAt: fixedCLINow().Add(time.Minute),
 		}},
 	}}
@@ -2428,12 +2432,14 @@ func TestAuthDeviceCompleteMapsSlowDownToPendingWithoutRetry(t *testing.T) {
 func TestAuthDeviceCompleteInvalidGrantKeepsTerminalStateAndRequiresExplicitRestart(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	store := config.NewStore(t.TempDir())
-	profile := config.Profile{Name: "contract", Environment: "test", Identities: config.Identities{User: config.UserIdentity{AuthMode: config.UserAuthModeDevice}}}
-	if err := store.UpsertProfile(productionProfileFixture(profile), true); err != nil {
+	profile := productionProfileFixture(config.Profile{Name: "contract", Environment: "test", Identities: config.Identities{User: config.UserIdentity{
+		AuthMode: config.UserAuthModeDevice, TokenEndpoint: "https://test-myaccount.qtech.cn/token/contract", DeviceClientID: "client-a",
+	}}})
+	if err := store.UpsertProfile(profile, true); err != nil {
 		t.Fatal(err)
 	}
 	credentials := &memoryDeviceCredentialStore{values: map[string]credential.DeviceCredential{
-		"contract": {Pending: &credential.PendingTransaction{
+		"contract": {DeviceProfile: deviceSnapshotFixture(profile), Pending: &credential.PendingTransaction{
 			DeviceCode: "device-a", TokenEndpoint: "https://test-myaccount.qtech.cn/token/contract", ClientID: "client-a", ExpiresAt: fixedCLINow().Add(time.Minute),
 		}},
 	}}
@@ -2471,13 +2477,15 @@ func TestAuthDeviceCompleteSaveFailureRequiresFreshAuthorizationWithoutRetry(t *
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	store := config.NewStore(t.TempDir())
-	profile := config.Profile{Name: "contract", Environment: "test", Identities: config.Identities{User: config.UserIdentity{AuthMode: config.UserAuthModeDevice}}}
-	if err := store.UpsertProfile(productionProfileFixture(profile), true); err != nil {
+	profile := productionProfileFixture(config.Profile{Name: "contract", Environment: "test", Identities: config.Identities{User: config.UserIdentity{
+		AuthMode: config.UserAuthModeDevice, TokenEndpoint: "https://test-myaccount.qtech.cn/token/contract", DeviceClientID: "client-a",
+	}}})
+	if err := store.UpsertProfile(profile, true); err != nil {
 		t.Fatal(err)
 	}
 	credentials := &memoryDeviceCredentialStore{
 		values: map[string]credential.DeviceCredential{
-			"contract": {Pending: &credential.PendingTransaction{
+			"contract": {DeviceProfile: deviceSnapshotFixture(profile), Pending: &credential.PendingTransaction{
 				DeviceCode: "secret-device", TokenEndpoint: "https://test-myaccount.qtech.cn/token/contract", ClientID: "client-a", ExpiresAt: fixedCLINow().Add(time.Minute),
 			}},
 		},
@@ -2518,19 +2526,19 @@ func TestAuthDeviceStatusAndLogoutUseCredentialStoreAndRevoke(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	store := config.NewStore(t.TempDir())
 	workspace := t.TempDir()
-	credentials := &memoryDeviceCredentialStore{values: map[string]credential.DeviceCredential{
-		"contract": {Token: &config.Token{
-			AccessToken: "secret-access", RefreshToken: "secret-refresh", Scope: "contract:full contract-review:full", Expiry: fixedCLINow().Add(time.Hour),
-		}},
-	}}
-	profile := config.Profile{
+	profile := productionProfileFixture(config.Profile{
 		Name: "contract", Environment: "test", DefaultIdentity: config.IdentityUser,
 		Identities: config.Identities{User: config.UserIdentity{
 			AuthMode: config.UserAuthModeDevice, DeviceClientID: "zscli_892efdadc11a3f53",
 			RevocationEndpoint: "https://test-myaccount.qtech.cn/revoke/contract",
 		}},
-	}
-	if err := store.UpsertProfile(productionProfileFixture(profile), true); err != nil {
+	})
+	credentials := &memoryDeviceCredentialStore{values: map[string]credential.DeviceCredential{
+		"contract": {DeviceProfile: deviceSnapshotFixture(profile), Token: &config.Token{
+			AccessToken: "secret-access", RefreshToken: "secret-refresh", Scope: "contract:full contract-review:full", Expiry: fixedCLINow().Add(time.Hour),
+		}},
+	}}
+	if err := store.UpsertProfile(profile, true); err != nil {
 		t.Fatal(err)
 	}
 	revokeCalls := 0

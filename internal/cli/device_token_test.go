@@ -402,7 +402,7 @@ func newDeviceTokenTestApp(t *testing.T, token *config.Token, handler deviceRoun
 		t.Fatal(err)
 	}
 	credentials := &deviceMemoryCredentialStore{values: map[string]credential.DeviceCredential{
-		"contract": {Token: token},
+		"contract": {Token: token, DeviceProfile: snapshotDeviceProfile(profile)},
 	}}
 	calls := 0
 	workspace := t.TempDir()

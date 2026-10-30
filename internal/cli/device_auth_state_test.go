@@ -260,7 +260,7 @@ func TestAuthDeviceInitPersistsPendingBeforeQRCodeWrite(t *testing.T) {
 func TestAuthDeviceInitRequiresExplicitRestartForUncertainTransaction(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	credentials := newLockedDeviceCredentialStore()
-	credentials.values["contract"] = credential.DeviceCredential{Pending: &credential.PendingTransaction{
+	credentials.values["contract"] = credential.DeviceCredential{DeviceProfile: deviceSnapshotFixture(deviceAuthStateProfile()), Pending: &credential.PendingTransaction{
 		Status: credential.PendingStatusUncertain, DeviceCode: "device-old",
 		VerificationURIComplete: "https://test-myaccount.qtech.cn/device?user_code=old",
 		TokenEndpoint:           "https://test-myaccount.qtech.cn/token", ClientID: "client-a", ExpiresAt: fixedCLINow().Add(10 * time.Minute),
@@ -313,7 +313,7 @@ func TestAuthDeviceInitRestartWithoutTransactionFails(t *testing.T) {
 		credential *credential.DeviceCredential
 	}{
 		{name: "credential missing"},
-		{name: "token exists without pending", credential: &credential.DeviceCredential{Token: &config.Token{AccessToken: "access-a"}}},
+		{name: "token exists without pending", credential: &credential.DeviceCredential{DeviceProfile: deviceSnapshotFixture(deviceAuthStateProfile()), Token: &config.Token{AccessToken: "access-a"}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -675,6 +675,16 @@ func newDeviceAuthStateTestAppWithLookupEnv(
 	})
 }
 
+func deviceAuthStateProfile() config.Profile {
+	return productionProfileFixture(config.Profile{
+		Name: "contract", Environment: "prod", Resource: "https://open.qfei.cn", OpenPlatformBaseURL: "https://open.qfei.cn",
+		BusinessType: "contract", ClientName: "contract-cli", Identities: config.Identities{User: config.UserIdentity{
+			AuthMode: config.UserAuthModeDevice, DeviceAuthorizationEndpoint: "https://myaccount.qfei.cn/device",
+			TokenEndpoint: "https://myaccount.qfei.cn/token", DeviceClientID: "client-a", DeviceScope: "contract:full",
+		}},
+	})
+}
+
 func credentialTestAuthMode(credentials credential.Store) string {
 	if _, err := credentials.Load("contract"); err == nil {
 		return config.UserAuthModeDevice
@@ -683,7 +693,7 @@ func credentialTestAuthMode(credentials credential.Store) string {
 }
 
 func pendingCredential(status credential.PendingStatus) credential.DeviceCredential {
-	return credential.DeviceCredential{Pending: &credential.PendingTransaction{
+	return credential.DeviceCredential{DeviceProfile: deviceSnapshotFixture(deviceAuthStateProfile()), Pending: &credential.PendingTransaction{
 		Status: status, DeviceCode: "device-a", VerificationURIComplete: "https://test-myaccount.qtech.cn/device?user_code=user-a",
 		TokenEndpoint: "https://test-myaccount.qtech.cn/token", ClientID: "client-a", ExpiresAt: fixedCLINow().Add(10 * time.Minute),
 	}}

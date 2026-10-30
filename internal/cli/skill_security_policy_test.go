@@ -75,6 +75,8 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 		"contract-dev",
 		"--env dev",
 		"--env blue",
+		"当前 CLI 只支持 prod",
+		"当前构建只支持 `prod`",
 		"--env prod",
 		"联调构建支持",
 	} {

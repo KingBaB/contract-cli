@@ -112,11 +112,11 @@ func (a *App) executeReview(ctx context.Context, parsed parsedArgs, request open
 	return a.executeReviewResponse(ctx, options, request)
 }
 
-func reviewUploadRequest(reader io.Reader, filename, name string, metadata ...map[string]string) (openplatform.Request, error) {
+func reviewUploadRequest(ctx context.Context, reader io.Reader, filename, name string, metadata ...map[string]string) (openplatform.Request, error) {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	if reader != nil {
-		content, err := io.ReadAll(io.LimitReader(reader, reviewMaxUploadBytes+1))
+		content, err := readCommandReader(ctx, reader, reviewMaxUploadBytes+1)
 		if err != nil {
 			return openplatform.Request{}, err
 		}
@@ -174,7 +174,7 @@ func (a *App) runReviewUpload(ctx context.Context, args []string) error {
 	for key, value := range fields {
 		preview[key] = value
 	}
-	request, err := reviewUploadRequest(nil, "", name, fields)
+	request, err := reviewUploadRequest(ctx, nil, "", name, fields)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (a *App) runReviewTask(ctx context.Context, args []string) error {
 			return err
 		}
 		var input reviewStartInput
-		if err := readReviewJSON(parsed, &input); err != nil {
+		if err := readReviewJSON(ctx, parsed, &input); err != nil {
 			return err
 		}
 		payload, err := input.payload()
@@ -339,7 +339,7 @@ func (a *App) runReviewWorkflow(ctx context.Context, args []string) error {
 		return err
 	}
 	var input reviewRunInput
-	if err := readReviewJSON(parsed, &input); err != nil {
+	if err := readReviewJSON(ctx, parsed, &input); err != nil {
 		return err
 	}
 	if input.Source.Type == "url" {
