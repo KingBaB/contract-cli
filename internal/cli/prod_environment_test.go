@@ -246,7 +246,7 @@ func TestConfigAddDevResetsSameNameProdProfileAndCredentials(t *testing.T) {
 	configDir := t.TempDir()
 	store := config.NewStore(configDir)
 	secrets := config.NewSecretsStore(configDir)
-	oldProfile := validProductionProfile()
+	oldProfile := historicalProductionProfile()
 	oldProfile.Environment = "prod"
 	oldProfile.OpenPlatformBaseURL = "https://open.qfei.cn"
 	oldProfile.Resource = "https://open.qfei.cn"
@@ -349,7 +349,7 @@ func TestHTTPClientRejectsKnownTestHosts(t *testing.T) {
 	}
 }
 
-func validProductionProfile() config.Profile {
+func historicalProductionProfile() config.Profile {
 	return config.Profile{
 		Name:                           "contract",
 		Environment:                    "prod",
@@ -376,7 +376,7 @@ func validProductionProfile() config.Profile {
 }
 
 func validTestProfile() config.Profile {
-	profile := validProductionProfile()
+	profile := historicalProductionProfile()
 	profile.Environment = "test"
 	profile.OpenPlatformBaseURL = "https://test-open.qtech.cn"
 	profile.AppTokenEndpoint = "https://test-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -392,7 +392,7 @@ func validTestProfile() config.Profile {
 }
 
 func validDevProfile() config.Profile {
-	profile := validProductionProfile()
+	profile := historicalProductionProfile()
 	profile.Environment = "dev"
 	profile.OpenPlatformBaseURL = "https://dev-open.qtech.cn"
 	profile.AppTokenEndpoint = "https://dev-open.qtech.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -425,3 +425,6 @@ func (function productionRoundTripFunc) RoundTrip(request *http.Request) (*http.
 func productionResponse(status int, body string) *http.Response {
 	return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}
 }
+
+// Release regression fixtures use this branch's supported environment.
+func validProductionProfile() config.Profile { return validDevProfile() }

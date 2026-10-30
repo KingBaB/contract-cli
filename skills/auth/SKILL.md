@@ -82,24 +82,26 @@ Device Grant 一次授权同时包含合同与智审平台访问范围；本 Ski
 
 ### 豆包 / WorkBuddy / Codex Device 授权
 
+使用上一步选定的 profile，不在授权过程中重新初始化或切换地址：
+
 ```bash
 contract-cli config add --env dev --name contract
 contract-cli auth status --profile contract --as user
 # 已有有效授权时直接执行业务命令；需要新授权或恢复 Device 会话时：
-contract-cli auth init --profile contract --output json
+contract-cli auth init --profile <profile> --output json
 # 仅 status=pending 时展示授权信息；等用户完成手机号、企业确认和同意授权后：
-contract-cli auth complete --profile contract --output json
+contract-cli auth complete --profile <profile> --output json
 ```
 
 完成授权后的每次合同业务调用也必须显式传入同一个 profile，例如：
 
 ```bash
-contract-cli contract get <contract-id> --profile contract --output json
+contract-cli contract get <contract-id> --profile <profile> --output json
 ```
 
 固定规则：
 
-- 新任务先执行 `auth status --profile contract --as user`；已有有效 Device 授权时直接继续业务请求，不因任务变化重新授权。`auth status` 不会刷新 Token；过期且可刷新的共享 Device 凭证可交给 `auth init` 处理。
+- 新任务先执行 `auth status --profile <profile> --as user`（生产默认示例：`auth status --profile contract --as user`）；已有有效 Device 授权时直接继续业务请求，不因任务变化重新授权。`auth status` 不会刷新 Token；过期且可刷新的共享 Device 凭证可交给 `auth init` 处理。
 - `auth init` 返回 `status=authorized` 表示已复用有效或成功刷新的 Device 凭证，直接继续原业务请求；不得展示不存在的授权链接或二维码，也不执行 `auth complete`。
 - 以下授权展示和立即结束轮次的规则仅适用于 `auth init` 返回 `status=pending`。需要新授权时，`auth init` 发起一次请求并立即退出。WorkBuddy 与豆包 AgentKit 的最终回复必须同时包含完整 HTTPS 授权链接、二维码和过期时间；豆包普通工作任务只展示授权链接和过期时间。完成下述展示后必须立即结束当前轮次。
 - 将 `verification_uri_complete` 替换到 Markdown `[打开授权页面](<verification_uri_complete>)` 中，确保最终回复正文有可点击链接；不得只把 URL 留在工具输出或思考过程中。
@@ -144,7 +146,7 @@ contract-cli contract get <contract-id> --profile contract --output json
 - 豆包 AgentKit / Skills Sandbox 运行在云端 Skill 环境，必须提供 `SKILL_SESSION_WORKSPACE` 和格式正确的 `CONTRACT_CLI_CREDENTIAL_KEY_V1`。
 - 豆包普通工作任务在隔离范围内使用 `SESSION_ID`；所有 CLI 命令必须从任务初始工作目录执行，不得在授权前后切换到其他目录。凭证以 AES-256-GCM 密文保存到当前任务目录，仅在该任务内复用；缺少任务隔离所需信息时直接失败。
 - 不自动迁移旧任务凭证。升级后首次进入本地共享范围可能需要重新授权，后续任务复用共享登录态；旧 Authorization Code 模式仍保留，不与 Device 凭证自动互迁。
-- `auth init` 成功后，CLI 会把 Device 运行所需的非敏感 profile 快照与 pending transaction 一起加密保存。AgentKit 同一会话工作区或豆包普通工作任务的任务目录仍存在、但临时 HOME 中没有本地 profile 时，CLI 只会在命令显式携带 `--profile contract` 且快照完整匹配时恢复 profile。
+- `auth init` 成功后，CLI 会把 Device 运行所需的非敏感 profile 快照与 pending transaction 一起加密保存。AgentKit 同一会话工作区或豆包普通工作任务的任务目录仍存在、但临时 HOME 中没有本地 profile 时，CLI 只会在命令显式携带 `--profile <profile>` 且快照完整匹配时恢复 profile。
 - 恢复只写入当前沙箱临时 HOME；不会把 `config.json`、`secrets.json`、App Secret 或明文 profile 写进会话工作区。快照缺失或损坏时，按错误提示重新执行 `config add` 和 `auth init`，禁止猜测环境、scope、client 或 endpoint。
 - WorkBuddy 未被确认为本地桌面执行时，仍以 `CODEBUDDY_SESSION_ID` 隔离凭证；缺少任务 ID 时直接失败，不跨任务读取其他凭证。
 
@@ -167,8 +169,8 @@ contract-cli auth status --as user
 ### `app` 登录
 
 ```bash
-contract-cli auth login --as app --app-id "<app_id>" --app-secret "<app_secret>"
-contract-cli auth status --as app
+contract-cli auth login --profile <profile> --as app --app-id "<app_id>" --app-secret "<app_secret>"
+contract-cli auth status --profile <profile> --as app
 ```
 
 也可以通过环境变量提供凭据：
@@ -176,7 +178,7 @@ contract-cli auth status --as app
 ```bash
 export CONTRACT_CLI_APP_ID="<app_id>"
 export CONTRACT_CLI_APP_SECRET="<app_secret>"
-contract-cli auth login --as app
+contract-cli auth login --profile <profile> --as app
 ```
 
 运行时也兼容旧变量 `CONTRACT_CLI_BOT_APP_ID` / `CONTRACT_CLI_BOT_APP_SECRET` 和 `DEMOCLI_BOT_APP_ID` / `DEMOCLI_BOT_APP_SECRET`，但后续新增配置统一使用 `CONTRACT_CLI_APP_ID` / `CONTRACT_CLI_APP_SECRET`。
@@ -202,8 +204,8 @@ contract-cli auth login --as app
 ### 查看状态
 
 ```bash
-contract-cli auth status --as user
-contract-cli auth status --as app
+contract-cli auth status --profile <profile> --as user
+contract-cli auth status --profile <profile> --as app
 ```
 
 规则：
@@ -216,8 +218,8 @@ contract-cli auth status --as app
 ### 退出登录
 
 ```bash
-contract-cli auth logout --as user
-contract-cli auth logout --as app
+contract-cli auth logout --profile <profile> --as user
+contract-cli auth logout --profile <profile> --as app
 ```
 
 规则：
@@ -231,8 +233,8 @@ contract-cli auth logout --as app
 ### 切换默认身份
 
 ```bash
-contract-cli auth use --as user
-contract-cli auth use --as app
+contract-cli auth use --profile <profile> --as user
+contract-cli auth use --profile <profile> --as app
 ```
 
 规则：

@@ -75,7 +75,8 @@ func TestContractSkillsEnforceCredentialAndInvocationBoundaries(t *testing.T) {
 		"contract-dev",
 		"--env prod",
 		"--env blue",
-		"--env test",
+		"当前 CLI 只支持 prod",
+		"当前构建只支持 `prod`",
 		"联调构建支持",
 	} {
 		if strings.Contains(shared, forbidden) || strings.Contains(auth, forbidden) {

@@ -36,6 +36,12 @@ func localDeviceApp(t *testing.T, task string, token *config.Token, handler devi
 	if err := app.store.SaveProfile(profile); err != nil {
 		t.Fatal(err)
 	}
+	if stored, err := store.Load(profile.Name); err == nil {
+		stored.DeviceProfile = snapshotDeviceProfile(profile)
+		if err := store.Save(profile.Name, stored); err != nil {
+			t.Fatal(err)
+		}
+	}
 	return app, store
 }
 
@@ -143,10 +149,13 @@ func TestLocalDeviceConcurrentRefreshRotatesOnlyOnceAcrossTasks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save("contract", credential.DeviceCredential{Token: &config.Token{AccessToken: "old", RefreshToken: "refresh", Expiry: deviceTokenTestNow().Add(-time.Minute)}}); err != nil {
+	profile := mustDeviceProfile(t, first.store)
+	if err := store.Save("contract", credential.DeviceCredential{
+		Token:         &config.Token{AccessToken: "old", RefreshToken: "refresh", Expiry: deviceTokenTestNow().Add(-time.Minute)},
+		DeviceProfile: snapshotDeviceProfile(profile),
+	}); err != nil {
 		t.Fatal(err)
 	}
-	profile := mustDeviceProfile(t, first.store)
 	completed := make(chan error, 1)
 	go func() {
 		_, err := first.refreshDeviceToken(context.Background(), profile, "old", false)

@@ -33,7 +33,7 @@ func (a *App) runPreAuditReview(ctx context.Context, action string, args []strin
 		var input struct {
 			Config map[string]any `json:"config"`
 		}
-		if err := readReviewJSON(parsed, &input); err != nil {
+		if err := readReviewJSON(ctx, parsed, &input); err != nil {
 			return err
 		}
 		config, err = normalizedReviewConfig(input.Config)

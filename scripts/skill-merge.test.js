@@ -34,7 +34,8 @@ test('Device quick flow checks and authorizes the dev profile', () => {
   const flow = read('auth').split('### 豆包 / WorkBuddy / Codex Device 授权')[1].split('### `user` 登录')[0];
   const commands = [...flow.matchAll(/^contract-cli auth (status|init|complete) --profile (\S+)/gm)];
   assert.deepEqual(commands.map(match => match[1]), ['status', 'init', 'complete']);
-  assert.deepEqual([...new Set(commands.map(match => match[2]))], ['contract']);
+  assert.deepEqual([...new Set(commands.map(match => match[2]))], ['<profile>']);
+  assert.ok(!flow.includes('config add --env prod'));
 });
 
 test('shared auth instructions retain the dev-only environment boundary', () => {

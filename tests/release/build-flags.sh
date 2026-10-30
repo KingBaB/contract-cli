@@ -18,4 +18,10 @@ if [[ "$LEGACY_HELP_OUTPUT" != *"--env <dev>"* || "$LEGACY_HELP_OUTPUT" == *"--e
   exit 1
 fi
 
+DEV_TAG_HELP_OUTPUT="$(cd "$ROOT_DIR" && go run -tags dev ./cmd/contract-cli config add --help)"
+if [[ "$DEV_TAG_HELP_OUTPUT" != *"--env <dev>"* || "$DEV_TAG_HELP_OUTPUT" == *"--env <dev|"* || "$DEV_TAG_HELP_OUTPUT" == *"--env blue"* || "$DEV_TAG_HELP_OUTPUT" == *"--env test"* || "$DEV_TAG_HELP_OUTPUT" == *"--env prod"* ]]; then
+  echo "dev build tag exposed an unsupported environment" >&2
+  exit 1
+fi
+
 echo "build flags ok"

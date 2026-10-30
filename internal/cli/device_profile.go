@@ -19,6 +19,10 @@ func (a *App) loadDeviceAwareProfile(profileName string) (config.Profile, error)
 		return config.Profile{}, err
 	}
 	if found {
+		if err := config.ValidateCredentialBinding(profile); err != nil {
+			a.logger.Error("reject changed credential target", "profile", profile.Name)
+			return config.Profile{}, err
+		}
 		if err := validateProductionProfile(profile); err != nil {
 			a.logger.Error("reject unsupported environment profile", "profile", profile.Name, "error", err.Error())
 			return config.Profile{}, err
@@ -71,8 +75,8 @@ func (a *App) loadDeviceAwareProfile(profileName string) (config.Profile, error)
 		a.logger.Error("reject unsupported environment Device profile snapshot", "profile", normalizedProfileName, "error", err.Error())
 		return config.Profile{}, err
 	}
-	if err := validateProductionPendingTransaction(normalizedProfileName, stored.Pending, profile.Environment); err != nil {
-		a.logger.Error("reject unsupported environment Device pending state during profile restore", "profile", normalizedProfileName, "error", err.Error())
+	if err := validateProductionPendingTransaction(profile, stored.Pending); err != nil {
+		a.logger.Error("reject non-production Device pending state during profile restore", "profile", normalizedProfileName, "error", err.Error())
 		return config.Profile{}, err
 	}
 	if err := a.store.SaveProfile(profile); err != nil {
