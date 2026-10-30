@@ -348,7 +348,7 @@ func (a *App) createPreAudit(ctx context.Context, options commandOptions, run *p
 			return err
 		}
 	}
-	request, err := reviewUploadRequest(nil, "", run.Name, map[string]string{"businessId": run.PreAuditID, "businessFileId": run.LatestFileID, "businessFileVersion": "v1", "sourceLocator": `{"provider":"clm","sourceFileType":0}`, "channelType": "cli"})
+	request, err := reviewUploadRequest(ctx, nil, "", run.Name, map[string]string{"businessId": run.PreAuditID, "businessFileId": run.LatestFileID, "businessFileVersion": "v1", "sourceLocator": `{"provider":"clm","sourceFileType":0}`, "channelType": "cli"})
 	if err != nil {
 		return err
 	}
