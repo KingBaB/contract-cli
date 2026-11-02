@@ -33,6 +33,21 @@ func TestPreAuditPublicHelpAndSkillUseRealPreAuditFlow(t *testing.T) {
 	if prepare < 0 || category <= prepare || create <= category {
 		t.Fatal("Skill must upload first, then choose category and create preaudit")
 	}
+	for _, name := range []string{"contract-cli-shared", "contract-cli-contract"} {
+		t.Run(name, func(t *testing.T) {
+			content := reviewSkill(t, name)
+			for _, obsolete := range []string{"不返回详情链接", "不返回详情 URL"} {
+				if strings.Contains(content, obsolete) {
+					t.Errorf("routing Skill retains obsolete preaudit navigation rule: %s", obsolete)
+				}
+			}
+			for _, rule := range []string{"审查完成后", "final.reviewDetailUrl", "链接获取失败", "原 run"} {
+				if !strings.Contains(content, rule) {
+					t.Errorf("routing Skill lacks preaudit link delivery rule: %s", rule)
+				}
+			}
+		})
+	}
 }
 
 func TestPreAuditCreateHelpExplainsCategoryReselectionAndUnknownOutcome(t *testing.T) {
